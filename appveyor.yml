@@ -1,0 +1,21 @@
+environment:
+  matrix:
+    - CMAKE_GENERATOR: "Visual Studio 12 2013"
+#    - CMAKE_GENERATOR: "Visual Studio 14 2015"
+
+platform: x64
+clone_folder: c:\projects\dealii
+clone_depth: 20
+
+build_script:
+  - echo Running cmake...
+  - cmake --help
+  - cd c:\projects\dealii
+  - dir
+  - mkdir build
+  - cd build
+  - ctest -DCTEST_CMAKE_GENERATOR="%CMAKE_GENERATOR%" -V -S ../tests/run_buildtest.cmake
+#  - cmake -G "%CMAKE_GENERATOR%" -DCMAKE_INSTALL_PREFIX="c:\projects\dealii-install" ..
+#  - cmake --build .
+#  - ctest -V -S ../tests/run_testsuite.cmake
+#  - dir
