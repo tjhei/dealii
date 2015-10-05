@@ -153,7 +153,7 @@ ADD_SUBDIRECTORY(contrib) # has to be included after source
 ADD_SUBDIRECTORY(examples)
 
 # Do not automatically include the testsuite subproject on Windows.
-IF(DEAL_II_HAVE_TESTS_DIRECTORY AND NOT DEAL_II_MSVC)
+IF(DEAL_II_HAVE_TESTS_DIRECTORY)# AND NOT DEAL_II_MSVC)
   ADD_SUBDIRECTORY(tests)
 ENDIF()
 
