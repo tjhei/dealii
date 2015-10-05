@@ -308,6 +308,11 @@ void LaplaceProblem<dim>::assemble_multigrid ()
 
       boundary_interface_constraints[level]
       .add_lines (boundary_interface_dofs[level]);
+      for (unsigned int i=0;i<boundary_interface_dofs[level].size();++i)
+	if (boundary_interface_dofs[level][i])
+	  deallog << "L:" << level << " bid: " << i << std::endl;
+      
+      
       boundary_interface_constraints[level].close ();
     }
 
