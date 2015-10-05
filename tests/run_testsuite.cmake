@@ -472,25 +472,27 @@ IF("${_res}" STREQUAL "0")
   # Only run the build stage if configure was successful:
 
   MESSAGE("-- Running CTEST_BUILD()")
-  SET(CTEST_BUILD_FLAGS ${MAKEOPTS})
+  SET(CTEST_BUILD_FLAGS "${MAKEOPTS}")
   CTEST_BUILD(NUMBER_ERRORS _res)
 
   IF("${_res}" STREQUAL "0")
     # Only run tests if the build was successful:
 
     MESSAGE("-- Running setup_tests")
-    #EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND}
-    #  --build ${CTEST_BINARY_DIRECTORY} --target setup_tests
-    #  -- ${MAKEOPTS}
-    #  # OUTPUT_QUIET 
-    #  RESULT_VARIABLE _res
-    #  )
-    #IF(NOT "${_res}" STREQUAL "0")
-    #  MESSAGE(FATAL_ERROR "
-#\"setup_tests\" target exited with an error. Bailing out.
-#"
-#        )
-#    ENDIF()
+    EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND}
+      --build . --target setup_tests
+      -- ${MAKEOPTS}
+      WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY}
+#      OUTPUT_QUIET
+RESULT_VARIABLE _res
+
+      )
+    IF(NOT "${_res}" STREQUAL "0")
+      MESSAGE(FATAL_ERROR "
+\"setup_tests\" target exited with an error. Bailing out.
+"
+        )
+    ENDIF()
 
     MESSAGE("-- Running CTEST_TESTS()")
     CTEST_TEST()
