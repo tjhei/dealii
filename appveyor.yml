@@ -14,7 +14,7 @@ build_script:
   - dir
   - mkdir build
   - cd build
-  - ctest -DCTEST_CMAKE_GENERATOR="%CMAKE_GENERATOR%" -V -S ../tests/run_buildtest.cmake
+  - ctest -DMAKEOPTS="/m:4" -DCTEST_CMAKE_GENERATOR="%CMAKE_GENERATOR%" -V -S ../tests/run_buildtest.cmake
 #  - cmake -G "%CMAKE_GENERATOR%" -DCMAKE_INSTALL_PREFIX="c:\projects\dealii-install" ..
 #  - cmake --build .
 #  - ctest -V -S ../tests/run_testsuite.cmake

@@ -472,7 +472,7 @@ IF("${_res}" STREQUAL "0")
   # Only run the build stage if configure was successful:
 
   MESSAGE("-- Running CTEST_BUILD()")
-  CTEST_BUILD(TARGET ${MAKEOPTS} NUMBER_ERRORS _res)
+  CTEST_BUILD(${MAKEOPTS} NUMBER_ERRORS _res)
 
   IF("${_res}" STREQUAL "0")
     # Only run tests if the build was successful:
