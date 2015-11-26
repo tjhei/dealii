@@ -484,7 +484,7 @@ namespace internal
 
 
 
-    template <class DH, class VectorType>
+    template <class DH, typename VectorType>
     DataEntry<DH,VectorType>::
     DataEntry (const DH                               *dofs,
                const VectorType                       *data,
@@ -497,7 +497,7 @@ namespace internal
 
 
 
-    template <class DH, class VectorType>
+    template <class DH, typename VectorType>
     DataEntry<DH,VectorType>::
     DataEntry (const DH                                     *dofs,
                const VectorType                             *data,
@@ -510,10 +510,10 @@ namespace internal
 
     namespace
     {
-      template <class VectorType>
+      template <typename VectorType>
       double
-      get_vector_element (const VectorType &vector,
-                          const unsigned int cell_number)
+      get_vector_element (const VectorType   &vector,
+                          const unsigned int  cell_number)
       {
         return vector[cell_number];
       }
@@ -529,7 +529,7 @@ namespace internal
 
 
 
-    template <class DH, class VectorType>
+    template <class DH, typename VectorType>
     double
     DataEntry<DH,VectorType>::
     get_cell_data_value (const unsigned int cell_number) const
@@ -539,161 +539,257 @@ namespace internal
 
 
 
-    template <class DH, class VectorType>
+    template <class DH, typename VectorType>
     void
-    DataEntry<DH,VectorType>::
-    get_function_values (const FEValuesBase<DH::dimension,DH::space_dimension> &fe_patch_values,
-                         std::vector<dealii::Vector<double> >    &patch_values_system) const
+    DataEntry<DH,VectorType>::get_function_values
+    (const FEValuesBase<DH::dimension,DH::space_dimension> &fe_patch_values,
+     std::vector<dealii::Vector<double> >                  &patch_values_system) const
     {
       // FIXME: FEValuesBase gives us data in types that match that of
       // the solution vector. but this function needs to pass it back
       // up as 'double' vectors. this requires the use of a temporary
-      // variable here
+      // variable here if the data we get is not a 'double' vector.
+      // (of course, in reality, this also means that we may lose
+      // information to begin with.)
       //
       // the correct thing would be to also use the correct data type
       // upstream somewhere, but this is complicated because we hide
       // the actual data type from upstream. rather, we should at
       // least make sure we can deal with complex numbers
-      std::vector<dealii::Vector<typename VectorType::value_type> > tmp(patch_values_system.size());
-      for (unsigned int i = 0; i < patch_values_system.size(); i++)
-        tmp[i].reinit(patch_values_system[i]);
+      if (typeid(typename VectorType::value_type) == typeid(double))
+        {
+          fe_patch_values.get_function_values (*vector,
+                                               // reinterpret output argument type; because of
+                                               // the 'if' statement above, this is the
+                                               // identity cast whenever the code is
+                                               // executed, but the cast is necessary
+                                               // to allow compilation even if we don't get here
+                                               reinterpret_cast<std::vector<dealii::Vector<typename VectorType::value_type> >&>
+                                               (patch_values_system));
+        }
+      else
+        {
+          std::vector<dealii::Vector<typename VectorType::value_type> > tmp(patch_values_system.size());
+          for (unsigned int i = 0; i < patch_values_system.size(); i++)
+            tmp[i].reinit(patch_values_system[i]);
 
-      fe_patch_values.get_function_values (*vector, tmp);
+          fe_patch_values.get_function_values (*vector, tmp);
 
-      for (unsigned int i = 0; i < patch_values_system.size(); i++)
-        patch_values_system[i] = tmp[i];
+          for (unsigned int i = 0; i < patch_values_system.size(); i++)
+            patch_values_system[i] = tmp[i];
+        }
     }
 
 
 
     template <class DH, typename VectorType>
     void
-    DataEntry<DH,VectorType>::
-    get_function_values (const FEValuesBase<DH::dimension,DH::space_dimension> &fe_patch_values,
-                         std::vector<double>             &patch_values) const
+    DataEntry<DH,VectorType>::get_function_values
+    (const FEValuesBase<DH::dimension,DH::space_dimension> &fe_patch_values,
+     std::vector<double>                                   &patch_values) const
     {
       // FIXME: FEValuesBase gives us data in types that match that of
       // the solution vector. but this function needs to pass it back
       // up as 'double' vectors. this requires the use of a temporary
-      // variable here
+      // variable here if the data we get is not a 'double' vector.
+      // (of course, in reality, this also means that we may lose
+      // information to begin with.)
       //
       // the correct thing would be to also use the correct data type
       // upstream somewhere, but this is complicated because we hide
       // the actual data type from upstream. rather, we should at
       // least make sure we can deal with complex numbers
-      std::vector<typename VectorType::value_type> tmp (patch_values.size());
+      if (typeid(typename VectorType::value_type) == typeid(double))
+        {
+          fe_patch_values.get_function_values (*vector,
+                                               // reinterpret output argument type; because of
+                                               // the 'if' statement above, this is the
+                                               // identity cast whenever the code is
+                                               // executed, but the cast is necessary
+                                               // to allow compilation even if we don't get here
+                                               reinterpret_cast<std::vector<typename VectorType::value_type>&>
+                                               (patch_values));
+        }
+      else
+        {
+          std::vector<typename VectorType::value_type> tmp (patch_values.size());
 
-      fe_patch_values.get_function_values (*vector, tmp);
+          fe_patch_values.get_function_values (*vector, tmp);
 
-      for (unsigned int i = 0; i < tmp.size(); i++)
-        patch_values[i] = tmp[i];
-    }
-
-
-
-    template <class DH, class VectorType>
-    void
-    DataEntry<DH,VectorType>::
-    get_function_gradients (const FEValuesBase<DH::dimension,DH::space_dimension> &fe_patch_values,
-                            std::vector<std::vector<Tensor<1,DH::space_dimension> > >   &patch_gradients_system) const
-    {
-      // FIXME: FEValuesBase gives us data in types that match that of
-      // the solution vector. but this function needs to pass it back
-      // up as 'double' vectors. this requires the use of a temporary
-      // variable here
-      //
-      // the correct thing would be to also use the correct data type
-      // upstream somewhere, but this is complicated because we hide
-      // the actual data type from upstream. rather, we should at
-      // least make sure we can deal with complex numbers
-      std::vector<std::vector<Tensor<1,DH::space_dimension,typename VectorType::value_type> > > tmp(patch_gradients_system.size());
-      for (unsigned int i = 0; i < tmp.size(); i++)
-        tmp[i].resize(patch_gradients_system[i].size());
-
-      fe_patch_values.get_function_gradients (*vector, tmp);
-
-      for (unsigned int i = 0; i < tmp.size(); i++)
-        for (unsigned int j = 0; j < tmp[i].size(); j++)
-          patch_gradients_system[i][j] = tmp[i][j];
+          for (unsigned int i = 0; i < tmp.size(); i++)
+            patch_values[i] = tmp[i];
+        }
     }
 
 
 
     template <class DH, typename VectorType>
     void
-    DataEntry<DH,VectorType>::
-    get_function_gradients (const FEValuesBase<DH::dimension,DH::space_dimension> &fe_patch_values,
-                            std::vector<Tensor<1,DH::space_dimension> >       &patch_gradients) const
+    DataEntry<DH,VectorType>::get_function_gradients
+    (const FEValuesBase<DH::dimension,DH::space_dimension>     &fe_patch_values,
+     std::vector<std::vector<Tensor<1,DH::space_dimension> > > &patch_gradients_system) const
     {
       // FIXME: FEValuesBase gives us data in types that match that of
       // the solution vector. but this function needs to pass it back
       // up as 'double' vectors. this requires the use of a temporary
-      // variable here
+      // variable here if the data we get is not a 'double' vector.
+      // (of course, in reality, this also means that we may lose
+      // information to begin with.)
       //
       // the correct thing would be to also use the correct data type
       // upstream somewhere, but this is complicated because we hide
       // the actual data type from upstream. rather, we should at
       // least make sure we can deal with complex numbers
-      std::vector<Tensor<1,DH::space_dimension,typename VectorType::value_type> >  tmp;
-      tmp.resize(patch_gradients.size());
+      if (typeid(typename VectorType::value_type) == typeid(double))
+        {
+          fe_patch_values.get_function_gradients (*vector,
+                                                  // reinterpret output argument type; because of
+                                                  // the 'if' statement above, this is the
+                                                  // identity cast whenever the code is
+                                                  // executed, but the cast is necessary
+                                                  // to allow compilation even if we don't get here
+                                                  reinterpret_cast<std::vector<std::vector<Tensor<1,DH::space_dimension,typename VectorType::value_type> > >&>
+                                                  (patch_gradients_system));
+        }
+      else
+        {
+          std::vector<std::vector<Tensor<1,DH::space_dimension,typename VectorType::value_type> > > tmp(patch_gradients_system.size());
+          for (unsigned int i = 0; i < tmp.size(); i++)
+            tmp[i].resize(patch_gradients_system[i].size());
 
-      fe_patch_values.get_function_gradients (*vector, tmp);
+          fe_patch_values.get_function_gradients (*vector, tmp);
 
-      for (unsigned int i = 0; i < tmp.size(); i++)
-        patch_gradients[i] = tmp[i];
-    }
-
-
-
-    template <class DH, class VectorType>
-    void
-    DataEntry<DH,VectorType>::
-    get_function_hessians (const FEValuesBase<DH::dimension,DH::space_dimension> &fe_patch_values,
-                           std::vector<std::vector<Tensor<2,DH::space_dimension> > >   &patch_hessians_system) const
-    {
-      // FIXME: FEValuesBase gives us data in types that match that of
-      // the solution vector. but this function needs to pass it back
-      // up as 'double' vectors. this requires the use of a temporary
-      // variable here
-      //
-      // the correct thing would be to also use the correct data type
-      // upstream somewhere, but this is complicated because we hide
-      // the actual data type from upstream. rather, we should at
-      // least make sure we can deal with complex numbers
-      std::vector<std::vector<Tensor<2,DH::space_dimension,typename VectorType::value_type> > > tmp(patch_hessians_system.size());
-      for (unsigned int i = 0; i < tmp.size(); i++)
-        tmp[i].resize(patch_hessians_system[i].size());
-
-      fe_patch_values.get_function_hessians (*vector, tmp);
-
-      for (unsigned int i = 0; i < tmp.size(); i++)
-        for (unsigned int j = 0; j < tmp[i].size(); j++)
-          patch_hessians_system[i][j] = tmp[i][j];
+          for (unsigned int i = 0; i < tmp.size(); i++)
+            for (unsigned int j = 0; j < tmp[i].size(); j++)
+              patch_gradients_system[i][j] = tmp[i][j];
+        }
     }
 
 
 
     template <class DH, typename VectorType>
     void
-    DataEntry<DH,VectorType>::
-    get_function_hessians (const FEValuesBase<DH::dimension,DH::space_dimension> &fe_patch_values,
-                           std::vector<Tensor<2,DH::space_dimension> >       &patch_hessians) const
+    DataEntry<DH,VectorType>::get_function_gradients
+    (const FEValuesBase<DH::dimension,DH::space_dimension> &fe_patch_values,
+     std::vector<Tensor<1,DH::space_dimension> >           &patch_gradients) const
     {
       // FIXME: FEValuesBase gives us data in types that match that of
       // the solution vector. but this function needs to pass it back
       // up as 'double' vectors. this requires the use of a temporary
-      // variable here
+      // variable here if the data we get is not a 'double' vector.
+      // (of course, in reality, this also means that we may lose
+      // information to begin with.)
       //
       // the correct thing would be to also use the correct data type
       // upstream somewhere, but this is complicated because we hide
       // the actual data type from upstream. rather, we should at
       // least make sure we can deal with complex numbers
-      std::vector<Tensor<2,DH::space_dimension,typename VectorType::value_type> > tmp(patch_hessians.size());
+      if (typeid(typename VectorType::value_type) == typeid(double))
+        {
+          fe_patch_values.get_function_gradients (*vector,
+                                                  // reinterpret output argument type; because of
+                                                  // the 'if' statement above, this is the
+                                                  // identity cast whenever the code is
+                                                  // executed, but the cast is necessary
+                                                  // to allow compilation even if we don't get here
+                                                  reinterpret_cast<std::vector<Tensor<1,DH::space_dimension,typename VectorType::value_type> >&>
+                                                  (patch_gradients));
+        }
+      else
+        {
+          std::vector<Tensor<1,DH::space_dimension,typename VectorType::value_type> >  tmp;
+          tmp.resize(patch_gradients.size());
 
-      fe_patch_values.get_function_hessians (*vector, tmp);
+          fe_patch_values.get_function_gradients (*vector, tmp);
 
-      for (unsigned int i = 0; i < tmp.size(); i++)
-        patch_hessians[i] = tmp[i];
+          for (unsigned int i = 0; i < tmp.size(); i++)
+            patch_gradients[i] = tmp[i];
+        }
+    }
+
+
+
+    template <class DH, typename VectorType>
+    void
+    DataEntry<DH,VectorType>::get_function_hessians
+    (const FEValuesBase<DH::dimension,DH::space_dimension>     &fe_patch_values,
+     std::vector<std::vector<Tensor<2,DH::space_dimension> > > &patch_hessians_system) const
+    {
+      // FIXME: FEValuesBase gives us data in types that match that of
+      // the solution vector. but this function needs to pass it back
+      // up as 'double' vectors. this requires the use of a temporary
+      // variable here if the data we get is not a 'double' vector.
+      // (of course, in reality, this also means that we may lose
+      // information to begin with.)
+      //
+      // the correct thing would be to also use the correct data type
+      // upstream somewhere, but this is complicated because we hide
+      // the actual data type from upstream. rather, we should at
+      // least make sure we can deal with complex numbers
+      if (typeid(typename VectorType::value_type) == typeid(double))
+        {
+          fe_patch_values.get_function_hessians (*vector,
+                                                 // reinterpret output argument type; because of
+                                                 // the 'if' statement above, this is the
+                                                 // identity cast whenever the code is
+                                                 // executed, but the cast is necessary
+                                                 // to allow compilation even if we don't get here
+                                                 reinterpret_cast<std::vector<std::vector<Tensor<2,DH::space_dimension,typename VectorType::value_type> > >&>
+                                                 (patch_hessians_system));
+        }
+      else
+        {
+          std::vector<std::vector<Tensor<2,DH::space_dimension,typename VectorType::value_type> > > tmp(patch_hessians_system.size());
+          for (unsigned int i = 0; i < tmp.size(); i++)
+            tmp[i].resize(patch_hessians_system[i].size());
+
+          fe_patch_values.get_function_hessians (*vector, tmp);
+
+          for (unsigned int i = 0; i < tmp.size(); i++)
+            for (unsigned int j = 0; j < tmp[i].size(); j++)
+              patch_hessians_system[i][j] = tmp[i][j];
+        }
+    }
+
+
+
+    template <class DH, typename VectorType>
+    void
+    DataEntry<DH,VectorType>::get_function_hessians
+    (const FEValuesBase<DH::dimension,DH::space_dimension> &fe_patch_values,
+     std::vector<Tensor<2,DH::space_dimension> >           &patch_hessians) const
+    {
+      // FIXME: FEValuesBase gives us data in types that match that of
+      // the solution vector. but this function needs to pass it back
+      // up as 'double' vectors. this requires the use of a temporary
+      // variable here if the data we get is not a 'double' vector.
+      // (of course, in reality, this also means that we may lose
+      // information to begin with.)
+      //
+      // the correct thing would be to also use the correct data type
+      // upstream somewhere, but this is complicated because we hide
+      // the actual data type from upstream. rather, we should at
+      // least make sure we can deal with complex numbers
+      if (typeid(typename VectorType::value_type) == typeid(double))
+        {
+          fe_patch_values.get_function_hessians (*vector,
+                                                 // reinterpret output argument type; because of
+                                                 // the 'if' statement above, this is the
+                                                 // identity cast whenever the code is
+                                                 // executed, but the cast is necessary
+                                                 // to allow compilation even if we don't get here
+                                                 reinterpret_cast<std::vector<Tensor<2,DH::space_dimension,typename VectorType::value_type> >&>
+                                                 (patch_hessians));
+        }
+      else
+        {
+          std::vector<Tensor<2,DH::space_dimension,typename VectorType::value_type> > tmp(patch_hessians.size());
+
+          fe_patch_values.get_function_hessians (*vector, tmp);
+
+          for (unsigned int i = 0; i < tmp.size(); i++)
+            patch_hessians[i] = tmp[i];
+        }
     }
 
 
@@ -708,7 +804,7 @@ namespace internal
 
 
 
-    template <class DH, class VectorType>
+    template <class DH, typename VectorType>
     void
     DataEntry<DH,VectorType>::clear ()
     {
@@ -772,10 +868,10 @@ attach_triangulation (const Triangulation<DH::dimension,DH::space_dimension> &tr
 
 template <class DH,
           int patch_dim, int patch_space_dim>
-template <class VECTOR>
+template <typename VectorType>
 void
 DataOut_DoFData<DH,patch_dim,patch_space_dim>::
-add_data_vector (const VECTOR                             &vec,
+add_data_vector (const VectorType                         &vec,
                  const std::string                        &name,
                  const DataVectorType                      type,
                  const std::vector<DataComponentInterpretation::DataComponentInterpretation> &data_component_interpretation)
@@ -811,10 +907,10 @@ add_data_vector (const VECTOR                             &vec,
 
 template <class DH,
           int patch_dim, int patch_space_dim>
-template <class VECTOR>
+template <typename VectorType>
 void
 DataOut_DoFData<DH,patch_dim,patch_space_dim>::
-add_data_vector (const VECTOR                             &vec,
+add_data_vector (const VectorType                         &vec,
                  const std::vector<std::string>           &names,
                  const DataVectorType                      type,
                  const std::vector<DataComponentInterpretation::DataComponentInterpretation> &data_component_interpretation_)
@@ -875,8 +971,8 @@ add_data_vector (const VECTOR                             &vec,
     }
 
   internal::DataOut::DataEntryBase<DH> *new_entry
-    = new internal::DataOut::DataEntry<DH,VECTOR>(dofs, &vec, names,
-                                                  data_component_interpretation);
+    = new internal::DataOut::DataEntry<DH,VectorType>(dofs, &vec, names,
+                                                      data_component_interpretation);
   if (actual_type == type_dof_data)
     dof_data.push_back (std_cxx11::shared_ptr<internal::DataOut::DataEntryBase<DH> >(new_entry));
   else
@@ -887,10 +983,10 @@ add_data_vector (const VECTOR                             &vec,
 
 template <class DH,
           int patch_dim, int patch_space_dim>
-template <class VECTOR>
+template <typename VectorType>
 void
 DataOut_DoFData<DH,patch_dim,patch_space_dim>::
-add_data_vector (const VECTOR                           &vec,
+add_data_vector (const VectorType                       &vec,
                  const DataPostprocessor<DH::space_dimension> &data_postprocessor)
 {
   // this is a specialized version of the other function where we have a
@@ -907,7 +1003,7 @@ add_data_vector (const VECTOR                           &vec,
                                                      dofs->get_tria().n_active_cells()));
 
   internal::DataOut::DataEntryBase<DH> *new_entry
-    = new internal::DataOut::DataEntry<DH,VECTOR>(dofs, &vec, &data_postprocessor);
+    = new internal::DataOut::DataEntry<DH,VectorType>(dofs, &vec, &data_postprocessor);
   dof_data.push_back (std_cxx11::shared_ptr<internal::DataOut::DataEntryBase<DH> >(new_entry));
 }
 
@@ -915,11 +1011,11 @@ add_data_vector (const VECTOR                           &vec,
 
 template <class DH,
           int patch_dim, int patch_space_dim>
-template <class VECTOR>
+template <typename VectorType>
 void
 DataOut_DoFData<DH,patch_dim,patch_space_dim>::
 add_data_vector (const DH                               &dof_handler,
-                 const VECTOR                           &vec,
+                 const VectorType                       &vec,
                  const DataPostprocessor<DH::space_dimension> &data_postprocessor)
 {
   // this is a specialized version of the other function where we have a
@@ -930,7 +1026,7 @@ add_data_vector (const DH                               &dof_handler,
   AssertDimension (vec.size(), dof_handler.n_dofs());
 
   internal::DataOut::DataEntryBase<DH> *new_entry
-    = new internal::DataOut::DataEntry<DH,VECTOR>(&dof_handler, &vec, &data_postprocessor);
+    = new internal::DataOut::DataEntry<DH,VectorType>(&dof_handler, &vec, &data_postprocessor);
   dof_data.push_back (std_cxx11::shared_ptr<internal::DataOut::DataEntryBase<DH> >(new_entry));
 }
 
@@ -938,11 +1034,11 @@ add_data_vector (const DH                               &dof_handler,
 
 template <class DH,
           int patch_dim, int patch_space_dim>
-template <class VECTOR>
+template <typename VectorType>
 void
 DataOut_DoFData<DH,patch_dim,patch_space_dim>::
 add_data_vector (const DH                       &dof_handler,
-                 const VECTOR                   &data,
+                 const VectorType               &data,
                  const std::string              &name,
                  const std::vector<DataComponentInterpretation::DataComponentInterpretation> &data_component_interpretation)
 {
@@ -971,11 +1067,11 @@ add_data_vector (const DH                       &dof_handler,
 
 template <class DH,
           int patch_dim, int patch_space_dim>
-template <class VECTOR>
+template <typename VectorType>
 void
 DataOut_DoFData<DH,patch_dim,patch_space_dim>::
 add_data_vector (const DH                       &dof_handler,
-                 const VECTOR                   &data,
+                 const VectorType               &data,
                  const std::vector<std::string> &names,
                  const std::vector<DataComponentInterpretation::DataComponentInterpretation> &data_component_interpretation_)
 {
@@ -1002,8 +1098,8 @@ add_data_vector (const DH                       &dof_handler,
        (names.size(), DataComponentInterpretation::component_is_scalar));
 
   internal::DataOut::DataEntryBase<DH> *new_entry
-    = new internal::DataOut::DataEntry<DH,VECTOR>(&dof_handler, &data, names,
-                                                  data_component_interpretation);
+    = new internal::DataOut::DataEntry<DH,VectorType>(&dof_handler, &data, names,
+                                                      data_component_interpretation);
   dof_data.push_back (std_cxx11::shared_ptr<internal::DataOut::DataEntryBase<DH> >(new_entry));
 }
 

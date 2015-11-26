@@ -29,6 +29,9 @@
 
 #include <algorithm>
 
+// Here you can turn on some cout statements and MPI Barriers for debugging:
+//#define DEBUG_OUTPUT
+
 DEAL_II_NAMESPACE_OPEN
 
 
@@ -162,34 +165,56 @@ namespace
 
 
 
-template <class VECTOR>
+template <typename VectorType>
 template <int dim, class InVector, int spacedim>
 void
-MGTransferPrebuilt<VECTOR>::copy_to_mg (
-  const DoFHandler<dim,spacedim> &mg_dof_handler,
-  MGLevelObject<VECTOR> &dst,
-  const InVector &src) const
+MGTransferPrebuilt<VectorType>::copy_to_mg
+(const DoFHandler<dim,spacedim> &mg_dof_handler,
+ MGLevelObject<VectorType>     &dst,
+ const InVector                &src) const
 {
   reinit_vector(mg_dof_handler, component_to_block_map, dst);
   bool first = true;
+#ifdef DEBUG_OUTPUT
+  std::cout << "copy_to_mg src " << src.l2_norm() << std::endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
   for (unsigned int level=mg_dof_handler.get_tria().n_global_levels(); level != 0;)
     {
       --level;
-      VECTOR &dst_level = dst[level];
+      VectorType &dst_level = dst[level];
 
-      typedef std::vector<std::pair<types::global_dof_index, types::global_dof_index> >::const_iterator IT;
-      for (IT i= copy_indices[level].begin();
+#ifdef DEBUG_OUTPUT
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+      typedef std::vector<std::pair<types::global_dof_index, types::global_dof_index> >::const_iterator dof_pair_iterator;
+
+      // first copy local unknowns
+      for (dof_pair_iterator i= copy_indices[level].begin();
            i != copy_indices[level].end(); ++i)
         dst_level(i->second) = src(i->first);
 
-      // for (IT i= copy_indices_to_me[level].begin();
-      //      i != copy_indices_to_me[level].end(); ++i)
-      //   dst_level(i->second) = src(i->first);
+      // Do the same for the indices where the global index is local,
+      // but the local index is not
+      for (dof_pair_iterator i= copy_indices_global_mine[level].begin();
+           i != copy_indices_global_mine[level].end(); ++i)
+        dst_level(i->second) = src(i->first);
 
       dst_level.compress(VectorOperation::insert);
 
+#ifdef DEBUG_OUTPUT
+      MPI_Barrier(MPI_COMM_WORLD);
+      std::cout << "copy_to_mg dst " << level << " " << dst_level.l2_norm() << std::endl;
+#endif
+
       if (!first)
-        restrict_and_add (level+1, dst[level], dst[level+1]);
+        {
+          restrict_and_add (level+1, dst[level], dst[level+1]);
+#ifdef DEBUG_OUTPUT
+          std::cout << "copy_to_mg restr&add " << level << " " << dst_level.l2_norm() << std::endl;
+#endif
+        }
 
       first = false;
     }
@@ -197,13 +222,13 @@ MGTransferPrebuilt<VECTOR>::copy_to_mg (
 
 
 
-template <class VECTOR>
+template <typename VectorType>
 template <int dim, class OutVector, int spacedim>
 void
-MGTransferPrebuilt<VECTOR>::copy_from_mg(
-  const DoFHandler<dim,spacedim>       &mg_dof_handler,
-  OutVector                     &dst,
-  const MGLevelObject<VECTOR> &src) const
+MGTransferPrebuilt<VectorType>::copy_from_mg
+(const DoFHandler<dim,spacedim>  &mg_dof_handler,
+ OutVector                       &dst,
+ const MGLevelObject<VectorType> &src) const
 {
   // For non-DG: degrees of
   // freedom in the refinement
@@ -215,40 +240,49 @@ MGTransferPrebuilt<VECTOR>::copy_from_mg(
   dst = 0;
   for (unsigned int level=0; level<mg_dof_handler.get_tria().n_global_levels(); ++level)
     {
-      typedef std::vector<std::pair<types::global_dof_index, types::global_dof_index> >::const_iterator IT;
+#ifdef DEBUG_OUTPUT
+      MPI_Barrier(MPI_COMM_WORLD);
+      std::cout << "copy_from_mg src " << level << " " << src[level].l2_norm() << std::endl;
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+      typedef std::vector<std::pair<types::global_dof_index, types::global_dof_index> >::const_iterator dof_pair_iterator;
 
       // First copy all indices local to this process
-      if (constraints==0)
-        for (IT i= copy_indices[level].begin();
-             i != copy_indices[level].end(); ++i)
-          dst(i->first) = src[level](i->second);
-      else
-        for (IT i= copy_indices[level].begin();
-             i != copy_indices[level].end(); ++i)
-          constraints->distribute_local_to_global(i->first, src[level](i->second), dst);
+      for (dof_pair_iterator i= copy_indices[level].begin();
+           i != copy_indices[level].end(); ++i)
+        dst(i->first) = src[level](i->second);
 
       // Do the same for the indices where the level index is local,
       // but the global index is not
-      if (constraints==0)
-        for (IT i= copy_indices_from_me[level].begin();
-             i != copy_indices_from_me[level].end(); ++i)
-          dst(i->first) = src[level](i->second);
-      else
-        for (IT i= copy_indices_from_me[level].begin();
-             i != copy_indices_from_me[level].end(); ++i)
-          constraints->distribute_local_to_global(i->first, src[level](i->second), dst);
+      for (dof_pair_iterator i= copy_indices_level_mine[level].begin();
+           i != copy_indices_level_mine[level].end(); ++i)
+        dst(i->first) = src[level](i->second);
+
+#ifdef DEBUG_OUTPUT
+      {
+        dst.compress(VectorOperation::insert);
+        MPI_Barrier(MPI_COMM_WORLD);
+        std::cout << "copy_from_mg level=" << level << " " << dst.l2_norm() << std::endl;
+      }
+#endif
     }
+  dst.compress(VectorOperation::insert);
+#ifdef DEBUG_OUTPUT
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cout << "copy_from_mg " << dst.l2_norm() << std::endl;
+#endif
 }
 
 
 
-template <class VECTOR>
+template <typename VectorType>
 template <int dim, class OutVector, int spacedim>
 void
-MGTransferPrebuilt<VECTOR>::copy_from_mg_add (
-  const DoFHandler<dim,spacedim> &mg_dof_handler,
-  OutVector                            &dst,
-  const MGLevelObject<VECTOR> &src) const
+MGTransferPrebuilt<VectorType>::copy_from_mg_add
+(const DoFHandler<dim,spacedim>  &mg_dof_handler,
+ OutVector                       &dst,
+ const MGLevelObject<VectorType> &src) const
 {
   // For non-DG: degrees of
   // freedom in the refinement
@@ -259,42 +293,35 @@ MGTransferPrebuilt<VECTOR>::copy_from_mg_add (
   // functions
   for (unsigned int level=0; level<mg_dof_handler.get_tria().n_global_levels(); ++level)
     {
-      typedef std::vector<std::pair<types::global_dof_index, types::global_dof_index> >::const_iterator IT;
-      if (constraints==0)
-        for (IT i= copy_indices[level].begin();
-             i != copy_indices[level].end(); ++i)
-          dst(i->first) += src[level](i->second);
-      else
-        for (IT i= copy_indices[level].begin();
-             i != copy_indices[level].end(); ++i)
-          constraints->distribute_local_to_global(i->first, src[level](i->second), dst);
+      typedef std::vector<std::pair<types::global_dof_index, types::global_dof_index> >::const_iterator dof_pair_iterator;
+
+      // First add all indices local to this process
+      for (dof_pair_iterator i= copy_indices[level].begin();
+           i != copy_indices[level].end(); ++i)
+        dst(i->first) += src[level](i->second);
 
       // Do the same for the indices where the level index is local,
       // but the global index is not
-      if (constraints==0)
-        for (IT i= copy_indices_from_me[level].begin();
-             i != copy_indices_from_me[level].end(); ++i)
-          dst(i->first) += src[level](i->second);
-      else
-        for (IT i= copy_indices_from_me[level].begin();
-             i != copy_indices_from_me[level].end(); ++i)
-          constraints->distribute_local_to_global(i->first, src[level](i->second), dst);
+      for (dof_pair_iterator i= copy_indices_level_mine[level].begin();
+           i != copy_indices_level_mine[level].end(); ++i)
+        dst(i->first) += src[level](i->second);
     }
+  dst.compress(VectorOperation::add);
 }
 
 
 
-template <class VECTOR>
+template <typename VectorType>
 void
-MGTransferPrebuilt<VECTOR>::
+MGTransferPrebuilt<VectorType>::
 set_component_to_block_map (const std::vector<unsigned int> &map)
 {
   component_to_block_map = map;
 }
 
-template <class VECTOR>
+template <typename VectorType>
 std::size_t
-MGTransferPrebuilt<VECTOR>::memory_consumption () const
+MGTransferPrebuilt<VectorType>::memory_consumption () const
 {
   std::size_t result = sizeof(*this);
   result += sizeof(unsigned int) * sizes.size();

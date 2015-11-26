@@ -39,7 +39,7 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/distributed/tria.h>
-
+#include <deal.II/distributed/shared_tria.h>
 
 #include <algorithm>
 #include <numeric>
@@ -946,11 +946,14 @@ namespace DoFTools
     // collect all the locally owned dofs
     dof_set = dof_handler.locally_owned_dofs();
 
-    // add the DoF on the adjacent ghost cells to the IndexSet, cache them
-    // in a set. need to check each dof manually because we can't be sure
-    // that the dof range of locally_owned_dofs is really contiguous.
+    // now add the DoF on the adjacent ghost cells to the IndexSet
+
+    // Note: It is not worth it to cache intermediate data in a set because
+    // add_indices is more efficient. I also benchmarked skipping the
+    // locally_owned_dofs by doing locally_owned_dofs().is_element() but
+    // that is also slower unless 70%+ of the DoFs are locally owned and they
+    // are contiguous. - Timo Heister
     std::vector<types::global_dof_index> dof_indices;
-    std::set<types::global_dof_index> global_dof_indices;
 
     typename DH::active_cell_iterator cell = dof_handler.begin_active(),
                                       endc = dof_handler.end();
@@ -959,20 +962,49 @@ namespace DoFTools
         {
           dof_indices.resize(cell->get_fe().dofs_per_cell);
           cell->get_dof_indices(dof_indices);
-
-          for (std::vector<types::global_dof_index>::iterator it=dof_indices.begin();
-               it!=dof_indices.end();
-               ++it)
-            if (!dof_set.is_element(*it))
-              global_dof_indices.insert(*it);
+          dof_set.add_indices(dof_indices.begin(), dof_indices.end());
         }
-
-    dof_set.add_indices(global_dof_indices.begin(), global_dof_indices.end());
 
     dof_set.compress();
   }
 
 
+  template <class DH>
+  void
+  extract_locally_relevant_level_dofs (const DH &dof_handler,
+                                       const unsigned int level,
+                                       IndexSet &dof_set)
+  {
+    // collect all the locally owned dofs
+    dof_set = dof_handler.locally_owned_mg_dofs(level);
+
+    // add the DoF on the adjacent ghost cells to the IndexSet
+
+    // Note: It is not worth it to cache intermediate data in a set because
+    // add_indices is more efficient. I also benchmarked skipping the
+    // locally_owned_dofs by doing locally_owned_dofs().is_element() but
+    // that is also slower unless 70%+ of the DoFs are locally owned and they
+    // are contiguous. - Timo Heister
+    std::vector<types::global_dof_index> dof_indices;
+
+    typename DH::cell_iterator cell = dof_handler.begin(level),
+                               endc = dof_handler.end(level);
+    for (; cell!=endc; ++cell)
+      {
+        const types::subdomain_id id = cell->level_subdomain_id();
+
+        // skip artificial and own cells (only look at ghost cells)
+        if (id == dof_handler.get_tria().locally_owned_subdomain()
+            || id == numbers::artificial_subdomain_id)
+          continue;
+
+        dof_indices.resize(cell->get_fe().dofs_per_cell);
+        cell->get_mg_dof_indices(dof_indices);
+        dof_set.add_indices(dof_indices.begin(), dof_indices.end());
+      }
+
+    dof_set.compress();
+  }
 
   template <class DH>
   void
@@ -1218,6 +1250,27 @@ namespace DoFTools
     Assert(dof_handler.n_dofs() > 0,
            ExcMessage("Number of DoF is not positive. "
                       "This could happen when the function is called before NumberCache is written."));
+
+    // In case this function is executed with parallel::shared::Triangulation
+    // with possibly artifical cells, we need to take "true" subdomain IDs (i.e. without
+    // artificial cells). Otherwise we are good to use subdomain_id as stored
+    // in cell->subdomain_id().
+    std::vector<types::subdomain_id> cell_owners (dof_handler.get_tria().n_active_cells());
+    if (const parallel::shared::Triangulation<DH::dimension, DH::space_dimension> *tr =
+          (dynamic_cast<const parallel::shared::Triangulation<DH::dimension, DH::space_dimension>*> (&dof_handler.get_tria ())))
+      {
+        cell_owners = tr->get_true_subdomain_ids_of_cells();
+        Assert (tr->get_true_subdomain_ids_of_cells().size() == tr->n_active_cells(),
+                ExcInternalError());
+      }
+    else
+      {
+        for (typename DH::active_cell_iterator cell = dof_handler.begin_active();
+             cell!= dof_handler.end(); cell++)
+          if (cell->is_locally_owned())
+            cell_owners[cell->active_cell_index()] = cell->subdomain_id();
+      }
+
     // preset all values by an invalid value
     std::fill_n (subdomain_association.begin(), dof_handler.n_dofs(),
                  numbers::invalid_subdomain_id);
@@ -1236,11 +1289,7 @@ namespace DoFTools
     endc = dof_handler.end();
     for (; cell!=endc; ++cell)
       {
-        Assert (cell->is_artificial() == false,
-                ExcMessage ("You can't call this function for meshes that "
-                            "have artificial cells."));
-
-        const types::subdomain_id subdomain_id = cell->subdomain_id();
+        const types::subdomain_id subdomain_id = cell_owners[cell->active_cell_index()];
         const unsigned int dofs_per_cell = cell->get_fe().dofs_per_cell;
         local_dof_indices.resize (dofs_per_cell);
         cell->get_dof_indices (local_dof_indices);

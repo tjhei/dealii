@@ -31,7 +31,7 @@ DEAL_II_NAMESPACE_OPEN
  * TensorProductPolynomials or PolynomialSpace classes.
  *
  * Every class conforming to the following interface can be used as template
- * parameter POLY.
+ * parameter PolynomialType.
  *
  * @code
  * static const unsigned int dimension;
@@ -65,14 +65,14 @@ DEAL_II_NAMESPACE_OPEN
  * @author Ralf Hartmann 2004, Guido Kanschat, 2009
  */
 
-template <class POLY, int dim=POLY::dimension, int spacedim=dim>
+template <class PolynomialType, int dim=PolynomialType::dimension, int spacedim=dim>
 class FE_Poly : public FiniteElement<dim,spacedim>
 {
 public:
   /**
    * Constructor.
    */
-  FE_Poly (const POLY &poly_space,
+  FE_Poly (const PolynomialType &poly_space,
            const FiniteElementData<dim> &fe_data,
            const std::vector<bool> &restriction_is_additive_flags,
            const std::vector<ComponentMask> &nonzero_components);
@@ -83,16 +83,21 @@ public:
    */
   unsigned int get_degree () const;
 
+  // for documentation, see the FiniteElement base class
+  virtual
+  UpdateFlags
+  requires_update_flags (const UpdateFlags update_flags) const;
+
   /**
    * Return the numbering of the underlying polynomial space compared to
    * lexicographic ordering of the basis functions. Returns
-   * POLY::get_numbering().
+   * PolynomialType::get_numbering().
    */
   std::vector<unsigned int> get_poly_space_numbering() const;
 
   /**
    * Return the inverse numbering of the underlying polynomial space. Returns
-   * POLY::get_numbering_inverse().
+   * PolynomialType::get_numbering_inverse().
    */
   std::vector<unsigned int> get_poly_space_numbering_inverse() const;
 
@@ -215,72 +220,72 @@ protected:
 
   virtual
   typename FiniteElement<dim,spacedim>::InternalDataBase *
-  get_data(const UpdateFlags update_flags,
-           const Mapping<dim,spacedim> &/*mapping*/,
-           const Quadrature<dim> &quadrature) const
+  get_data(const UpdateFlags                                                    update_flags,
+           const Mapping<dim,spacedim>                                         &/*mapping*/,
+           const Quadrature<dim>                                               &quadrature,
+           dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const
   {
     // generate a new data object and
     // initialize some fields
     InternalData *data = new InternalData;
+    data->update_each = update_each(update_flags) | update_once(update_flags);  // FIX: only update_each required
 
-    // check what needs to be
-    // initialized only once and what
-    // on every cell/face/subface we
-    // visit
-    data->update_once = update_once(update_flags);
-    data->update_each = update_each(update_flags);
-    data->update_flags = data->update_once | data->update_each;
-
-    const UpdateFlags flags(data->update_flags);
     const unsigned int n_q_points = quadrature.size();
 
-    // some scratch arrays
-    std::vector<double> values(0);
-    std::vector<Tensor<1,dim> > grads(0);
-    std::vector<Tensor<2,dim> > grad_grads(0);
-    std::vector<Tensor<3,dim> > third_derivatives(0);
-    std::vector<Tensor<4,dim> > fourth_derivatives(0);
+    // initialize some scratch arrays. we need them for the underlying
+    // polynomial to put the values and derivatives of shape functions
+    // to put there, depending on what the user requested
+    std::vector<double> values(update_flags & update_values ?
+                               this->dofs_per_cell : 0);
+    std::vector<Tensor<1,dim> > grads(update_flags & update_gradients ?
+                                      this->dofs_per_cell : 0);
+    std::vector<Tensor<2,dim> > grad_grads(update_flags & update_hessians ?
+                                           this->dofs_per_cell : 0);
+    std::vector<Tensor<3,dim> > third_derivatives(update_flags & update_3rd_derivatives ?
+                                                  this->dofs_per_cell : 0);
+    std::vector<Tensor<4,dim> > fourth_derivatives;   // won't be needed, so leave empty
 
-    // initialize fields only if really
-    // necessary. otherwise, don't
-    // allocate memory
-    if (flags & update_values)
-      {
-        values.resize (this->dofs_per_cell);
-        data->shape_values.resize (this->dofs_per_cell,
-                                   std::vector<double> (n_q_points));
-      }
+    // now also initialize fields the fields of this class's own
+    // temporary storage, depending on what we need for the given
+    // update flags.
+    //
+    // there is one exception from the rule: if we are dealing with
+    // cells (i.e., if this function is not called via
+    // get_(sub)face_data()), then we can already store things in the
+    // final location where FEValues::reinit() later wants to see
+    // things. we then don't need the intermediate space. we determine
+    // whether we are on a cell by asking whether the number of
+    // elements in the output array equals the number of quadrature
+    // points (yes, it's a cell) or not (because in that case the
+    // number of quadrature points we use here equals the number of
+    // quadrature points summed over *all* faces or subfaces, whereas
+    // the number of output slots equals the number of quadrature
+    // points on only *one* face)
+    if ((update_flags & update_values)
+        &&
+        !((output_data.shape_values.n_rows() > 0)
+          &&
+          (output_data.shape_values.n_cols() == n_q_points)))
+      data->shape_values.resize (this->dofs_per_cell,
+                                 std::vector<double> (n_q_points));
 
-    if (flags & update_gradients)
-      {
-        grads.resize (this->dofs_per_cell);
-        data->shape_gradients.resize (this->dofs_per_cell,
-                                      std::vector<Tensor<1,dim> > (n_q_points));
-      }
+    if (update_flags & update_gradients)
+      data->shape_gradients.resize (this->dofs_per_cell,
+                                    std::vector<Tensor<1,dim> > (n_q_points));
 
-    if (flags & update_hessians)
-      {
-        grad_grads.resize (this->dofs_per_cell);
-        data->shape_hessians.resize (this->dofs_per_cell,
-                                     std::vector<Tensor<2,dim> > (n_q_points));
-      }
+    if (update_flags & update_hessians)
+      data->shape_hessians.resize (this->dofs_per_cell,
+                                   std::vector<Tensor<2,dim> > (n_q_points));
 
-    if (flags & update_3rd_derivatives)
-      {
-        third_derivatives.resize (this->dofs_per_cell);
-        data->shape_3rd_derivatives.resize (this->dofs_per_cell,
-                                            std::vector<Tensor<3,dim> > (n_q_points));
-      }
+    if (update_flags & update_3rd_derivatives)
+      data->shape_3rd_derivatives.resize (this->dofs_per_cell,
+                                          std::vector<Tensor<3,dim> > (n_q_points));
 
-    // next already fill those fields
-    // of which we have information by
-    // now. note that the shape
-    // gradients are only those on the
-    // unit cell, and need to be
-    // transformed when visiting an
-    // actual cell
-    if (flags & (update_values | update_gradients
-                 | update_hessians | update_3rd_derivatives) )
+    // next already fill those fields of which we have information by
+    // now. note that the shape gradients are only those on the unit
+    // cell, and need to be transformed when visiting an actual cell
+    if (update_flags & (update_values | update_gradients
+                        | update_hessians | update_3rd_derivatives) )
       for (unsigned int i=0; i<n_q_points; ++i)
         {
           poly_space.compute(quadrature.point(i),
@@ -288,19 +293,36 @@ protected:
                              third_derivatives,
                              fourth_derivatives);
 
-          if (flags & update_values)
-            for (unsigned int k=0; k<this->dofs_per_cell; ++k)
-              data->shape_values[k][i] = values[k];
+          // the values of shape functions at quadrature points don't change.
+          // consequently, write these values right into the output array if
+          // we can, i.e., if the output array has the correct size. this is
+          // the case on cells. on faces, we already precompute data on *all*
+          // faces and subfaces, but we later on copy only a portion of it
+          // into the output object; in that case, copy the data from all
+          // faces into the scratch object
+          if (update_flags & update_values)
+            if (output_data.shape_values.n_rows() > 0)
+              {
+                if (output_data.shape_values.n_cols() == n_q_points)
+                  for (unsigned int k=0; k<this->dofs_per_cell; ++k)
+                    output_data.shape_values[k][i] = values[k];
+                else
+                  for (unsigned int k=0; k<this->dofs_per_cell; ++k)
+                    data->shape_values[k][i] = values[k];
+              }
 
-          if (flags & update_gradients)
+          // for everything else, derivatives need to be transformed,
+          // so we write them into our scratch space and only later
+          // copy stuff into where FEValues wants it
+          if (update_flags & update_gradients)
             for (unsigned int k=0; k<this->dofs_per_cell; ++k)
               data->shape_gradients[k][i] = grads[k];
 
-          if (flags & update_hessians)
+          if (update_flags & update_hessians)
             for (unsigned int k=0; k<this->dofs_per_cell; ++k)
               data->shape_hessians[k][i] = grad_grads[k];
 
-          if (flags & update_3rd_derivatives)
+          if (update_flags & update_3rd_derivatives)
             for (unsigned int k=0; k<this->dofs_per_cell; ++k)
               data->shape_3rd_derivatives[k][i] = third_derivatives[k];
         }
@@ -309,37 +331,37 @@ protected:
 
   virtual
   void
-  fill_fe_values (const Mapping<dim,spacedim>                               &mapping,
-                  const typename Triangulation<dim,spacedim>::cell_iterator &cell,
-                  const Quadrature<dim>                                     &quadrature,
-                  const typename Mapping<dim,spacedim>::InternalDataBase    &mapping_internal,
-                  const typename FiniteElement<dim,spacedim>::InternalDataBase    &fe_internal,
-                  const internal::FEValues::MappingRelatedData<dim,spacedim> &mapping_data,
-                  internal::FEValues::FiniteElementRelatedData<dim,spacedim> &output_data,
-                  const CellSimilarity::Similarity                           cell_similarity) const;
+  fill_fe_values (const typename Triangulation<dim,spacedim>::cell_iterator           &cell,
+                  const CellSimilarity::Similarity                                     cell_similarity,
+                  const Quadrature<dim>                                               &quadrature,
+                  const Mapping<dim,spacedim>                                         &mapping,
+                  const typename Mapping<dim,spacedim>::InternalDataBase              &mapping_internal,
+                  const dealii::internal::FEValues::MappingRelatedData<dim, spacedim> &mapping_data,
+                  const typename FiniteElement<dim,spacedim>::InternalDataBase        &fe_internal,
+                  dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
   virtual
   void
-  fill_fe_face_values (const Mapping<dim,spacedim>                               &mapping,
-                       const typename Triangulation<dim,spacedim>::cell_iterator &cell,
-                       const unsigned int                                         face_no,
-                       const Quadrature<dim-1>                                   &quadrature,
-                       const typename Mapping<dim,spacedim>::InternalDataBase    &mapping_internal,
-                       const typename FiniteElement<dim,spacedim>::InternalDataBase    &fe_internal,
-                       const internal::FEValues::MappingRelatedData<dim,spacedim> &mapping_data,
-                       internal::FEValues::FiniteElementRelatedData<dim,spacedim> &output_data) const;
+  fill_fe_face_values (const typename Triangulation<dim,spacedim>::cell_iterator           &cell,
+                       const unsigned int                                                   face_no,
+                       const Quadrature<dim-1>                                             &quadrature,
+                       const Mapping<dim,spacedim>                                         &mapping,
+                       const typename Mapping<dim,spacedim>::InternalDataBase              &mapping_internal,
+                       const dealii::internal::FEValues::MappingRelatedData<dim, spacedim> &mapping_data,
+                       const typename FiniteElement<dim,spacedim>::InternalDataBase        &fe_internal,
+                       dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
   virtual
   void
-  fill_fe_subface_values (const Mapping<dim,spacedim>                               &mapping,
-                          const typename Triangulation<dim,spacedim>::cell_iterator &cell,
-                          const unsigned int                                         face_no,
-                          const unsigned int                                         sub_no,
-                          const Quadrature<dim-1>                                   &quadrature,
-                          const typename Mapping<dim,spacedim>::InternalDataBase    &mapping_internal,
-                          const typename FiniteElement<dim,spacedim>::InternalDataBase    &fe_internal,
-                          const internal::FEValues::MappingRelatedData<dim,spacedim> &mapping_data,
-                          internal::FEValues::FiniteElementRelatedData<dim,spacedim> &output_data) const;
+  fill_fe_subface_values (const typename Triangulation<dim,spacedim>::cell_iterator           &cell,
+                          const unsigned int                                                   face_no,
+                          const unsigned int                                                   sub_no,
+                          const Quadrature<dim-1>                                             &quadrature,
+                          const Mapping<dim,spacedim>                                         &mapping,
+                          const typename Mapping<dim,spacedim>::InternalDataBase              &mapping_internal,
+                          const dealii::internal::FEValues::MappingRelatedData<dim, spacedim> &mapping_data,
+                          const typename FiniteElement<dim,spacedim>::InternalDataBase        &fe_internal,
+                          dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
   /**
    * Determine the values that need to be computed on the unit cell to be able
@@ -355,7 +377,7 @@ protected:
    * All other flags of the result are cleared, since everything else must be
    * computed for each cell.
    */
-  virtual UpdateFlags update_once (const UpdateFlags flags) const;
+  UpdateFlags update_once (const UpdateFlags flags) const;
 
   /**
    * Determine the values that need to be computed on every cell to be able to
@@ -385,7 +407,7 @@ protected:
    *
    * </ul>
    */
-  virtual UpdateFlags update_each (const UpdateFlags flags) const;
+  UpdateFlags update_each (const UpdateFlags flags) const;
 
   /**
    * Fields of cell-independent data.
@@ -465,9 +487,9 @@ protected:
                              const unsigned int                                                dof) const;
 
   /**
-   * The polynomial space. Its type is given by the template parameter POLY.
+   * The polynomial space. Its type is given by the template parameter PolynomialType.
    */
-  POLY poly_space;
+  PolynomialType poly_space;
 };
 
 /*@}*/

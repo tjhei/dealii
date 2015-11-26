@@ -35,7 +35,7 @@ DEAL_II_NAMESPACE_OPEN
  * classes.
  *
  * Every class that implements the following functions can be used as template
- * parameter POLY.
+ * parameter PolynomialType.
  *
  * @code
  * double compute_value (const unsigned int i,
@@ -57,14 +57,14 @@ DEAL_II_NAMESPACE_OPEN
  *
  * @author Guido Kanschat, 2009
  */
-template <class POLY, int dim=POLY::dimension+1, int spacedim=dim>
+template <class PolynomialType, int dim=PolynomialType::dimension+1, int spacedim=dim>
 class FE_PolyFace : public FiniteElement<dim,spacedim>
 {
 public:
   /**
    * Constructor.
    */
-  FE_PolyFace (const POLY &poly_space,
+  FE_PolyFace (const PolynomialType &poly_space,
                const FiniteElementData<dim> &fe_data,
                const std::vector<bool> &restriction_is_additive_flags);
 
@@ -73,6 +73,11 @@ public:
    * passed to the constructor.
    */
   unsigned int get_degree () const;
+
+  // for documentation, see the FiniteElement base class
+  virtual
+  UpdateFlags
+  requires_update_flags (const UpdateFlags update_flags) const;
 
 protected:
   /*
@@ -83,32 +88,26 @@ protected:
 
   virtual
   typename FiniteElement<dim,spacedim>::InternalDataBase *
-  get_data (const UpdateFlags /*update_flags*/,
-            const Mapping<dim,spacedim> &/*mapping*/,
-            const Quadrature<dim> &/*quadrature*/) const
+  get_data (const UpdateFlags                                                    /*update_flags*/,
+            const Mapping<dim,spacedim>                                         &/*mapping*/,
+            const Quadrature<dim>                                               &/*quadrature*/,
+            dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &/*output_data*/) const
   {
     InternalData *data = new InternalData;
     return data;
   }
 
   typename FiniteElement<dim,spacedim>::InternalDataBase *
-  get_face_data(const UpdateFlags update_flags,
-                const Mapping<dim,spacedim> &/*mapping*/,
-                const Quadrature<dim-1>& quadrature) const
+  get_face_data(const UpdateFlags                                                    update_flags,
+                const Mapping<dim,spacedim>                                         &/*mapping*/,
+                const Quadrature<dim-1>                                             &quadrature,
+                dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &/*output_data*/) const
   {
     // generate a new data object and
     // initialize some fields
     InternalData *data = new InternalData;
+    data->update_each = update_once(update_flags) | update_each(update_flags);  // FIX: only update_each required
 
-    // check what needs to be
-    // initialized only once and what
-    // on every cell/face/subface we
-    // visit
-    data->update_once = update_once(update_flags);
-    data->update_each = update_each(update_flags);
-    data->update_flags = data->update_once | data->update_each;
-
-    const UpdateFlags flags(data->update_flags);
     const unsigned int n_q_points = quadrature.size();
 
     // some scratch arrays
@@ -121,7 +120,7 @@ protected:
     // initialize fields only if really
     // necessary. otherwise, don't
     // allocate memory
-    if (flags & update_values)
+    if (data->update_each & update_values)
       {
         values.resize (poly_space.n());
         data->shape_values.resize (poly_space.n(),
@@ -139,7 +138,7 @@ protected:
       }
     // No derivatives of this element
     // are implemented.
-    if (flags & update_gradients || flags & update_hessians)
+    if (data->update_each & update_gradients || data->update_each & update_hessians)
       {
         Assert(false, ExcNotImplemented());
       }
@@ -148,47 +147,49 @@ protected:
   }
 
   typename FiniteElement<dim,spacedim>::InternalDataBase *
-  get_subface_data(const UpdateFlags update_flags,
-                   const Mapping<dim,spacedim> &mapping,
-                   const Quadrature<dim-1>& quadrature) const
+  get_subface_data(const UpdateFlags                                                    update_flags,
+                   const Mapping<dim,spacedim>                                         &mapping,
+                   const Quadrature<dim-1>                                             &quadrature,
+                   dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const
   {
     return get_face_data(update_flags, mapping,
-                         QProjector<dim - 1>::project_to_all_children(quadrature));
+                         QProjector<dim - 1>::project_to_all_children(quadrature),
+                         output_data);
   }
 
   virtual
   void
-  fill_fe_values (const Mapping<dim,spacedim>                               &mapping,
-                  const typename Triangulation<dim,spacedim>::cell_iterator &cell,
-                  const Quadrature<dim>                                     &quadrature,
-                  const typename Mapping<dim,spacedim>::InternalDataBase    &mapping_internal,
-                  const typename FiniteElement<dim,spacedim>::InternalDataBase    &fe_internal,
-                  const internal::FEValues::MappingRelatedData<dim,spacedim> &mapping_data,
-                  internal::FEValues::FiniteElementRelatedData<dim,spacedim> &output_data,
-                  const CellSimilarity::Similarity                           cell_similarity) const;
+  fill_fe_values (const typename Triangulation<dim,spacedim>::cell_iterator           &cell,
+                  const CellSimilarity::Similarity                                     cell_similarity,
+                  const Quadrature<dim>                                               &quadrature,
+                  const Mapping<dim,spacedim>                                         &mapping,
+                  const typename Mapping<dim,spacedim>::InternalDataBase              &mapping_internal,
+                  const dealii::internal::FEValues::MappingRelatedData<dim, spacedim> &mapping_data,
+                  const typename FiniteElement<dim,spacedim>::InternalDataBase        &fe_internal,
+                  dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
   virtual
   void
-  fill_fe_face_values (const Mapping<dim,spacedim>                               &mapping,
-                       const typename Triangulation<dim,spacedim>::cell_iterator &cell,
-                       const unsigned int                                         face_no,
-                       const Quadrature<dim-1>                                   &quadrature,
-                       const typename Mapping<dim,spacedim>::InternalDataBase    &mapping_internal,
-                       const typename FiniteElement<dim,spacedim>::InternalDataBase    &fe_internal,
-                       const internal::FEValues::MappingRelatedData<dim,spacedim> &mapping_data,
-                       internal::FEValues::FiniteElementRelatedData<dim,spacedim> &output_data) const;
+  fill_fe_face_values (const typename Triangulation<dim,spacedim>::cell_iterator           &cell,
+                       const unsigned int                                                   face_no,
+                       const Quadrature<dim-1>                                             &quadrature,
+                       const Mapping<dim,spacedim>                                         &mapping,
+                       const typename Mapping<dim,spacedim>::InternalDataBase              &mapping_internal,
+                       const dealii::internal::FEValues::MappingRelatedData<dim, spacedim> &mapping_data,
+                       const typename FiniteElement<dim,spacedim>::InternalDataBase        &fe_internal,
+                       dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
   virtual
   void
-  fill_fe_subface_values (const Mapping<dim,spacedim>                               &mapping,
-                          const typename Triangulation<dim,spacedim>::cell_iterator &cell,
-                          const unsigned int                                         face_no,
-                          const unsigned int                                         sub_no,
-                          const Quadrature<dim-1>                                   &quadrature,
-                          const typename Mapping<dim,spacedim>::InternalDataBase    &mapping_internal,
-                          const typename FiniteElement<dim,spacedim>::InternalDataBase    &fe_internal,
-                          const internal::FEValues::MappingRelatedData<dim,spacedim> &mapping_data,
-                          internal::FEValues::FiniteElementRelatedData<dim,spacedim> &output_data) const;
+  fill_fe_subface_values (const typename Triangulation<dim,spacedim>::cell_iterator           &cell,
+                          const unsigned int                                                   face_no,
+                          const unsigned int                                                   sub_no,
+                          const Quadrature<dim-1>                                             &quadrature,
+                          const Mapping<dim,spacedim>                                         &mapping,
+                          const typename Mapping<dim,spacedim>::InternalDataBase              &mapping_internal,
+                          const dealii::internal::FEValues::MappingRelatedData<dim, spacedim> &mapping_data,
+                          const typename FiniteElement<dim,spacedim>::InternalDataBase        &fe_internal,
+                          dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
   /**
    * Determine the values that need to be computed on the unit cell to be able
@@ -204,7 +205,7 @@ protected:
    * All other flags of the result are cleared, since everything else must be
    * computed for each cell.
    */
-  virtual UpdateFlags update_once (const UpdateFlags flags) const;
+  UpdateFlags update_once (const UpdateFlags flags) const;
 
   /**
    * Determine the values that need to be computed on every cell to be able to
@@ -234,7 +235,7 @@ protected:
    *
    * </ul>
    */
-  virtual UpdateFlags update_each (const UpdateFlags flags) const;
+  UpdateFlags update_each (const UpdateFlags flags) const;
 
 
   /**
@@ -263,9 +264,9 @@ protected:
   };
 
   /**
-   * The polynomial space. Its type is given by the template parameter POLY.
+   * The polynomial space. Its type is given by the template parameter PolynomialType.
    */
-  POLY poly_space;
+  PolynomialType poly_space;
 };
 
 /*@}*/

@@ -994,8 +994,8 @@ namespace internal
                     << "The input data for creating a triangulation contained "
                     << "information about a line with indices "
                     << arg1 << " and " << arg2
-                    << "that is supposed to have boundary indicator "
-                    << arg3
+                    << " that is described to have boundary indicator "
+                    << (int)arg3
                     << ". However, this is an internal line not located on the "
                     << "boundary. You cannot assign a boundary indicator to it."
                     << std::endl
@@ -1025,8 +1025,8 @@ namespace internal
                     << "The input data for creating a triangulation contained "
                     << "information about a quad with indices "
                     << arg1 << ", " << arg2 << ", " << arg3 << ", and " << arg4
-                    << "that is supposed to have boundary indicator "
-                    << arg5
+                    << " that is described to have boundary indicator "
+                    << (int)arg5
                     << ". However, this is an internal quad not located on the "
                     << "boundary. You cannot assign a boundary indicator to it."
                     << std::endl
@@ -4385,6 +4385,8 @@ namespace internal
                           right_neighbor->set_neighbor (nbnb, second_child);
                         }
                     }
+                  // inform all listeners that cell refinement is done
+                  triangulation.signals.post_refinement_on_cell(cell);
                 }
           }
 
@@ -4742,6 +4744,8 @@ namespace internal
                                               internal::int2type<dim>(),
                                               internal::int2type<spacedim>()))
                     cells_with_distorted_children.distorted_cells.push_back (cell);
+                  // inform all listeners that cell refinement is done
+                  triangulation.signals.post_refinement_on_cell(cell);
                 }
           }
 
@@ -8354,6 +8358,9 @@ namespace internal
 
                   // note that the refinement flag was already cleared
                   // at the beginning of this loop
+
+                  // inform all listeners that cell refinement is done
+                  triangulation.signals.post_refinement_on_cell(hex);
                 }
           }
 
@@ -8751,7 +8758,7 @@ Triangulation (const MeshSmoothing smooth_grid,
         = new std::map<unsigned int, types::manifold_id>();
     }
 
-  // connect the any_change signal to the other signals
+  // connect the any_change signal to the other top level signals
   signals.create.connect (signals.any_change);
   signals.post_refinement.connect (signals.any_change);
   signals.clear.connect (signals.any_change);
@@ -10598,6 +10605,62 @@ Triangulation<dim,spacedim>::end_face () const
 }
 
 
+/*------------------------ Vertex iterator functions ------------------------*/
+
+
+template <int dim, int spacedim>
+typename Triangulation<dim,spacedim>::vertex_iterator
+Triangulation<dim,spacedim>::begin_vertex() const
+{
+  if (dim==1)
+    {
+      // This does not work if dim==1 because TriaAccessor<0,1,spacedim> does not
+      // implement operator++
+      Assert(false, ExcNotImplemented());
+      return raw_vertex_iterator();
+    }
+  else
+    {
+      vertex_iterator i = raw_vertex_iterator(const_cast<Triangulation<dim, spacedim>*>(this),
+                                              0,
+                                              0);
+      if (i.state() != IteratorState::valid)
+        return i;
+      // This loop will end because every triangulation has used vertices.
+      while (i->used() == false)
+        if ((++i).state() != IteratorState::valid)
+          return i;
+      return i;
+    }
+}
+
+
+
+template <int dim, int spacedim>
+typename Triangulation<dim,spacedim>::active_vertex_iterator
+Triangulation<dim,spacedim>::begin_active_vertex() const
+{
+  return begin_vertex();
+}
+
+
+
+template <int dim, int spacedim>
+typename Triangulation<dim,spacedim>::vertex_iterator
+Triangulation<dim,spacedim>::end_vertex() const
+{
+  if (dim==1)
+    {
+      Assert(false, ExcNotImplemented());
+      return raw_vertex_iterator();
+    }
+  else
+    return raw_vertex_iterator(const_cast<Triangulation<dim, spacedim>*>(this),
+                               -1,
+                               numbers::invalid_unsigned_int);
+}
+
+
 
 
 /*------------------------ Line iterator functions ------------------------*/
@@ -11696,11 +11759,15 @@ void Triangulation<dim, spacedim>::execute_coarsening ()
   if (levels.size() >= 2)
     for (cell = last(); cell!=endc; --cell)
       if (cell->level()<=static_cast<int>(levels.size()-2) && cell->user_flag_set())
-        // use a separate function,
-        // since this is dimension
-        // specific
-        internal::Triangulation::Implementation
-        ::delete_children (*this, cell, line_cell_count, quad_cell_count);
+        {
+          // inform all listeners that cell coarsening is going to happen
+          signals.pre_coarsening_on_cell(cell);
+          // use a separate function,
+          // since this is dimension
+          // specific
+          internal::Triangulation::Implementation
+          ::delete_children (*this, cell, line_cell_count, quad_cell_count);
+        }
 
   // re-compute number of lines and
   // quads

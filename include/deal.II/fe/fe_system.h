@@ -430,6 +430,11 @@ public:
    */
   virtual std::string get_name () const;
 
+  // for documentation, see the FiniteElement base class
+  virtual
+  UpdateFlags
+  requires_update_flags (const UpdateFlags update_flags) const;
+
   /**
    * Return the value of the @p ith shape function at the point @p p.  @p p is
    * a point on the reference element. Since this finite element is always
@@ -842,12 +847,12 @@ protected:
   /**
    * Compute flags for initial update only.
    */
-  virtual UpdateFlags update_once (const UpdateFlags flags) const;
+  UpdateFlags update_once (const UpdateFlags flags) const;
 
   /**
    * Compute flags for update on each cell.
    */
-  virtual UpdateFlags update_each (const UpdateFlags flags) const;
+  UpdateFlags update_each (const UpdateFlags flags) const;
 
   /**
    * @p clone function instead of a copy constructor.
@@ -856,54 +861,60 @@ protected:
    */
   virtual FiniteElement<dim,spacedim> *clone() const;
 
-  virtual typename FiniteElement<dim,spacedim>::InternalDataBase *
-  get_data (const UpdateFlags      update_flags,
-            const Mapping<dim,spacedim>    &mapping,
-            const Quadrature<dim> &quadrature) const;
 
   virtual typename FiniteElement<dim,spacedim>::InternalDataBase *
-  get_face_data (const UpdateFlags      update_flags,
-                 const Mapping<dim,spacedim>    &mapping,
-                 const Quadrature<dim-1> &quadrature) const;
+  get_data (const UpdateFlags                                                    update_flags,
+            const Mapping<dim,spacedim>                                         &mapping,
+            const Quadrature<dim>                                               &quadrature,
+            dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
-  virtual typename FiniteElement<dim,spacedim>::InternalDataBase *
-  get_subface_data (const UpdateFlags      update_flags,
-                    const Mapping<dim,spacedim>    &mapping,
-                    const Quadrature<dim-1> &quadrature) const;
+  virtual
+  typename FiniteElement<dim,spacedim>::InternalDataBase *
+  get_face_data (const UpdateFlags                                                    update_flags,
+                 const Mapping<dim,spacedim>                                         &mapping,
+                 const Quadrature<dim-1>                                             &quadrature,
+                 dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
+
+  virtual
+  typename FiniteElement<dim,spacedim>::InternalDataBase *
+  get_subface_data (const UpdateFlags                                                    update_flags,
+                    const Mapping<dim,spacedim>                                         &mapping,
+                    const Quadrature<dim-1>                                             &quadrature,
+                    dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
   virtual
   void
-  fill_fe_values (const Mapping<dim,spacedim>                               &mapping,
-                  const typename Triangulation<dim,spacedim>::cell_iterator &cell,
-                  const Quadrature<dim>                                     &quadrature,
-                  const typename Mapping<dim,spacedim>::InternalDataBase    &mapping_internal,
-                  const typename FiniteElement<dim,spacedim>::InternalDataBase    &fe_internal,
-                  const internal::FEValues::MappingRelatedData<dim,spacedim> &mapping_data,
-                  internal::FEValues::FiniteElementRelatedData<dim,spacedim> &output_data,
-                  const CellSimilarity::Similarity                           cell_similarity) const;
+  fill_fe_values (const typename Triangulation<dim,spacedim>::cell_iterator           &cell,
+                  const CellSimilarity::Similarity                                     cell_similarity,
+                  const Quadrature<dim>                                               &quadrature,
+                  const Mapping<dim,spacedim>                                         &mapping,
+                  const typename Mapping<dim,spacedim>::InternalDataBase              &mapping_internal,
+                  const dealii::internal::FEValues::MappingRelatedData<dim, spacedim> &mapping_data,
+                  const typename FiniteElement<dim,spacedim>::InternalDataBase        &fe_internal,
+                  dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
   virtual
   void
-  fill_fe_face_values (const Mapping<dim,spacedim>                               &mapping,
-                       const typename Triangulation<dim,spacedim>::cell_iterator &cell,
-                       const unsigned int                                         face_no,
-                       const Quadrature<dim-1>                                   &quadrature,
-                       const typename Mapping<dim,spacedim>::InternalDataBase    &mapping_internal,
-                       const typename FiniteElement<dim,spacedim>::InternalDataBase    &fe_internal,
-                       const internal::FEValues::MappingRelatedData<dim,spacedim> &mapping_data,
-                       internal::FEValues::FiniteElementRelatedData<dim,spacedim> &output_data) const;
+  fill_fe_face_values (const typename Triangulation<dim,spacedim>::cell_iterator           &cell,
+                       const unsigned int                                                   face_no,
+                       const Quadrature<dim-1>                                             &quadrature,
+                       const Mapping<dim,spacedim>                                         &mapping,
+                       const typename Mapping<dim,spacedim>::InternalDataBase              &mapping_internal,
+                       const dealii::internal::FEValues::MappingRelatedData<dim, spacedim> &mapping_data,
+                       const typename FiniteElement<dim,spacedim>::InternalDataBase        &fe_internal,
+                       dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
   virtual
   void
-  fill_fe_subface_values (const Mapping<dim,spacedim>                               &mapping,
-                          const typename Triangulation<dim,spacedim>::cell_iterator &cell,
-                          const unsigned int                                         face_no,
-                          const unsigned int                                         sub_no,
-                          const Quadrature<dim-1>                                   &quadrature,
-                          const typename Mapping<dim,spacedim>::InternalDataBase    &mapping_internal,
-                          const typename FiniteElement<dim,spacedim>::InternalDataBase    &fe_internal,
-                          const internal::FEValues::MappingRelatedData<dim,spacedim> &mapping_data,
-                          internal::FEValues::FiniteElementRelatedData<dim,spacedim> &output_data) const;
+  fill_fe_subface_values (const typename Triangulation<dim,spacedim>::cell_iterator           &cell,
+                          const unsigned int                                                   face_no,
+                          const unsigned int                                                   sub_no,
+                          const Quadrature<dim-1>                                             &quadrature,
+                          const Mapping<dim,spacedim>                                         &mapping,
+                          const typename Mapping<dim,spacedim>::InternalDataBase              &mapping_internal,
+                          const dealii::internal::FEValues::MappingRelatedData<dim, spacedim> &mapping_data,
+                          const typename FiniteElement<dim,spacedim>::InternalDataBase        &fe_internal,
+                          dealii::internal::FEValues::FiniteElementRelatedData<dim, spacedim> &output_data) const;
 
   /**
    * Do the work for the three <tt>fill_fe*_values</tt> functions.
@@ -1085,24 +1096,6 @@ private:
   hp_object_dof_identities (const FiniteElement<dim,spacedim> &fe_other) const;
 
   /**
-   * Compute the equivalent of compute_fill(), but only for the base element
-   * specified by the second-to-last argument. Some elements are grouped
-   * together to stay within the limit of 8 function arguments of boost.
-   */
-  template <int dim_1>
-  void
-  compute_fill_one_base (const Mapping<dim,spacedim>                      &mapping,
-                         const std::pair<typename Triangulation<dim,spacedim>::cell_iterator,
-                         CellSimilarity::Similarity>       cell_and_similarity,
-                         const std::pair<unsigned int,unsigned int>        face_sub_no,
-                         const Quadrature<dim_1>                          &quadrature,
-                         const std::pair<const typename Mapping<dim,spacedim>::InternalDataBase *,
-                         const typename FiniteElement<dim,spacedim>::InternalDataBase *> mapping_and_fe_internal,
-                         const unsigned int                                base_element,
-                         const internal::FEValues::MappingRelatedData<dim,spacedim> &mapping_data,
-                         internal::FEValues::FiniteElementRelatedData<dim,spacedim> &output_data) const;
-
-  /**
    * Usually: Fields of cell-independent data.
    *
    * However, here, this class does not itself store the data but only
@@ -1144,15 +1137,6 @@ private:
      */
     internal::FEValues::FiniteElementRelatedData<dim,spacedim> &
     get_fe_output_object (const unsigned int base_no) const;
-
-    /**
-     * Set the @p first_cell flag to @p false. Used by the @p FEValues class
-     * to indicate that we have already done the work on the first cell.
-     *
-     * In addition to calling the respective function of the base class, this
-     * function also calls the functions of the sub-data objects.
-     */
-    virtual void clear_first_cell ();
 
   private:
 

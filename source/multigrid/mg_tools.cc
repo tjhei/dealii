@@ -535,11 +535,10 @@ namespace MGTools
 
 
 
-  template <class DH, class SparsityPattern>
-  void make_sparsity_pattern (
-    const DH &dof,
-    SparsityPattern         &sparsity,
-    const unsigned int       level)
+  template <class DH, class SP>
+  void make_sparsity_pattern (const DH           &dof,
+                              SP                 &sparsity,
+                              const unsigned int  level)
   {
     const types::global_dof_index n_dofs = dof.n_dofs(level);
     (void)n_dofs;
@@ -568,12 +567,11 @@ namespace MGTools
 
 
 
-  template <int dim, class SparsityPattern, int spacedim>
+  template <int dim, class SP, int spacedim>
   void
-  make_flux_sparsity_pattern (
-    const DoFHandler<dim,spacedim> &dof,
-    SparsityPattern       &sparsity,
-    const unsigned int level)
+  make_flux_sparsity_pattern (const DoFHandler<dim,spacedim> &dof,
+                              SP                             &sparsity,
+                              const unsigned int              level)
   {
     const types::global_dof_index n_dofs = dof.n_dofs(level);
     (void)n_dofs;
@@ -637,12 +635,11 @@ namespace MGTools
 
 
 
-  template <int dim, class SparsityPattern, int spacedim>
+  template <int dim, class SP, int spacedim>
   void
-  make_flux_sparsity_pattern_edge (
-    const DoFHandler<dim,spacedim> &dof,
-    SparsityPattern       &sparsity,
-    const unsigned int level)
+  make_flux_sparsity_pattern_edge (const DoFHandler<dim,spacedim> &dof,
+                                   SP                             &sparsity,
+                                   const unsigned int              level)
   {
     Assert ((level>=1) && (level<dof.get_tria().n_global_levels()),
             ExcIndexRange(level, 1, dof.get_tria().n_global_levels()));
@@ -700,14 +697,13 @@ namespace MGTools
 
 
 
-  template <int dim, class SparsityPattern, int spacedim>
+  template <int dim, class SP, int spacedim>
   void
-  make_flux_sparsity_pattern (
-    const DoFHandler<dim,spacedim> &dof,
-    SparsityPattern       &sparsity,
-    const unsigned int level,
-    const Table<2,DoFTools::Coupling> &int_mask,
-    const Table<2,DoFTools::Coupling> &flux_mask)
+  make_flux_sparsity_pattern (const DoFHandler<dim,spacedim>    &dof,
+                              SP                                &sparsity,
+                              const unsigned int                 level,
+                              const Table<2,DoFTools::Coupling> &int_mask,
+                              const Table<2,DoFTools::Coupling> &flux_mask)
   {
     const FiniteElement<dim> &fe = dof.get_fe();
     const types::global_dof_index n_dofs = dof.n_dofs(level);
@@ -881,13 +877,12 @@ namespace MGTools
 
 
 
-  template <int dim, class SparsityPattern, int spacedim>
+  template <int dim, class SP, int spacedim>
   void
-  make_flux_sparsity_pattern_edge (
-    const DoFHandler<dim,spacedim> &dof,
-    SparsityPattern       &sparsity,
-    const unsigned int level,
-    const Table<2,DoFTools::Coupling> &flux_mask)
+  make_flux_sparsity_pattern_edge (const DoFHandler<dim,spacedim>    &dof,
+                                   SP                                &sparsity,
+                                   const unsigned int                 level,
+                                   const Table<2,DoFTools::Coupling> &flux_mask)
   {
     const FiniteElement<dim> &fe = dof.get_fe();
     const unsigned int n_comp = fe.n_components();
@@ -1511,8 +1506,10 @@ namespace MGTools
 
     for (; cell!=endc; ++cell)
       {
+        // Do not look at artificial level cells (in a serial computation we
+        // need to ignore the level_subdomain_id() because it is never set).
         if (mg_dof_handler.get_tria().locally_owned_subdomain()!=numbers::invalid_subdomain_id
-            && cell->level_subdomain_id()!=mg_dof_handler.get_tria().locally_owned_subdomain())
+            && cell->level_subdomain_id()==numbers::artificial_subdomain_id)
           continue;
 
         bool has_coarser_neighbor = false;
@@ -1528,8 +1525,13 @@ namespace MGTools
                 const typename DoFHandler<dim>::cell_iterator
                 neighbor = cell->neighbor(face_nr);
 
-                // Do refinement face
-                // from the coarse side
+                // only process cell pairs if one or both of them are owned by me (ignore if running in serial)
+                if (mg_dof_handler.get_tria().locally_owned_subdomain()!=numbers::invalid_subdomain_id
+                    &&
+                    neighbor->level_subdomain_id()==numbers::artificial_subdomain_id)
+                  continue;
+
+                // Do refinement face from the coarse side
                 if (neighbor->level() < cell->level())
                   {
                     for (unsigned int j=0; j<dofs_per_face; ++j)

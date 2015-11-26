@@ -38,6 +38,14 @@ inconvenience this causes.
 </p>
 
 <ol>
+  <li> Removed: Previously deprecated global instance multithread_info of
+  MultithreadInfo has been removed (all members of this class are static
+  so there is no reason to use/create an instance). The deprecated
+  MultithreadInfo::n_cpus member also got removed in favor of
+  MultithreadInfo::n_cores().
+  <br>
+  (Timo Heister, 2015/11/19)
+
   <li> Removed: The <code>UpdateFlags</code> flags
   <code>update_support_points</code>, <code>update_support_jacobians</code>,
   and <code>update_support_inverse_jacobians</code> have been removed.
@@ -159,6 +167,57 @@ inconvenience this causes.
 <a name="general"></a>
 <h3>General</h3>
 <ol>
+  <li> Changed: The function FE_DGPNonparametric::shape_value() and similar
+  functions in the same class returned values and derivatives of shape
+  functions on the reference cell. However, this element is not defined
+  through mapping of shape functions from the reference cell, and consequently
+  it makes no sense to ask for this information. These functions have therefore
+  been changed to throw an exception instead, as documented in
+  FiniteElement::shape_value().
+  <br>
+  (Wolfgang Bangerth, 2015/11/20)
+  </li>
+
+  <li> Fixed: Trilinos ML preconditioner is now deterministic when using
+  version 12.4 or newer.
+  <br>
+  (Timo Heister, 2015/11/16)
+  </li>
+
+  <li> Changed: The functionality to distribute cells across processes
+  according to a vector of cell weights that was passed in a call to
+  <code>parallel::distributed::Triangulation<dim>::repartition()</code>
+  was replaced by a cell-wise signal. This signal is called during
+  <code>execute_coarsening_and_refinement</code> and <code>repartition</code>
+  if any function is connected to it. It allows to connect a function that
+  takes the current cell iterator and a status argument that indicates whether
+  this cell will be refined, coarsened or remains unchanged and returns a
+  cell weight, which will be used to distribute cells across processes in a
+  way that keeps the sum of weights across each individual process
+  approximately equal.
+  <br>
+  (Rene Gassmoeller, 2015/11/02)
+  </li>
+
+  <li> New: 2nd derivatives are implemented for polynomials_BDM in 3D.
+  <br>
+  (Alistair Bentley, 2015/10/27)
+  </li>
+
+  <li> New: Preliminary support for parallel, adaptive, geometric multigrid is
+  now in place with changes to MGConstrainedDoFs (many new functions), MGTransfer,
+  MGTools::extract_inner_interface_dofs, MGTransferPrebuilt,
+  DoFTools::extract_locally_relevant_level_dofs.
+  <br>
+  (Timo Heister, Guido Kanschat, 2015/10/26)
+  </li>
+
+  <li> New: Two cell level signals are added to class Triangulation, namely
+  pre_coarsening_on_cell and post_refinement_on_cell.
+  <br>
+  (Lei Qiao, 2015/10/22)
+  </li>
+
   <li> New: Triangulation::ghost_owners() returns the set of MPI ranks of the
   ghost cells. Similarly ::level_ghost_owners() for level ghosts.
   <br>
@@ -378,13 +437,39 @@ inconvenience this causes.
 
 
 <ol>
+  <li> Fixed: GridGenerator::extract_boundary_mesh() in 3d could generate
+  surface cells that did not uniformly had a right- or left-handed coordinate
+  system associated with them when viewed from one side of the surface. This
+  has been fixed: they now all have a right-handed coordinate system when seen
+  from one side of the surface, and a left-handed one when viewed from the
+  other side.
+  <br>
+  (Daniel Weygand, Wolfgang Bangerth, 2015/11/22)
+  </li>
+
+  <li> New: Extra parameters to GD and Lanczos SLEPc solvers. Also added unit tests.
+  <br>
+  (Denis Davydov, 2015/11/09)
+  </li>
+
+  <li> Fixed: FETools::project_dg was adding the vector projection to
+  the output vector. Now is the output vector initialized to zero.
+  <br>
+  (Adam Kosik, 2015/11/09)
+  </li>
+
+  <li> Fixed: A compilation issue with DEAL_II_INCLUDE_DIRS not used for
+  compiling bundled boost.
+  <br>
+  (Lukas Korous, 2015/11/01)
+  </li>
 
   <li> Fixed: PolynomialsBDM::degree() now returns the correct value.
   <br>
   (Alistair Bentley, 2015/10/24)
   </li>
 
-  <li> New: Triangulation::set_all_manifold_ids_on_boundary(boundary_id, manifold_id) 
+  <li> New: Triangulation::set_all_manifold_ids_on_boundary(boundary_id, manifold_id)
   which sets the manifold_id for all parts of the boundary with a given boundary_id.
   <br>
   (Alberto Sartori, 2015/10/22)
@@ -584,10 +669,8 @@ inconvenience this causes.
   (Maien Hamed, 2015/08/01-2015/08/09)
   </li>
 
-  <li> Changed: The function Vector::add() that adds a scalar number to all
-  elements of a vector has been deprecated. The same is true for the
-  Vector::ratio() function, and for the corresponding functions in other
-  vector classes.
+  <li> Changed: The function Vector::ratio() and the corresponding
+  functions in other vector classes have been deprecated.
   <br>
   (Wolfgang Bangerth, Bruno Turcksin, 2015/08/13)
   </li>

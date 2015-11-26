@@ -106,8 +106,10 @@ namespace internal
             eta1 = -c/b;
             eta2 = -c/b;
           }
-        // special case #2: if c is very small:
-        else if (std::abs(c/b) < 1e-12)
+        // special case #2: if c is very small or the square root of the
+        // discriminant is nearly b.
+        else if (std::abs(c) < 1e-12*std::abs(b)
+                 || std::abs(std::sqrt(discriminant) - b) <= 1e-14*std::abs(b))
           {
             eta1 = (-b - std::sqrt(discriminant)) / (2*a);
             eta2 = (-b + std::sqrt(discriminant)) / (2*a);
@@ -1160,7 +1162,10 @@ MappingQGeneric<dim,spacedim>::MappingQGeneric (const unsigned int p)
   fe_q(dim == 3 ? new FE_Q<dim>(this->polynomial_degree) : 0),
   support_point_weights_on_quad (compute_support_point_weights_on_quad<dim>(this->polynomial_degree)),
   support_point_weights_on_hex (compute_support_point_weights_on_hex<dim>(this->polynomial_degree))
-{}
+{
+  Assert (p >= 1, ExcMessage ("It only makes sense to create polynomial mappings "
+                              "with a polynomial degree greater or equal to one."));
+}
 
 
 

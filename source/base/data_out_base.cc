@@ -1584,6 +1584,20 @@ namespace DataOutBase
 
 
 
+  template <int dim, int spacedim>
+  void
+  Patch<dim,spacedim>::swap (Patch<dim,spacedim> &other_patch)
+  {
+    std::swap (vertices, other_patch.vertices);
+    std::swap (neighbors, other_patch.neighbors);
+    std::swap (patch_index, other_patch.patch_index);
+    std::swap (n_subdivisions, other_patch.n_subdivisions);
+    data.swap (other_patch.data);
+    std::swap (points_are_available, other_patch.points_are_available);
+  }
+
+
+
   UcdFlags::UcdFlags (const bool write_preamble)
     :
     write_preamble (write_preamble)
@@ -2113,10 +2127,10 @@ namespace DataOutBase
 
 //----------------------------------------------------------------------//
 
-  template <int dim, int spacedim, typename STREAM>
+  template <int dim, int spacedim, typename StreamType>
   void
   write_nodes (const std::vector<Patch<dim,spacedim> > &patches,
-               STREAM &out)
+               StreamType                              &out)
   {
     Assert (dim<=3, ExcNotImplemented());
     unsigned int count = 0;
@@ -2154,10 +2168,10 @@ namespace DataOutBase
     out.flush_points ();
   }
 
-  template <int dim, int spacedim, typename STREAM>
+  template <int dim, int spacedim, typename StreamType>
   void
   write_cells (const std::vector<Patch<dim,spacedim> > &patches,
-               STREAM &out)
+               StreamType                              &out)
   {
     Assert (dim<=3, ExcNotImplemented());
     unsigned int count = 0;
@@ -2196,13 +2210,13 @@ namespace DataOutBase
   }
 
 
-  template <int dim, int spacedim, class STREAM>
+  template <int dim, int spacedim, class StreamType>
   void
-  write_data (
-    const std::vector<Patch<dim,spacedim> > &patches,
-    unsigned int n_data_sets,
-    const bool double_precision,
-    STREAM &out)
+  write_data
+  (const std::vector<Patch<dim,spacedim> > &patches,
+   unsigned int                             n_data_sets,
+   const bool                               double_precision,
+   StreamType                              &out)
   {
     Assert (dim<=3, ExcNotImplemented());
     unsigned int count = 0;
