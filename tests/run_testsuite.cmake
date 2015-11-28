@@ -489,10 +489,10 @@ IF("${_res}" STREQUAL "0")
       --build . --target setup_tests
       -- ${MAKEOPTS}
       WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY}
-#      OUTPUT_QUIET
-RESULT_VARIABLE _res
-
+      OUTPUT_QUIET 
+      RESULT_VARIABLE _res
       )
+
     IF(NOT "${_res}" STREQUAL "0")
       MESSAGE(FATAL_ERROR "
 \"setup_tests\" target exited with an error. Bailing out.
@@ -501,7 +501,9 @@ RESULT_VARIABLE _res
     ENDIF()
 
     MESSAGE("-- Running CTEST_TESTS()")
-    SET(CTEST_BUILD_CONFIGURATION "${JOB_BUILD_CONFIGURATION}")
+    IF(DEAL_II_MSVC)
+      SET(CTEST_BUILD_CONFIGURATION "${JOB_BUILD_CONFIGURATION}")
+    ENDIF()
     CTEST_TEST()
 
     IF(COVERAGE)
