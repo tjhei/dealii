@@ -479,12 +479,6 @@ IF("${_res}" STREQUAL "0")
     # Only run tests if the build was successful:
 
     MESSAGE("-- Running setup_tests")
-    EXECUTE_PROCESS(COMMAND dir
-      WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY})
-
-    EXECUTE_PROCESS(COMMAND msbuild /t:setup_tests
-      WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY})
-
     EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND}
       --build . --target setup_tests
       -- ${MAKEOPTS}
