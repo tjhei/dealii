@@ -225,6 +225,11 @@ MACRO(DEAL_II_ADD_TEST _category _test_name _comparison_file)
         SET_PROPERTY(TARGET ${_target} PROPERTY
           RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${_target}"
           )
+	IF(DEAL_II_MSVC)
+          SET_PROPERTY(TARGET ${_target} PROPERTY
+            RUNTIME_OUTPUT_DIRECTORY_${_build} "${CMAKE_CURRENT_BINARY_DIR}/${_target}"
+            )
+        ENDIF()
 
       ENDIF()
 

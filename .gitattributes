@@ -1,4 +1,5 @@
 /tests/* export-ignore
+/tests/**/*.output text eol=lf
 /tests/quick_tests -export-ignore
 /tests/CMakeLists.txt -export-ignore
 /tests/run_test.cmake -export-ignore
