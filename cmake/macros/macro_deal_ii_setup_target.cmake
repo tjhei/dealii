@@ -103,6 +103,13 @@ MACRO(DEAL_II_SETUP_TARGET _target)
     COMPILE_DEFINITIONS "${DEAL_II_USER_DEFINITIONS};${DEAL_II_USER_DEFINITIONS_${_build}}"
     )
 
+  IF (DEAL_II_MSVC)
+    SET_PROPERTY(TARGET ${_target} PROPERTY
+      RUNTIME_OUTPUT_DIRECTORY_${_build} "${CMAKE_CURRENT_BINARY_DIR}"
+      )
+  ENDIF()
+
+
   #
   # Set up the link interface:
   #
