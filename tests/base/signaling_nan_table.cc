@@ -37,10 +37,9 @@ void check ()
 {
   Table<2,double> t;
   const double x = numbers::signaling_nan<double>();
-  const double array[6] = { x,x,x,x,x,x };
 
-  t.reinit (2,3, &x);
-
+  t.reinit (2,3);
+  t.fill (x);
   deallog << "OK" << std::endl;
 }
 
