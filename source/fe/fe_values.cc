@@ -2223,9 +2223,12 @@ namespace internal
       // that we will need to their
       // correct size
       if (flags & update_values)
-        this->shape_values.reinit(n_nonzero_shape_components,
-                                  n_quadrature_points,
-                                  numbers::signaling_nan<double>());
+        {
+          this->shape_values.reinit(n_nonzero_shape_components,
+                                    n_quadrature_points);
+          this->shape_values.fill(   numbers::signaling_nan<double>());
+        }
+
 
       if (flags & update_gradients)
         this->shape_gradients.resize (n_nonzero_shape_components,
