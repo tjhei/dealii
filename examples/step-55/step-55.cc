@@ -73,10 +73,7 @@
 #include <deal.II/multigrid/mg_smoother.h>
 #include <deal.II/multigrid/mg_matrix.h>
 
-int count_mm = 0;
-bool use_multigrid = false;
-
-namespace Step22
+namespace Step55
 {
   using namespace dealii;
 
@@ -242,10 +239,10 @@ namespace Step22
     void run ();
 
   private:
-    void setup_dofs ();
-    void assemble_system ();
+    void setup_dofs (bool use_multigrid);
+    void assemble_system (bool use_multigrid);
     void assemble_multigrid ();
-    void solve ();
+    void solve (bool use_multigrid);
     void output_results (const unsigned int refinement_cycle) const;
     void refine_mesh ();
 
@@ -257,21 +254,17 @@ namespace Step22
     DoFHandler<dim>      dof_handler;
     DoFHandler<dim>      velocity_dof_handler;
 
+    // The following are related to constraints associated with the hanging nodes for both the
+    // entire system as well as just the A block.  Here we allocate space for an object constraints
+    // that will hold a list of these constraints.
     ConstraintMatrix     constraints;
     ConstraintMatrix     velocity_constraints;
 
-    ConstraintMatrix     hanging_node_constraints;
-    ConstraintMatrix     velocity_hanging_node_constraints;
-
     BlockSparsityPattern      sparsity_pattern;
-    BlockSparsityPattern      sparsity_pattern_velocity;
     BlockSparseMatrix<double> system_matrix;
 
     BlockVector<double> solution;
     BlockVector<double> system_rhs;
-
-    std::vector<double> dof_indices;
-    std::vector<double> vel_dof_indices;
 
     MGLevelObject<SparsityPattern>        mg_sparsity_patterns;
     MGLevelObject<SparseMatrix<double> > mg_matrices;
@@ -388,92 +381,6 @@ namespace Step22
       values(c) = RightHandSide<dim>::value (p, c);
   }
 
-
-
-
-
-  template <class Matrix, class Preconditioner>
-  class InverseMatrix : public Subscriptor
-  {
-  public:
-    InverseMatrix (const Matrix         &m,
-                   const Preconditioner &preconditioner);
-
-    void vmult (Vector<double>       &dst,
-                const Vector<double> &src) const;
-
-  private:
-    const SmartPointer<const Matrix> matrix;
-    const SmartPointer<const Preconditioner> preconditioner;
-  };
-
-
-  template <class Matrix, class Preconditioner>
-  InverseMatrix<Matrix,Preconditioner>::InverseMatrix (const Matrix &m,
-                                                       const Preconditioner &preconditioner)
-    :
-    matrix (&m),
-    preconditioner (&preconditioner)
-  {}
-
-
-  // In Schur complement it is important that A^(-1) is accurate which is why we do it this way
-  template <class Matrix, class Preconditioner>
-  void InverseMatrix<Matrix,Preconditioner>::vmult (Vector<double>       &dst,
-                                                    const Vector<double> &src) const
-  {
-    SolverControl solver_control (src.size(), 1e-6*src.l2_norm());
-    SolverCG<>    cg (solver_control);
-
-    dst = 0;
-
-    cg.solve (*matrix, dst, src, *preconditioner);
-    count_mm = count_mm + solver_control.last_step();
-  }
-
-
-
-  template <class Preconditioner>
-  class SchurComplement : public Subscriptor
-  {
-  public:
-    SchurComplement (const BlockSparseMatrix<double> &system_matrix,
-                     const InverseMatrix<SparseMatrix<double>, Preconditioner> &A_inverse);
-
-    void vmult (Vector<double>       &dst,
-                const Vector<double> &src) const;
-
-  private:
-    const SmartPointer<const BlockSparseMatrix<double> > system_matrix;
-    const SmartPointer<const InverseMatrix<SparseMatrix<double>, Preconditioner> > A_inverse;
-
-    mutable Vector<double> tmp1, tmp2;
-  };
-
-
-
-  template <class Preconditioner>
-  SchurComplement<Preconditioner>::
-  SchurComplement (const BlockSparseMatrix<double> &system_matrix,
-                   const InverseMatrix<SparseMatrix<double>,Preconditioner> &A_inverse)
-    :
-    system_matrix (&system_matrix),
-    A_inverse (&A_inverse),
-    tmp1 (system_matrix.block(0,0).m()),
-    tmp2 (system_matrix.block(0,0).m())
-  {}
-
-
-  template <class Preconditioner>
-  void SchurComplement<Preconditioner>::vmult (Vector<double>       &dst,
-                                               const Vector<double> &src) const
-  {
-    // This is the transfer (understand)
-    system_matrix->block(0,1).vmult (tmp1, src);    // multiply with the top right block: B
-    A_inverse->vmult (tmp2, tmp1);                  // multiply with A^-1
-    system_matrix->block(1,0).vmult (dst, tmp2);    // multiply with the bottom left block: B^T
-  }
-
   template <int dim>
   StokesProblem<dim>::StokesProblem (const unsigned int degree)
     :
@@ -492,123 +399,46 @@ namespace Step22
 
 // This function sets up things differently based on if you want to use ILU or GMG as a preconditioner.
   template <int dim>
-  void StokesProblem<dim>::setup_dofs ()
+  void StokesProblem<dim>::setup_dofs (bool use_multigrid)
   {
+      system_matrix.clear ();
+      // We don't need the multigrid dofs for whole problem finite element
+      dof_handler.distribute_dofs(fe);
+
+      // This first creates and array (0,0,1) which means that it first does everything with index 0 and then 1
+      std::vector<unsigned int> block_component (dim+1,0);
+      block_component[dim] = 1;
+
+      // This always knows how to use the dim (start at 0 one)
+      FEValuesExtractors::Vector velocities(0);
+
     if (use_multigrid==false)
       {
-        system_matrix.clear ();
-
-        dof_handler.distribute_dofs (fe);
         DoFRenumbering::Cuthill_McKee (dof_handler);
 
-        std::vector<unsigned int> block_component (dim+1,0);
-        block_component[dim] = 1;
         DoFRenumbering::component_wise (dof_handler, block_component);
-
-        {
-          constraints.clear ();
-
-          FEValuesExtractors::Vector velocities(0);
-          DoFTools::make_hanging_node_constraints (dof_handler,
-                                                   constraints);
-          VectorTools::interpolate_boundary_values (dof_handler,
-                                                    1,
-                                                    BoundaryValues<dim>(),
-                                                    constraints,
-                                                    fe.component_mask(velocities));
-        }
-
-        constraints.close ();
-
-        std::vector<types::global_dof_index> dofs_per_block (2);
-        DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
-        const unsigned int n_u = dofs_per_block[0],
-                           n_p = dofs_per_block[1];
-
-        std::cout << "   Number of active cells: "
-                  << triangulation.n_active_cells()
-                  << std::endl
-                  << "   Number of degrees of freedom: "
-                  << dof_handler.n_dofs()
-                  << " (" << n_u << '+' << n_p << ')'
-                  << std::endl;
-
-        {
-          BlockDynamicSparsityPattern dsp (2,2);
-
-          dsp.block(0,0).reinit (n_u, n_u);
-          dsp.block(1,0).reinit (n_p, n_u);
-          dsp.block(0,1).reinit (n_u, n_p);
-          dsp.block(1,1).reinit (n_p, n_p);
-
-          dsp.collect_sizes();
-
-          DoFTools::make_sparsity_pattern (dof_handler, dsp, constraints, false);
-          sparsity_pattern.copy_from (dsp);
-        }
-
-        system_matrix.reinit (sparsity_pattern);
-
-        solution.reinit (2);
-        solution.block(0).reinit (n_u);
-        solution.block(1).reinit (n_p);
-        solution.collect_sizes ();
-
-        system_rhs.reinit (2);
-        system_rhs.block(0).reinit (n_u);
-        system_rhs.block(1).reinit (n_p);
-        system_rhs.collect_sizes ();
       }
     else
       {
-        system_matrix.clear ();
-
-        // We don't need the multigrid dofs for whole problem finite element
-        dof_handler.distribute_dofs(fe);
-
         // Distribute only the dofs for velocity finite element
         velocity_dof_handler.distribute_dofs(velocity_fe);
 
         // Multigrid only needs the dofs for velocity
         velocity_dof_handler.distribute_mg_dofs(velocity_fe);
 
-        // This first creates and array (0,0,1) which means that it first does everything with index 0 and then 1
-        std::vector<unsigned int> block_component (dim+1,0);
-
-        block_component[dim] = 1;
-
         DoFRenumbering::component_wise (dof_handler, block_component);
 
-        constraints.clear ();
         velocity_constraints.clear ();
-        hanging_node_constraints.clear ();
-        velocity_hanging_node_constraints.clear ();
-
-        // This always knows how to use the dim (start at 0 one)
-        FEValuesExtractors::Vector velocities(0);
-
-        // This is further explained in vector valued dealii step-20
-        DoFTools::make_hanging_node_constraints (dof_handler, constraints);
-        DoFTools::make_hanging_node_constraints (dof_handler, hanging_node_constraints);
 
         // For adaptivity, these must be taken care of (correctly)
         DoFTools::make_hanging_node_constraints (velocity_dof_handler, velocity_constraints);
-        DoFTools::make_hanging_node_constraints (velocity_dof_handler, velocity_hanging_node_constraints);
 
-        VectorTools::interpolate_boundary_values (dof_handler,
-                                                  1,
-                                                  BoundaryValues<dim>(),
-                                                  constraints,
-                                                  fe.component_mask(velocities));
         VectorTools::interpolate_boundary_values (velocity_dof_handler,
                                                   1,
                                                   BoundaryValuesForVelocity<dim>(),
                                                   velocity_constraints);
 
-        constraints.close ();
         velocity_constraints.close ();
-        hanging_node_constraints.close ();
-        velocity_hanging_node_constraints.close ();
 
         typename FunctionMap<dim>::type      boundary_condition_function_map;
         BoundaryValuesForVelocity<dim>                velocity_boundary_condition;
@@ -637,51 +467,60 @@ namespace Step22
             //std::cout << "mg_matrices[" << level << "] has size " <<  mg_matrices[level].m() << " by " << mg_matrices[level].n() << std::endl;
             mg_interface_matrices[level].reinit(mg_sparsity_patterns[level]);
           }
-
-        std::vector<types::global_dof_index> dofs_per_block (2); //if you did 012 then you'd have three answers
-        DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
-        const unsigned int n_u = dofs_per_block[0],
-                           n_p = dofs_per_block[1];
-
-        std::cout << "   Number of active cells: "
-                  << triangulation.n_active_cells()
-                  << std::endl
-                  << "   Number of degrees of freedom: "
-                  << dof_handler.n_dofs()
-                  << " (" << n_u << '+' << n_p << ')'
-                  << std::endl
-                  << "   Number of velocity degrees of freedom: "
-                  << velocity_dof_handler.n_dofs()
-                  << std::endl;
-
-        Assert (n_u == velocity_dof_handler.n_dofs(), ExcMessage ("Numbers of degrees of freedom must match for the velocity part of the main dof handler and the whole velocity dof handler."));
-
-        {
-          BlockDynamicSparsityPattern csp (2,2);
-
-          csp.block(0,0).reinit (n_u, n_u);
-          csp.block(1,0).reinit (n_p, n_u);
-          csp.block(0,1).reinit (n_u, n_p);
-          csp.block(1,1).reinit (n_p, n_p);
-
-          csp.collect_sizes();
-
-          DoFTools::make_sparsity_pattern (dof_handler, csp, constraints, false);
-          sparsity_pattern.copy_from (csp);
-
-        }
-        system_matrix.reinit (sparsity_pattern);
-
-        solution.reinit (2);
-        solution.block(0).reinit (n_u);
-        solution.block(1).reinit (n_p);
-        solution.collect_sizes ();
-
-        system_rhs.reinit (2);
-        system_rhs.block(0).reinit (n_u);
-        system_rhs.block(1).reinit (n_p);
-        system_rhs.collect_sizes ();
       }
+
+    {
+      constraints.clear ();
+      // This is further explained in vector valued dealii step-20
+      DoFTools::make_hanging_node_constraints (dof_handler, constraints);
+      VectorTools::interpolate_boundary_values (dof_handler,
+                                                1,
+                                                BoundaryValues<dim>(),
+                                                constraints,
+                                                fe.component_mask(velocities));
+    }
+    constraints.close ();
+
+    std::vector<types::global_dof_index> dofs_per_block (2);
+    DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
+    const unsigned int n_u = dofs_per_block[0],
+                       n_p = dofs_per_block[1];
+
+    std::cout << "   Number of active cells: "
+              << triangulation.n_active_cells()
+              << std::endl
+              << "   Number of degrees of freedom: "
+              << dof_handler.n_dofs()
+              << " (" << n_u << '+' << n_p << ')'
+              << std::endl;
+
+    //Assert (n_u == velocity_dof_handler.n_dofs(), ExcMessage ("Numbers of degrees of freedom must match for the velocity part of the main dof handler and the whole velocity dof handler."));
+
+    {
+      BlockDynamicSparsityPattern csp (2,2);
+
+      csp.block(0,0).reinit (n_u, n_u);
+      csp.block(1,0).reinit (n_p, n_u);
+      csp.block(0,1).reinit (n_u, n_p);
+      csp.block(1,1).reinit (n_p, n_p);
+
+      csp.collect_sizes();
+
+      DoFTools::make_sparsity_pattern (dof_handler, csp, constraints, false);
+      sparsity_pattern.copy_from (csp);
+
+    }
+    system_matrix.reinit (sparsity_pattern);
+
+    solution.reinit (2);
+    solution.block(0).reinit (n_u);
+    solution.block(1).reinit (n_p);
+    solution.collect_sizes ();
+
+    system_rhs.reinit (2);
+    system_rhs.block(0).reinit (n_u);
+    system_rhs.block(1).reinit (n_p);
+    system_rhs.collect_sizes ();
   }
 
 
@@ -689,7 +528,7 @@ namespace Step22
 
 // In this function, the system matrix is assembled the same regardless of using ILU and GMG
   template <int dim>
-  void StokesProblem<dim>::assemble_system ()
+  void StokesProblem<dim>::assemble_system (bool use_multigrid)
   {
     system_matrix=0;
     system_rhs=0;
@@ -889,7 +728,7 @@ namespace Step22
 // the same solver (GMRES) but require a different preconditioner to be assembled.  Here we time not only the entire solve
 // function, but we separately time the set-up of the preconditioner as well as the GMRES solve.
   template <int dim>
-  void StokesProblem<dim>::solve ()
+  void StokesProblem<dim>::solve (bool use_multigrid)
   {
     SolverControl solver_control (system_matrix.m(),
                                   1e-6*system_rhs.l2_norm());
@@ -901,10 +740,9 @@ namespace Step22
     SolverGMRES<BlockVector<double> > gmres(solver_control, vector_memory,
                                             gmres_data);
 
-
+    // TIMO: How much should be moved into assemble?
     if (use_multigrid==false)
       {
-
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
 
         std::cout << "   Computing preconditioner..." << std::endl << std::flush;
@@ -923,6 +761,7 @@ namespace Step22
         pmass_preconditioner.initialize (pressure_mass_matrix,
                                          SparseILU<double>::AdditionalData());
 
+        // TIMO: Duplicated but preconditioner is different in each one so moving it out causes problems
         bool use_expensive = false;
         unsigned int its_A = 0, its_S = 0;
         // If this cheaper solver is not desired, then simply short-cut
@@ -955,14 +794,15 @@ namespace Step22
       {
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
         // Transfer operators between levels
-        MGTransferPrebuilt<Vector<double> > mg_transfer(hanging_node_constraints, mg_constrained_dofs);
+        MGTransferPrebuilt<Vector<double> > mg_transfer(constraints, mg_constrained_dofs);
         mg_transfer.build_matrices(velocity_dof_handler);
 
         // Coarse grid solver
         FullMatrix<double> coarse_matrix;
-        coarse_matrix.copy_from (mg_matrices[0]);
+        coarse_matrix.copy_from (mg_matrices[0]); //TODO: coarse_grid_solver.initialize(mg_matrices[0])  --- failed
         MGCoarseGridHouseholder<> coarse_grid_solver;
         coarse_grid_solver.initialize (coarse_matrix);
+        //coarse_grid_solver.initialize(mg_matrices[0]);
 
         typedef PreconditionSOR<SparseMatrix<double> > Smoother;
         mg::SmootherRelaxation<Smoother, Vector<double> > mg_smoother;
@@ -1019,6 +859,12 @@ namespace Step22
 
         its_A += preconditioner.n_iterations_A();
         its_S += preconditioner.n_iterations_S();
+
+        constraints.distribute (solution);
+
+        std::cout << " "
+                  << solver_control.last_step()
+                  << " block GMRES iterations";
       }
   }
 
@@ -1052,10 +898,10 @@ namespace Step22
     std::ofstream output (filename.str().c_str());
     data_out.write_vtk (output);
 
-    std::cout << " "
-              << count_mm
-              << " mass matrix CG iterations"
-              << std::endl;
+//    std::cout << " "
+//              << count_mm
+//              << " mass matrix CG iterations"
+//              << std::endl;
   }
 
 
@@ -1116,6 +962,12 @@ namespace Step22
 
     triangulation.refine_global (6-dim);
 
+    // TIMO: I like this idea but should we do the exact same for use_expensive?
+    //for (use_multigrid=false;use_multigrid==true;use_multigrid=!use_multigrid)
+    //{
+    //...
+    //}
+
     for (unsigned int refinement_cycle = 0; refinement_cycle<3;
          ++refinement_cycle)
       {
@@ -1124,18 +976,18 @@ namespace Step22
         if (refinement_cycle > 0)
           triangulation.refine_global (1);
 
-        use_multigrid = false;
+        bool use_multigrid = false;
         std::cout << "Now running with ILU" << std::endl;
         computing_timer.enter_subsection ("Setup");
-        setup_dofs();
+        setup_dofs(use_multigrid);
         computing_timer.leave_subsection();
         std::cout << "   Assembling..." << std::endl << std::flush;
         computing_timer.enter_subsection ("Assemble");
-        assemble_system ();
+        assemble_system (use_multigrid);
         computing_timer.leave_subsection();
         std::cout << "   Solving..." << std::flush;
         computing_timer.enter_subsection ("Solve");
-        solve ();
+        solve (use_multigrid);
         computing_timer.leave_subsection();
 
         computing_timer.print_summary ();
@@ -1143,14 +995,15 @@ namespace Step22
         output_results (refinement_cycle);
 
         std::cout << std::endl;
-        std::cout << "Now running with Multigrid" << std::endl;
+
         use_multigrid = true;
+        std::cout << "Now running with Multigrid" << std::endl;
         computing_timer.enter_subsection ("Setup");
-        setup_dofs();
+        setup_dofs(use_multigrid);
         computing_timer.leave_subsection();
         std::cout << "   Assembling..." << std::endl << std::flush;
         computing_timer.enter_subsection ("Assemble");
-        assemble_system ();
+        assemble_system (use_multigrid);
         computing_timer.leave_subsection();
         std::cout << "   Assembling Multigrid..." << std::endl << std::flush;
         computing_timer.enter_subsection ("Assemble Multigrid");
@@ -1158,7 +1011,7 @@ namespace Step22
         computing_timer.leave_subsection();
         std::cout << "   Solving..." << std::flush;
         computing_timer.enter_subsection ("Solve");
-        solve ();
+        solve (use_multigrid);
         computing_timer.leave_subsection();
 
         computing_timer.print_summary ();
@@ -1175,9 +1028,7 @@ int main ()
   try
     {
       using namespace dealii;
-      using namespace Step22;
-
-      deallog.depth_console (0);
+      using namespace Step55;
 
       StokesProblem<2> flow_problem(1);
 
