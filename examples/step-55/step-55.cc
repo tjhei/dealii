@@ -272,6 +272,9 @@ namespace Step55
     MGConstrainedDoFs                     mg_constrained_dofs;
 
     TimerOutput computing_timer;
+
+    unsigned int its_A;
+    unsigned int its_S;
   };
 
   template <int dim>
@@ -740,7 +743,11 @@ namespace Step55
     SolverGMRES<BlockVector<double> > gmres(solver_control, vector_memory,
                                             gmres_data);
 
-    // TIMO: How much should be moved into assemble?
+    SparseMatrix<double> pressure_mass_matrix;  // Timo: This block has trouble going to assembly for some reason.. even if I make pressure_mass_matrix global
+    pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
+    pressure_mass_matrix.copy_from(system_matrix.block(1,1));
+    system_matrix.block(1,1) = 0;
+
     if (use_multigrid==false)
       {
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
@@ -750,20 +757,12 @@ namespace Step55
         SparseILU<double>       A_preconditioner;
         A_preconditioner.initialize (system_matrix.block(0,0),SparseILU<double>::AdditionalData());
 
-
-        SparseMatrix<double> pressure_mass_matrix;
-        pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
-        pressure_mass_matrix.copy_from(system_matrix.block(1,1));
-        system_matrix.block(1,1) = 0;
-
-
         SparseILU<double> pmass_preconditioner;
         pmass_preconditioner.initialize (pressure_mass_matrix,
                                          SparseILU<double>::AdditionalData());
 
-        // TIMO: Duplicated but preconditioner is different in each one so moving it out causes problems
-        bool use_expensive = false;
-        unsigned int its_A = 0, its_S = 0;
+        bool use_expensive = true;
+
         // If this cheaper solver is not desired, then simply short-cut
         // the attempt at solving with the cheaper preconditioner that consists
         // of only a single V-cycle
@@ -781,8 +780,8 @@ namespace Step55
                      preconditioner);
         computing_timer.leave_subsection();
 
-        its_A += preconditioner.n_iterations_A();
-        its_S += preconditioner.n_iterations_S();
+        its_A = preconditioner.n_iterations_A();
+        its_S = preconditioner.n_iterations_S();
 
         constraints.distribute (solution);
 
@@ -829,16 +828,11 @@ namespace Step55
         PreconditionMG<dim, Vector<double>, MGTransferPrebuilt<Vector<double> > >
         A_Multigrid(velocity_dof_handler, mg, mg_transfer);
 
-        SparseMatrix<double> pressure_mass_matrix;
-        pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
-        pressure_mass_matrix.copy_from(system_matrix.block(1,1));
-        system_matrix.block(1,1) = 0;
         SparseILU<double> pmass_preconditioner;
         pmass_preconditioner.initialize (pressure_mass_matrix,
                                          SparseILU<double>::AdditionalData());
 
         bool use_expensive = false;
-        unsigned int its_A = 0, its_S = 0;
 
         // If this cheaper solver is not desired, then simply short-cut
         // the attempt at solving with the cheaper preconditioner that
@@ -898,10 +892,10 @@ namespace Step55
     std::ofstream output (filename.str().c_str());
     data_out.write_vtk (output);
 
-//    std::cout << " "
-//              << count_mm
-//              << " mass matrix CG iterations"
-//              << std::endl;
+    std::cout << std::endl
+              << "Number of iterations used for approximation of A inverse: " << its_A << std::endl
+              << "Number of iterations used for approximation of S inverse: " << its_S << std::endl
+              << std::endl;
   }
 
 
@@ -962,62 +956,46 @@ namespace Step55
 
     triangulation.refine_global (6-dim);
 
-    // TIMO: I like this idea but should we do the exact same for use_expensive?
-    //for (use_multigrid=false;use_multigrid==true;use_multigrid=!use_multigrid)
-    //{
-    //...
-    //}
-
     for (unsigned int refinement_cycle = 0; refinement_cycle<3;
-         ++refinement_cycle)
-      {
-        std::cout << "Refinement cycle " << refinement_cycle << std::endl;
+                ++refinement_cycle)
+             {
+    bool use_multigrid=false;
+    do    {
+            std::cout << "Refinement cycle " << refinement_cycle << std::endl;
 
-        if (refinement_cycle > 0)
-          triangulation.refine_global (1);
+            if (refinement_cycle > 0)
+              triangulation.refine_global (1);
+            if (use_multigrid == false)
+            	std::cout << "Now running with ILU" << std::endl;
+            if (use_multigrid == true)
+                std::cout << "Now running with Multigrid" << std::endl;
+            computing_timer.enter_subsection ("Setup");
+            setup_dofs(use_multigrid);
+            computing_timer.leave_subsection();
+            std::cout << "   Assembling..." << std::endl << std::flush;
+            computing_timer.enter_subsection ("Assemble");
+            assemble_system (use_multigrid);
+            computing_timer.leave_subsection();
+            if (use_multigrid == true)
+            {
+                std::cout << "   Assembling Multigrid..." << std::endl << std::flush;
+                computing_timer.enter_subsection ("Assemble Multigrid");
+                assemble_multigrid();
+                computing_timer.leave_subsection();
+            }
+            std::cout << "   Solving..." << std::flush;
+            computing_timer.enter_subsection ("Solve");
+            solve (use_multigrid);
+            computing_timer.leave_subsection();
 
-        bool use_multigrid = false;
-        std::cout << "Now running with ILU" << std::endl;
-        computing_timer.enter_subsection ("Setup");
-        setup_dofs(use_multigrid);
-        computing_timer.leave_subsection();
-        std::cout << "   Assembling..." << std::endl << std::flush;
-        computing_timer.enter_subsection ("Assemble");
-        assemble_system (use_multigrid);
-        computing_timer.leave_subsection();
-        std::cout << "   Solving..." << std::flush;
-        computing_timer.enter_subsection ("Solve");
-        solve (use_multigrid);
-        computing_timer.leave_subsection();
+            computing_timer.print_summary ();
+            computing_timer.reset ();
+            output_results (refinement_cycle);
 
-        computing_timer.print_summary ();
-        computing_timer.reset ();
-        output_results (refinement_cycle);
-
-        std::cout << std::endl;
-
-        use_multigrid = true;
-        std::cout << "Now running with Multigrid" << std::endl;
-        computing_timer.enter_subsection ("Setup");
-        setup_dofs(use_multigrid);
-        computing_timer.leave_subsection();
-        std::cout << "   Assembling..." << std::endl << std::flush;
-        computing_timer.enter_subsection ("Assemble");
-        assemble_system (use_multigrid);
-        computing_timer.leave_subsection();
-        std::cout << "   Assembling Multigrid..." << std::endl << std::flush;
-        computing_timer.enter_subsection ("Assemble Multigrid");
-        assemble_multigrid ();
-        computing_timer.leave_subsection();
-        std::cout << "   Solving..." << std::flush;
-        computing_timer.enter_subsection ("Solve");
-        solve (use_multigrid);
-        computing_timer.leave_subsection();
-
-        computing_timer.print_summary ();
-        computing_timer.reset ();
-        output_results (refinement_cycle);
-      }
+            use_multigrid = !use_multigrid;
+          }
+    while(use_multigrid);
+    }
   }
 }
 
@@ -1029,6 +1007,8 @@ int main ()
     {
       using namespace dealii;
       using namespace Step55;
+
+      deallog.depth_console(1); // Timo: Need this or else there is too much output
 
       StokesProblem<2> flow_problem(1);
 
