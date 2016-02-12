@@ -910,13 +910,16 @@ namespace Step55
   void StokesProblem<dim>::process_solution ()  // Timo:  Liang believed we wouldn't need anything else except to add a mask
                                                       //         but do we want to include a convergence table also?
   {
+	FEValuesExtractors::Vector velocities(0);
+
     Vector<float> difference_per_cell (triangulation.n_active_cells());
     VectorTools::integrate_difference (dof_handler,
                                        solution,
                                        Solution<dim>(),
                                        difference_per_cell,
                                        QGauss<dim>(3),
-                                       VectorTools::L2_norm);
+                                       VectorTools::L2_norm,
+                                       fe.component_mask(velocities));
 
     const double L2_error = difference_per_cell.l2_norm();
     VectorTools::integrate_difference (dof_handler,
@@ -924,17 +927,15 @@ namespace Step55
                                        Solution<dim>(),
                                        difference_per_cell,
                                        QGauss<dim>(3),
-                                       VectorTools::H1_seminorm); // TODO: need to add mask because only want to check velocity or pressure
+                                       VectorTools::H1_seminorm,
+                                       fe.component_mask(velocities)); // TODO: need to add mask because only want to check velocity or pressure
+
+    // Add one in for pressure (L2)
+    // Print all three of these!
 
     const double H1_error = difference_per_cell.l2_norm();
     const QTrapez<1> q_trapez; // Timo: Shall we use something better than QTrapez?
-    const QIterated<dim> q_iterated (q_trapez, 5);
-    VectorTools::integrate_difference (dof_handler,
-                                       solution,
-                                       Solution<dim>(),
-                                       difference_per_cell,
-                                       q_iterated,
-                                       VectorTools::Linfty_norm);
+
 
     const double Linfty_error = difference_per_cell.linfty_norm();
     const unsigned int n_active_cells=triangulation.n_active_cells();
