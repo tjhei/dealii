@@ -77,6 +77,47 @@ namespace Step55
 {
   using namespace dealii;
 
+  // @sect3{Solution Function}
+
+  template <int dim>
+  class Solution : public Function<dim>
+  {
+  public:
+    Solution () : Function<dim>() {}
+    virtual double value (const Point<dim> &p,
+                          const unsigned int component = 0) const;
+    virtual Tensor<1,dim> gradient (const Point<dim> &p,
+                                    const unsigned int component = 0) const;
+  };
+  template <int dim>
+  double Solution<dim>::value (const Point<dim> &p,
+                               const unsigned int) const
+  {
+    double return_value = 0;
+    for (unsigned int i=0; i<this->n_source_centers; ++i)
+      {
+        const Point<dim> x_minus_xi = p - this->source_centers[i];
+        return_value += std::exp(-x_minus_xi.square() /
+                                 (this->width * this->width));
+      }
+    return return_value;
+  }
+  template <int dim>
+  Tensor<1,dim> Solution<dim>::gradient (const Point<dim> &p,
+                                         const unsigned int) const
+  {
+    Tensor<1,dim> return_value;
+    for (unsigned int i=0; i<this->n_source_centers; ++i)
+      {
+        const Point<dim> x_minus_xi = p - this->source_centers[i];
+        return_value += (-2 / (this->width * this->width) *
+                         std::exp(-x_minus_xi.square() /
+                                  (this->width * this->width)) *
+                         x_minus_xi);
+      }
+    return return_value;
+  }
+
   // @sect3{ASPECT BlockSchurPreconditioner}
 
   // Implement the block Schur preconditioner for the Stokes system.
@@ -243,6 +284,7 @@ namespace Step55
     void assemble_system (bool use_multigrid);
     void assemble_multigrid ();
     void solve (bool use_multigrid);
+    void process_solution ();
     void output_results (const unsigned int refinement_cycle) const;
     void refine_mesh ();
 
@@ -404,16 +446,16 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::setup_dofs (bool use_multigrid)
   {
-      system_matrix.clear ();
-      // We don't need the multigrid dofs for whole problem finite element
-      dof_handler.distribute_dofs(fe);
+    system_matrix.clear ();
+    // We don't need the multigrid dofs for whole problem finite element
+    dof_handler.distribute_dofs(fe);
 
-      // This first creates and array (0,0,1) which means that it first does everything with index 0 and then 1
-      std::vector<unsigned int> block_component (dim+1,0);
-      block_component[dim] = 1;
+    // This first creates and array (0,0,1) which means that it first does everything with index 0 and then 1
+    std::vector<unsigned int> block_component (dim+1,0);
+    block_component[dim] = 1;
 
-      // This always knows how to use the dim (start at 0 one)
-      FEValuesExtractors::Vector velocities(0);
+    // This always knows how to use the dim (start at 0 one)
+    FEValuesExtractors::Vector velocities(0);
 
     if (use_multigrid==false)
       {
@@ -862,6 +904,53 @@ namespace Step55
       }
   }
 
+  // @sect4{StokesProblem::process_solution}
+
+  template <int dim>
+  void StokesProblem<dim>::process_solution ()  // Timo:  Liang believed we wouldn't need anything else except to add a mask
+                                                      //         but do we want to include a convergence table also?
+  {
+    Vector<float> difference_per_cell (triangulation.n_active_cells());
+    VectorTools::integrate_difference (dof_handler,
+                                       solution,
+                                       Solution<dim>(),
+                                       difference_per_cell,
+                                       QGauss<dim>(3),
+                                       VectorTools::L2_norm);
+
+    const double L2_error = difference_per_cell.l2_norm();
+    VectorTools::integrate_difference (dof_handler,
+                                       solution,
+                                       Solution<dim>(),
+                                       difference_per_cell,
+                                       QGauss<dim>(3),
+                                       VectorTools::H1_seminorm); // TODO: need to add mask because only want to check velocity or pressure
+
+    const double H1_error = difference_per_cell.l2_norm();
+    const QTrapez<1> q_trapez; // Timo: Shall we use something better than QTrapez?
+    const QIterated<dim> q_iterated (q_trapez, 5);
+    VectorTools::integrate_difference (dof_handler,
+                                       solution,
+                                       Solution<dim>(),
+                                       difference_per_cell,
+                                       q_iterated,
+                                       VectorTools::Linfty_norm);
+
+    const double Linfty_error = difference_per_cell.linfty_norm();
+    const unsigned int n_active_cells=triangulation.n_active_cells();
+    const unsigned int n_dofs=dof_handler.n_dofs();
+
+    std::cout //<< "Cycle " << cycle << ':'
+        << std::endl
+        << " Number of active cells: "
+        << n_active_cells
+        << std::endl
+        << " Number of degrees of freedom: "
+        << n_dofs
+        << std::endl;
+  }
+
+
   // @sect4{StokesProblem::output_results}
 
   template <int dim>
@@ -957,18 +1046,19 @@ namespace Step55
     triangulation.refine_global (6-dim);
 
     for (unsigned int refinement_cycle = 0; refinement_cycle<3;
-                ++refinement_cycle)
-             {
-    bool use_multigrid=false;
-    do    {
+         ++refinement_cycle)
+      {
+        bool use_multigrid=false;
+        do
+          {
             std::cout << "Refinement cycle " << refinement_cycle << std::endl;
 
             if (refinement_cycle > 0)
               triangulation.refine_global (1);
             if (use_multigrid == false)
-            	std::cout << "Now running with ILU" << std::endl;
+              std::cout << "Now running with ILU" << std::endl;
             if (use_multigrid == true)
-                std::cout << "Now running with Multigrid" << std::endl;
+              std::cout << "Now running with Multigrid" << std::endl;
             computing_timer.enter_subsection ("Setup");
             setup_dofs(use_multigrid);
             computing_timer.leave_subsection();
@@ -977,12 +1067,12 @@ namespace Step55
             assemble_system (use_multigrid);
             computing_timer.leave_subsection();
             if (use_multigrid == true)
-            {
+              {
                 std::cout << "   Assembling Multigrid..." << std::endl << std::flush;
                 computing_timer.enter_subsection ("Assemble Multigrid");
                 assemble_multigrid();
                 computing_timer.leave_subsection();
-            }
+              }
             std::cout << "   Solving..." << std::flush;
             computing_timer.enter_subsection ("Solve");
             solve (use_multigrid);
@@ -994,8 +1084,8 @@ namespace Step55
 
             use_multigrid = !use_multigrid;
           }
-    while(use_multigrid);
-    }
+        while (use_multigrid);
+      }
   }
 }
 
