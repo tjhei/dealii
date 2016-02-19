@@ -83,40 +83,54 @@ namespace Step55
   class Solution : public Function<dim>
   {
   public:
-    Solution () : Function<dim>() {}
-    virtual double value (const Point<dim> &p,
-                          const unsigned int component = 0) const;
-    virtual Tensor<1,dim> gradient (const Point<dim> &p,
-                                    const unsigned int component = 0) const;
+    Solution () : Function<dim>(dim+1) {}
+        virtual double value (const Point<dim> &p,
+                               const unsigned int component) const;
+//        virtual Tensor<1,dim> gradient (const Point<dim> &p,
+//                                    const unsigned int component = 0) const;
   };
+
   template <int dim>
-  double Solution<dim>::value (const Point<dim> &p,
-                               const unsigned int) const
+    double
+  Solution<dim>::value (const Point<dim> &p,
+                      const unsigned int component) const
   {
-    double return_value = 0;
-    for (unsigned int i=0; i<this->n_source_centers; ++i)
-      {
-        const Point<dim> x_minus_xi = p - this->source_centers[i];
-        return_value += std::exp(-x_minus_xi.square() /
-                                 (this->width * this->width));
-      }
-    return return_value;
+	    using numbers::PI;
+	    double x = p(0);
+	    double y = p(1);
+	    if (component == 0)
+	    	return 2 * sin (PI * x);
+	    if (component == 1)
+	    	return - PI * y * cos(PI * x);
+	    if (dim==2)
+	    	if (component == 2) // this is different in 2d and 3d because its either u_z or pressure
+	    		return sin (PI * x) * sin (PI * y);
+	    if (dim ==3)
+	    {
+		    double z = p(2);
+	    	if (component == 2) // this is different in 2d and 3d because its either u_z or pressure
+	    		    		return - PI * z * cos(PI * x);
+	    	if (component == 3)
+	    		    		return sin (PI * x) * sin (PI * y) * sin (PI * z);
+	    }
+	    else
+	    	return 0; // Timo: Or assert?
   }
-  template <int dim>
-  Tensor<1,dim> Solution<dim>::gradient (const Point<dim> &p,
-                                         const unsigned int) const
-  {
-    Tensor<1,dim> return_value;
-    for (unsigned int i=0; i<this->n_source_centers; ++i)
-      {
-        const Point<dim> x_minus_xi = p - this->source_centers[i];
-        return_value += (-2 / (this->width * this->width) *
-                         std::exp(-x_minus_xi.square() /
-                                  (this->width * this->width)) *
-                         x_minus_xi);
-      }
-    return return_value;
-  }
+
+//  template <int dim>
+//  Tensor<1,dim>
+//  Solution<dim>::gradient (const Point<dim> &p,  // Timo: But okay for this to be a Tensor?
+//                         const unsigned int component) const  // component and you'd return like values
+//  {
+//	    using numbers::PI;
+//	    Tensor<1,dim> return_value;
+//	    return_value[0] = 2 * PI * cos (PI * p(0));
+//	    return_value[1] = - PI * cos(PI * p(0)) + PI * PI * p(1) * sin(PI * p(0));
+//	    if (dim == 3)
+//	    	return_value[2] = - PI * cos(PI * p(0)) + PI * PI * p(2) * sin(PI * p(0));
+//	    return return_value;
+//  }
+
 
   // @sect3{ASPECT BlockSchurPreconditioner}
 
@@ -319,40 +333,6 @@ namespace Step55
     unsigned int its_S;
   };
 
-  template <int dim>
-  class BoundaryValues : public Function<dim>
-  {
-  public:
-    BoundaryValues () : Function<dim>(dim+1) {}
-
-    virtual double value (const Point<dim>   &p,
-                          const unsigned int  component = 0) const;
-
-    virtual void vector_value (const Point<dim> &p,
-                               Vector<double>   &value) const;
-  };
-
-  template <int dim>
-  double
-  BoundaryValues<dim>::value (const Point<dim>  &p,
-                              const unsigned int component) const
-  {
-    Assert (component < this->n_components,
-            ExcIndexRange (component, 0, this->n_components));
-
-    if (component == 0)
-      return (p[0] < 0 ? -1 : (p[0] > 0 ? 1 : 0));
-    return 0;
-  }
-
-  template <int dim>
-  void
-  BoundaryValues<dim>::vector_value (const Point<dim> &p,
-                                     Vector<double>   &values) const
-  {
-    for (unsigned int c=0; c<this->n_components; ++c)
-      values(c) = BoundaryValues<dim>::value (p, c);
-  }
 
   template <int dim>
   class BoundaryValuesForVelocity : public Function<dim>
@@ -362,9 +342,6 @@ namespace Step55
 
     virtual double value (const Point<dim>   &p,
                           const unsigned int  component = 0) const;
-
-    virtual void vector_value (const Point<dim> &p,
-                               Vector<double>   &value) const;
   };
 
 
@@ -376,22 +353,21 @@ namespace Step55
     Assert (component < this->n_components,
             ExcIndexRange (component, 0, this->n_components));
 
-    if (component == 0)
-      return (p[0] < 0 ? -1 : (p[0] > 0 ? 1 : 0));
-    return 0;
+    using numbers::PI;
+	    double x = p(0);
+	    double y = p(1);
+	    if (component == 0)
+	    	return 2 * sin (PI * x);
+	    if (component == 1)
+	    	return - PI * y * cos(PI * x);
+	    if (component == 2)
+	    	{
+	    		double z = p(2);
+	    		return - PI * z * cos(PI * x);
+	    	}
+	    else
+	    	return 0;
   }
-
-
-  template <int dim>
-  void
-  BoundaryValuesForVelocity<dim>::vector_value (const Point<dim> &p,
-                                                Vector<double>   &values) const
-  {
-    for (unsigned int c=0; c<this->n_components; ++c)
-      values(c) = BoundaryValuesForVelocity<dim>::value (p, c);
-  }
-
-
 
   template <int dim>
   class RightHandSide : public Function<dim>
@@ -401,29 +377,51 @@ namespace Step55
 
     virtual double value (const Point<dim>   &p,
                           const unsigned int  component = 0) const;
-
-    virtual void vector_value (const Point<dim> &p,
-                               Vector<double>   &value) const;
-
   };
 
 
   template <int dim>
   double
-  RightHandSide<dim>::value (const Point<dim>  &/*p*/,
-                             const unsigned int /*component*/) const
+  RightHandSide<dim>::value (const Point<dim>  & p,   // Timo: This can be done using template specialization
+                             const unsigned int component) const
   {
-    return 0;
-  }
-
-
-  template <int dim>
-  void
-  RightHandSide<dim>::vector_value (const Point<dim> &p,
-                                    Vector<double>   &values) const
-  {
-    for (unsigned int c=0; c<this->n_components; ++c)
-      values(c) = RightHandSide<dim>::value (p, c);
+	    using numbers::PI;
+	    double x = p(0);
+	    double y = p(1);
+        if (component == 0)
+	    {
+	    	if (dim==2)
+	    	  return - 2 * PI * PI * sin(PI * x) + PI * cos(PI * x) * sin(PI * y);
+	    	else if (dim==3)
+	    	{
+	    		double z = p(2);
+	    		return - 2 * PI * PI * sin(PI * x) + PI * cos(PI * y) * sin(PI * x) * sin(PI * z);
+	    	}
+	    	else
+	    		return 0; // Timo: Assert?
+	    }
+	    if (component == 1)
+	    {
+	    	if (dim==2)
+	    	  return PI * PI * PI * y * cos(PI * x) + PI * cos(PI * y)*sin(PI * x);
+	    	else if (dim==3)
+	    	{
+	    	  double z = p(2);
+	    	  return  PI * PI * PI * y * cos (PI * x) + PI * cos(PI * y)*sin(PI * x)*sin(PI * z);
+	    	}
+	    	else
+	    		return 0; // Timo: Assert?
+	    }
+	    if (dim==3)
+	    {
+	    	double z = p(2);
+			if (component == 2)
+				return PI * PI * PI * z * cos (PI * x) + PI * cos(PI * z)*sin(PI * x)*sin(PI * y);
+			if (component == 3) // Ryan: this can go (just here as sanity check)
+				return 0;
+	    }
+	    else
+	    	return 0; // must be component = 2 in 2D
   }
 
   template <int dim>
@@ -479,7 +477,7 @@ namespace Step55
         DoFTools::make_hanging_node_constraints (velocity_dof_handler, velocity_constraints);
 
         VectorTools::interpolate_boundary_values (velocity_dof_handler,
-                                                  1,
+                                                  0,
                                                   BoundaryValuesForVelocity<dim>(),
                                                   velocity_constraints);
 
@@ -519,8 +517,8 @@ namespace Step55
       // This is further explained in vector valued dealii step-20
       DoFTools::make_hanging_node_constraints (dof_handler, constraints);
       VectorTools::interpolate_boundary_values (dof_handler,
-                                                1,
-                                                BoundaryValues<dim>(),
+                                                0,
+                                                Solution<dim>(),
                                                 constraints,
                                                 fe.component_mask(velocities));
     }
@@ -907,35 +905,56 @@ namespace Step55
   // @sect4{StokesProblem::process_solution}
 
   template <int dim>
-  void StokesProblem<dim>::process_solution ()  // Timo:  Liang believed we wouldn't need anything else except to add a mask
-                                                      //         but do we want to include a convergence table also?
+  void StokesProblem<dim>::process_solution ()
   {
-	FEValuesExtractors::Vector velocities(0);
+    FEValuesExtractors::Vector velocities(0);
+
+   const ComponentSelectFunction<dim> // Timo: Step-20 showed me this but errors seem to be the same
+   pressure_mask (dim, dim+1);
+   const ComponentSelectFunction<dim>
+   velocity_mask(std::make_pair(0, dim), dim+1);
 
     Vector<float> difference_per_cell (triangulation.n_active_cells());
+
     VectorTools::integrate_difference (dof_handler,
                                        solution,
                                        Solution<dim>(),
                                        difference_per_cell,
                                        QGauss<dim>(3),
-                                       VectorTools::L2_norm,
-                                       fe.component_mask(velocities));
+                                       VectorTools::L2_norm),
+                                       &velocity_mask;
 
-    const double L2_error = difference_per_cell.l2_norm();
-    VectorTools::integrate_difference (dof_handler,
-                                       solution,
-                                       Solution<dim>(),
-                                       difference_per_cell,
-                                       QGauss<dim>(3),
-                                       VectorTools::H1_seminorm,
-                                       fe.component_mask(velocities)); // TODO: need to add mask because only want to check velocity or pressure
+   const double Velocity_L2_error = difference_per_cell.l2_norm();
 
-    // Add one in for pressure (L2)
-    // Print all three of these!
+   VectorTools::integrate_difference (dof_handler,
+                                      solution,
+                                      Solution<dim>(),
+                                      difference_per_cell,
+                                      QGauss<dim>(3),
+                                      VectorTools::L2_norm),
+                                      &pressure_mask;
 
-    const double H1_error = difference_per_cell.l2_norm();
+  const double Pressure_L2_error = difference_per_cell.l2_norm();
+
+//    VectorTools::integrate_difference (dof_handler,
+//                                       solution,
+//                                       Solution<dim>(),
+//                                       difference_per_cell,
+//                                       QGauss<dim>(3),
+//                                       VectorTools::H1_norm,
+//                                       fe.component_mask(velocities)); // TODO: need to add mask because only want to check velocity or pressure
+
+//    const double H1_error = difference_per_cell.l2_norm();
+
     const QTrapez<1> q_trapez; // Timo: Shall we use something better than QTrapez?
 
+    std::cout << std::endl << "Velocity L2 Error: " << Velocity_L2_error
+        << std::endl
+        << "Pressure L2 Error: " << Pressure_L2_error
+                << std::endl
+//        << "H1 Error: "
+//        << H1_error
+        << std::endl;
 
     const double Linfty_error = difference_per_cell.linfty_norm();
     const unsigned int n_active_cells=triangulation.n_active_cells();
@@ -1019,30 +1038,7 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::run ()
   {
-    {
-      std::vector<unsigned int> subdivisions (dim, 1);
-      subdivisions[0] = 4;
-
-      const Point<dim> bottom_left = (dim == 2 ?
-                                      Point<dim>(-2,-1) :
-                                      Point<dim>(-2,0,-1));
-      const Point<dim> top_right   = (dim == 2 ?
-                                      Point<dim>(2,0) :
-                                      Point<dim>(2,1,0));
-
-      GridGenerator::subdivided_hyper_rectangle (triangulation,
-                                                 subdivisions,
-                                                 bottom_left,
-                                                 top_right);
-    }
-
-    for (typename Triangulation<dim>::active_cell_iterator
-         cell = triangulation.begin_active();
-         cell != triangulation.end(); ++cell)
-      for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
-        if (cell->face(f)->center()[dim-1] == 0)
-          cell->face(f)->set_all_boundary_ids(1);
-
+    GridGenerator::hyper_cube (triangulation);
 
     triangulation.refine_global (6-dim);
 
@@ -1078,6 +1074,8 @@ namespace Step55
             computing_timer.enter_subsection ("Solve");
             solve (use_multigrid);
             computing_timer.leave_subsection();
+
+            process_solution ();
 
             computing_timer.print_summary ();
             computing_timer.reset ();
