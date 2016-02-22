@@ -10,7 +10,7 @@
 //
 // for wednesday:
 // - show and compute convergence rates (optimal!?)
-// - enforce mean value for pressure (demo by using adaptively refined mesh)
+// - enforce mean value for pressure
 // - show using umfpack
 // - singular system:
 //   - fix single DoF
@@ -105,8 +105,8 @@ namespace Step55
     Solution () : Function<dim>(dim+1) {}
     virtual double value (const Point<dim> &p,
                           const unsigned int component) const;
-//        virtual Tensor<1,dim> gradient (const Point<dim> &p,
-//                                    const unsigned int component = 0) const;
+        virtual Tensor<1,dim> gradient (const Point<dim> &p,
+                                    const unsigned int component = 0) const;
   };
 
   template <>
@@ -149,19 +149,33 @@ namespace Step55
   }
 
 
-//  template <int dim>
-//  Tensor<1,dim>
-//  Solution<dim>::gradient (const Point<dim> &p,  // Timo: But okay for this to be a Tensor?
-//                         const unsigned int component) const  // component and you'd return like values
-//  {
-//      using numbers::PI;
-//      Tensor<1,dim> return_value;
-//      return_value[0] = 2 * PI * cos (PI * p(0));
-//      return_value[1] = - PI * cos(PI * p(0)) + PI * PI * p(1) * sin(PI * p(0));
-//      if (dim == 3)
-//        return_value[2] = - PI * cos(PI * p(0)) + PI * PI * p(2) * sin(PI * p(0));
-//      return return_value;
-//  }
+  template <>
+  Tensor<1,2>
+  Solution<2>::gradient (const Point<2> &p,  // Timo: But okay for this to be a Tensor?
+                         const unsigned int component) const  // component and you'd return like values
+  {
+	    using numbers::PI;
+	    double x = p(0);
+	    double y = p(1);
+	    Tensor<1,2> return_value;
+      if (component == 0)
+      {
+     	return_value[0] = PI * cos (PI * x);
+     	return_value[1] = 0.0;
+
+      }
+      if (component == 1)
+      {
+       	return_value[0] = y * PI * PI * sin( PI * x);
+       	return_value[1] = - PI * cos (PI * x);
+      }
+      if (component == 2)
+      {
+       	return_value[0] = PI * cos (PI * x) * cos (PI * y);
+       	return_value[1] =  - PI * sin (PI * x) * sin(PI * y);
+        }
+      return return_value;
+  }
 
 
   // @sect3{ASPECT BlockSchurPreconditioner}
@@ -263,12 +277,12 @@ namespace Step55
       SolverControl solver_control(1000, 1e-6 * src.block(1).l2_norm());
       SolverCG<>    cg (solver_control);
 
-
       // This takes care of the mass matrix
       dst.block(1) = 0.0;
       cg.solve(pressure_mass_matrix,
                dst.block(1), src.block(1),
                mp_preconditioner);
+
       n_iterations_S_ += solver_control.last_step();
 
 
@@ -290,9 +304,11 @@ namespace Step55
         SolverControl solver_control(10000, utmp.l2_norm()*1e-2);
         SolverCG<>    cg (solver_control);
 
+
         dst.block(0) = 0.0;
         cg.solve(stokes_matrix.block(0,0), dst.block(0), utmp,
                  a_preconditioner);
+
         n_iterations_A_ += solver_control.last_step();
       }
     else
@@ -808,6 +824,19 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::solve (bool use_multigrid)
   {
+	     // RG: Direct solve
+//	  system_matrix.block(1,1) = 0;
+//      SparseDirectUMFPACK A_direct; // Timo: UMFPack
+//      A_direct.initialize(system_matrix);
+//
+//      solution = system_rhs;
+//      A_direct.solve(system_matrix,
+//                     solution);
+//
+//     constraints.distribute (solution);
+//     return;
+
+
     computing_timer.enter_subsection ("Solve");
 
     SolverControl solver_control (system_matrix.m(),
@@ -838,7 +867,7 @@ namespace Step55
         pmass_preconditioner.initialize (pressure_mass_matrix,
                                          SparseILU<double>::AdditionalData());
 
-        bool use_expensive = true;
+        bool use_expensive = false;
 
         // If this cheaper solver is not desired, then simply short-cut
         // the attempt at solving with the cheaper preconditioner that consists
@@ -855,13 +884,6 @@ namespace Step55
                      system_rhs,
                      preconditioner);
         computing_timer.leave_subsection();
-
-        // SparseDirectUMFPACK A_direct; // Timo: UMFPack
-        // A_direct.initialize(system_matrix);
-        // A_direct.solve(system_matrix,
-        //                solution,
-        //                system_rhs,
-        //                preconditioner));
 
         constraints.distribute (solution);
 
@@ -957,6 +979,13 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::process_solution ()
   {
+	  double mean_value= VectorTools::compute_mean_value 	(dof_handler,
+			  QGauss<dim>(degree+2),
+	  		  solution,
+	  		  dim);
+
+	  solution.block(1).add(-mean_value);
+
     const FEValuesExtractors::Vector velocities (0);
     const FEValuesExtractors::Scalar pressure (dim);
 
@@ -990,34 +1019,22 @@ namespace Step55
 
     const double Pressure_L2_error = difference_per_cell.l2_norm();
 
-//    VectorTools::integrate_difference (dof_handler,
-//                                       solution,
-//                                       Solution<dim>(),
-//                                       difference_per_cell,
-//                                       QGauss<dim>(3),
-//                                       VectorTools::H1_norm,
-//                                       fe.component_mask(velocities)); // TODO: need to add mask because only want to check velocity or pressure
+    VectorTools::integrate_difference (dof_handler,
+                                       solution,
+                                       Solution<dim>(),
+                                       difference_per_cell,
+                                       QGauss<dim>(degree+2),
+                                       VectorTools::H1_norm,
+                                       &velocity_mask); // TODO: need to add mask because only want to check velocity or pressure
 
-//    const double H1_error = difference_per_cell.l2_norm();
+    const double Velocity_H1_error = difference_per_cell.l2_norm();
     std::cout << std::endl << "Velocity L2 Error: " << Velocity_L2_error
               << std::endl
               << "Pressure L2 Error: " << Pressure_L2_error
               << std::endl
-//        << "H1 Error: "
-//        << H1_error
+        << "Velocity H1 Error: "
+        << Velocity_H1_error
               << std::endl;
-
-    const unsigned int n_active_cells=triangulation.n_active_cells();
-    const unsigned int n_dofs=dof_handler.n_dofs();
-
-    std::cout //<< "Cycle " << cycle << ':'
-        << std::endl
-        << " Number of active cells: "
-        << n_active_cells
-        << std::endl
-        << " Number of degrees of freedom: "
-        << n_dofs
-        << std::endl;
   }
 
 
@@ -1085,7 +1102,9 @@ namespace Step55
   {
     GridGenerator::hyper_cube (triangulation);
 
+
     triangulation.refine_global (6-dim);
+    //GridTools::distort_random(0.1, triangulation, true);
 
     for (unsigned int refinement_cycle = 0; refinement_cycle<3;
          ++refinement_cycle)
