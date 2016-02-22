@@ -121,8 +121,8 @@ namespace Step55
       return - PI * y * cos(PI * x);
     if (component == 2)
       return sin (PI * x) * cos (PI * y);
-    else
-      return 0; // Timo: Or assert?
+
+    return 0; // Timo: Or assert?
   }
   template <>
   double
@@ -142,8 +142,8 @@ namespace Step55
       return - PI * z * cos(PI * x);
     if (component == 3)
       return sin (PI * x) * cos (PI * y) * sin (PI * z);
-    else
-      return 0; // Timo: Or assert?
+
+    return 0; // Timo: Or assert?
   }
 
 
@@ -277,7 +277,7 @@ namespace Step55
     {
       stokes_matrix.block(0,1).vmult(utmp, dst.block(1)); //B^T
       utmp*=-1.0;
-      utmp.add(src.block(0));
+      utmp.add(src.block(0)); //Timo: Where to find what this was changed to
     }
 
     // Now either solve with the top left block (if do_solve_A==true)
@@ -373,8 +373,8 @@ namespace Step55
       return - PI * y * cos(PI * x);
     if (component == 2)
       return sin (PI * x) * cos (PI * y);
-    else
-      return 0; // Timo: Or assert?
+
+    return 0; // Timo: Or assert?
   }
 
   template <int dim>
@@ -402,6 +402,8 @@ namespace Step55
     if (component == 2)
       return 0;
 
+    return 0; // Timo: Or assert?
+
   }
 
   template <>
@@ -421,6 +423,9 @@ namespace Step55
       return - PI * PI * PI * z * cos (PI * x) + PI * cos(PI * z)*sin(PI * x)*cos(PI * y);
     if (component == 3)
       return 0;
+
+    return 0; // Timo: Or assert?
+
   }
 
   template <int dim>
@@ -662,7 +667,7 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::assemble_multigrid ()
   {
-    mg_matrices = 0;
+    mg_matrices = 0.;
 
     QGauss<dim>   quadrature_formula(degree+2);
 
@@ -690,6 +695,23 @@ namespace Step55
     std::vector<SymmetricTensor<2,dim> > symgrad_phi_u (dofs_per_cell);
     std::vector<double>                  div_phi_u   (dofs_per_cell);
     std::vector<double>                  phi_p       (dofs_per_cell);
+
+//    std::vector<ConstraintMatrix> boundary_constraints (triangulation.n_levels());
+//       std::vector<ConstraintMatrix> boundary_interface_constraints (triangulation.n_levels());
+//       for (unsigned int level=0; level<triangulation.n_levels(); ++level)
+//         {
+//           boundary_constraints[level].add_lines (mg_constrained_dofs.get_refinement_edge_indices(level));
+//           boundary_constraints[level].add_lines (mg_constrained_dofs.get_boundary_indices(level));
+//           boundary_constraints[level].close ();
+//
+//           IndexSet idx =
+//             mg_constrained_dofs.get_refinement_edge_indices(level)
+//             & mg_constrained_dofs.get_boundary_indices(level);
+//
+//           boundary_interface_constraints[level]
+//           .add_lines (idx);
+//           boundary_interface_constraints[level].close ();
+//         }
 
     std::vector<std::vector<bool> > interface_dofs
       = mg_constrained_dofs.get_refinement_edge_indices ();  // doesn't compile
