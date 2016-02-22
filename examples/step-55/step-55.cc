@@ -1,3 +1,20 @@
+// - astyle! setup your IDE correctly! 
+// - not compiling with deal 8.4
+// - remove all warnings
+// - solution doesn't have div u = 0
+// - solution doesn't have int_\Omega p = 0
+// - put your notes into doc/ ! (test equation?)
+// - solver doesn't converge?
+//
+// for wednesday:
+// - show and compute convergence rates (optimal!?)
+// - enforce mean value for pressure (demo by using adaptively refined mesh)
+// - show using umfpack
+// - singular system:
+//   - fix single DoF
+//   - or add eps p,q
+//   - or use iterative solver
+
 /* ---------------------------------------------------------------------
  *
  * Copyright (C) 1999 - 2016 by the deal.II authors
@@ -90,32 +107,45 @@ namespace Step55
 //                                    const unsigned int component = 0) const;
   };
 
-  template <int dim>
+  template <>
     double
-  Solution<dim>::value (const Point<dim> &p,
+  Solution<2>::value (const Point<2> &p,
                       const unsigned int component) const
   {
 	    using numbers::PI;
 	    double x = p(0);
 	    double y = p(1);
 	    if (component == 0)
-	    	return 2 * sin (PI * x);
+	    	return sin (PI * x);
 	    if (component == 1)
 	    	return - PI * y * cos(PI * x);
-	    if (dim==2)
-	    	if (component == 2) // this is different in 2d and 3d because its either u_z or pressure
-	    		return sin (PI * x) * sin (PI * y);
-	    if (dim ==3)
-	    {
-		    double z = p(2);
-	    	if (component == 2) // this is different in 2d and 3d because its either u_z or pressure
-	    		    		return - PI * z * cos(PI * x);
-	    	if (component == 3)
-	    		    		return sin (PI * x) * sin (PI * y) * sin (PI * z);
-	    }
+	    if (component == 2)
+	    	return sin (PI * x) * cos (PI * y);
 	    else
 	    	return 0; // Timo: Or assert?
   }
+  template <>
+     double
+   Solution<3>::value (const Point<3> &p,
+                       const unsigned int component) const
+   {
+ 	    using numbers::PI;
+ 	    double x = p(0);
+ 	    double y = p(1);
+ 		double z = p(2);
+
+ 	    if (component == 0)
+ 	    	return 2 * sin (PI * x);
+ 	    if (component == 1)
+ 	    	return - PI * y * cos(PI * x);
+ 	    if (component == 2)
+ 	   		return - PI * z * cos(PI * x);
+ 	    if (component == 3)
+ 	    	return sin (PI * x) * cos (PI * y) * sin (PI * z);
+ 	    else
+ 	    	return 0; // Timo: Or assert?
+   }
+
 
 //  template <int dim>
 //  Tensor<1,dim>
@@ -270,22 +300,6 @@ namespace Step55
       }
   }
 
-  // This structure is similar to Step-22 except the 2D and 3D case both use ILU
-  template <int dim>
-  struct InnerPreconditioner;
-
-  template <>
-  struct InnerPreconditioner<2>
-  {
-    typedef SparseILU<double> type;
-  };
-
-  template <>
-  struct InnerPreconditioner<3>
-  {
-    typedef SparseILU<double> type;
-  };
-
   template <int dim>
   class StokesProblem
   {
@@ -295,7 +309,7 @@ namespace Step55
 
   private:
     void setup_dofs (bool use_multigrid);
-    void assemble_system (bool use_multigrid);
+    void assemble_system ();
     void assemble_multigrid ();
     void solve (bool use_multigrid);
     void process_solution ();
@@ -328,9 +342,6 @@ namespace Step55
     MGConstrainedDoFs                     mg_constrained_dofs;
 
     TimerOutput computing_timer;
-
-    unsigned int its_A;
-    unsigned int its_S;
   };
 
 
@@ -353,20 +364,17 @@ namespace Step55
     Assert (component < this->n_components,
             ExcIndexRange (component, 0, this->n_components));
 
-    using numbers::PI;
+	    using numbers::PI;
 	    double x = p(0);
 	    double y = p(1);
 	    if (component == 0)
-	    	return 2 * sin (PI * x);
+	    	return sin (PI * x);
 	    if (component == 1)
 	    	return - PI * y * cos(PI * x);
 	    if (component == 2)
-	    	{
-	    		double z = p(2);
-	    		return - PI * z * cos(PI * x);
-	    	}
+	    	return sin (PI * x) * cos (PI * y);
 	    else
-	    	return 0;
+	    	return 0; // Timo: Or assert?
   }
 
   template <int dim>
@@ -379,50 +387,41 @@ namespace Step55
                           const unsigned int  component = 0) const;
   };
 
-
-  template <int dim>
+  template <>
   double
-  RightHandSide<dim>::value (const Point<dim>  & p,   // Timo: This can be done using template specialization
+  RightHandSide<2>::value (const Point<2>  & p,   // Timo: This can be done using template specialization
                              const unsigned int component) const
   {
 	    using numbers::PI;
 	    double x = p(0);
 	    double y = p(1);
         if (component == 0)
-	    {
-	    	if (dim==2)
-	    	  return - 2 * PI * PI * sin(PI * x) + PI * cos(PI * x) * sin(PI * y);
-	    	else if (dim==3)
-	    	{
-	    		double z = p(2);
-	    		return - 2 * PI * PI * sin(PI * x) + PI * cos(PI * y) * sin(PI * x) * sin(PI * z);
-	    	}
-	    	else
-	    		return 0; // Timo: Assert?
-	    }
+	    	  return PI * PI * sin(PI * x) + PI * cos(PI * x) * cos(PI * y);
 	    if (component == 1)
-	    {
-	    	if (dim==2)
-	    	  return PI * PI * PI * y * cos(PI * x) + PI * cos(PI * y)*sin(PI * x);
-	    	else if (dim==3)
-	    	{
-	    	  double z = p(2);
-	    	  return  PI * PI * PI * y * cos (PI * x) + PI * cos(PI * y)*sin(PI * x)*sin(PI * z);
-	    	}
-	    	else
-	    		return 0; // Timo: Assert?
-	    }
-	    if (dim==3)
-	    {
-	    	double z = p(2);
+	    	  return - PI * PI * PI * y * cos(PI * x) - PI * sin(PI * y) * sin(PI * x);
 			if (component == 2)
-				return PI * PI * PI * z * cos (PI * x) + PI * cos(PI * z)*sin(PI * x)*sin(PI * y);
-			if (component == 3) // Ryan: this can go (just here as sanity check)
 				return 0;
-	    }
-	    else
-	    	return 0; // must be component = 2 in 2D
+
   }
+
+  template <>
+    double
+    RightHandSide<3>::value (const Point<3>  & p,
+                               const unsigned int component) const
+    {
+  	    using numbers::PI;
+  	    double x = p(0);
+  	    double y = p(1);
+  	    double z = p(2);
+          if (component == 0)
+  	    		return 2 * PI * PI * sin(PI * x) + PI * cos(PI * x) * cos(PI * y) * sin(PI * z);
+  	    if (component == 1)
+  	    	  return  - PI * PI * PI * y * cos (PI * x) + PI * (-1) * sin(PI * y)*sin(PI * x)*sin(PI * z);
+  			if (component == 2)
+  				return - PI * PI * PI * z * cos (PI * x) + PI * cos(PI * z)*sin(PI * x)*cos(PI * y);
+  			if (component == 3)
+  				return 0;
+    }
 
   template <int dim>
   StokesProblem<dim>::StokesProblem (const unsigned int degree)
@@ -571,7 +570,7 @@ namespace Step55
 
 // In this function, the system matrix is assembled the same regardless of using ILU and GMG
   template <int dim>
-  void StokesProblem<dim>::assemble_system (bool use_multigrid)
+  void StokesProblem<dim>::assemble_system ()
   {
     system_matrix=0;
     system_rhs=0;
@@ -693,9 +692,9 @@ namespace Step55
     std::vector<double>                  phi_p       (dofs_per_cell);
 
     std::vector<std::vector<bool> > interface_dofs
-      = mg_constrained_dofs.get_refinement_edge_indices ();
+      = mg_constrained_dofs.get_refinement_edge_indices ();  // doesn't compile
     std::vector<std::vector<bool> > boundary_interface_dofs
-      = mg_constrained_dofs.get_refinement_edge_boundary_indices ();
+      = mg_constrained_dofs.get_refinement_edge_boundary_indices (); // doesn't compile
 
     std::vector<ConstraintMatrix> boundary_constraints (triangulation.n_levels());
     std::vector<ConstraintMatrix> boundary_interface_constraints (triangulation.n_levels());
@@ -761,7 +760,7 @@ namespace Step55
         boundary_interface_constraints[cell->level()]
         .distribute_local_to_global (cell_matrix,
                                      local_dof_indices,
-                                     mg_interface_matrices[cell->level()]);
+                                     mg_interface_matrices[cell->level()]); // are you setting those back to zero?
       }
   }
 
@@ -806,8 +805,7 @@ namespace Step55
         // If this cheaper solver is not desired, then simply short-cut
         // the attempt at solving with the cheaper preconditioner that consists
         // of only a single V-cycle
-        const BlockSchurPreconditioner<typename InnerPreconditioner<dim>::type,
-              SparseILU<double>>
+        const BlockSchurPreconditioner<SparseILU<double>, SparseILU<double>>
               preconditioner (system_matrix,
                               pressure_mass_matrix,
                               pmass_preconditioner, A_preconditioner,
@@ -820,14 +818,16 @@ namespace Step55
                      preconditioner);
         computing_timer.leave_subsection();
 
-        its_A = preconditioner.n_iterations_A();
-        its_S = preconditioner.n_iterations_S();
-
         constraints.distribute (solution);
 
         std::cout << " "
                   << solver_control.last_step()
                   << " block GMRES iterations";
+
+        std::cout << std::endl
+                  << "Number of iterations used for approximation of A inverse: " << preconditioner.n_iterations_A() << std::endl
+                  << "Number of iterations used for approximation of S inverse: " << preconditioner.n_iterations_S() << std::endl
+                  << std::endl;
       }
     else
       {
@@ -872,7 +872,7 @@ namespace Step55
         pmass_preconditioner.initialize (pressure_mass_matrix,
                                          SparseILU<double>::AdditionalData());
 
-        bool use_expensive = false;
+        bool use_expensive = true;
 
         // If this cheaper solver is not desired, then simply short-cut
         // the attempt at solving with the cheaper preconditioner that
@@ -891,14 +891,17 @@ namespace Step55
                      preconditioner);
         computing_timer.leave_subsection();
 
-        its_A += preconditioner.n_iterations_A();
-        its_S += preconditioner.n_iterations_S();
-
         constraints.distribute (solution);
 
         std::cout << " "
                   << solver_control.last_step()
                   << " block GMRES iterations";
+
+        std::cout << std::endl
+                  << "Number of iterations used for approximation of A inverse: " << preconditioner.n_iterations_A() << std::endl
+                  << "Number of iterations used for approximation of S inverse: " << preconditioner.n_iterations_S() << std::endl
+                  << std::endl;
+
       }
   }
 
@@ -907,12 +910,13 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::process_solution ()
   {
-    FEValuesExtractors::Vector velocities(0);
+	    const FEValuesExtractors::Vector velocities (0);
+	    const FEValuesExtractors::Scalar pressure (dim);
 
-   const ComponentSelectFunction<dim> // Timo: Step-20 showed me this but errors seem to be the same
-   pressure_mask (dim, dim+1);
-   const ComponentSelectFunction<dim>
-   velocity_mask(std::make_pair(0, dim), dim+1);
+	    const ComponentSelectFunction<dim> // Timo: Step-20 showed me this but errors seem to be the same
+	    pressure_mask (dim, dim+1);
+	    const ComponentSelectFunction<dim>
+	    velocity_mask(std::make_pair(0, dim), dim+1);
 
     Vector<float> difference_per_cell (triangulation.n_active_cells());
 
@@ -920,9 +924,11 @@ namespace Step55
                                        solution,
                                        Solution<dim>(),
                                        difference_per_cell,
-                                       QGauss<dim>(3),
-                                       VectorTools::L2_norm),
-                                       &velocity_mask;
+                                       QGauss<dim>(degree+2), // Timo: degree+1 enough in Stokes?
+                                       VectorTools::L2_norm,
+                                       &velocity_mask);
+                                   //    fe.component_mask(velocities));  // Timo: These don't work
+
 
    const double Velocity_L2_error = difference_per_cell.l2_norm();
 
@@ -930,9 +936,10 @@ namespace Step55
                                       solution,
                                       Solution<dim>(),
                                       difference_per_cell,
-                                      QGauss<dim>(3),
-                                      VectorTools::L2_norm),
-                                      &pressure_mask;
+                                      QGauss<dim>(degree+2),
+                                      VectorTools::L2_norm,
+                                      &pressure_mask);
+                                  //    fe.component_mask(pressure));
 
   const double Pressure_L2_error = difference_per_cell.l2_norm();
 
@@ -945,9 +952,6 @@ namespace Step55
 //                                       fe.component_mask(velocities)); // TODO: need to add mask because only want to check velocity or pressure
 
 //    const double H1_error = difference_per_cell.l2_norm();
-
-    const QTrapez<1> q_trapez; // Timo: Shall we use something better than QTrapez?
-
     std::cout << std::endl << "Velocity L2 Error: " << Velocity_L2_error
         << std::endl
         << "Pressure L2 Error: " << Pressure_L2_error
@@ -956,7 +960,6 @@ namespace Step55
 //        << H1_error
         << std::endl;
 
-    const double Linfty_error = difference_per_cell.linfty_norm();
     const unsigned int n_active_cells=triangulation.n_active_cells();
     const unsigned int n_dofs=dof_handler.n_dofs();
 
@@ -1000,11 +1003,6 @@ namespace Step55
 
     std::ofstream output (filename.str().c_str());
     data_out.write_vtk (output);
-
-    std::cout << std::endl
-              << "Number of iterations used for approximation of A inverse: " << its_A << std::endl
-              << "Number of iterations used for approximation of S inverse: " << its_S << std::endl
-              << std::endl;
   }
 
 
@@ -1045,23 +1043,23 @@ namespace Step55
     for (unsigned int refinement_cycle = 0; refinement_cycle<3;
          ++refinement_cycle)
       {
-        bool use_multigrid=false;
-        do
-          {
+        bool use_multigrid=false; // class member? Timo: Wait, what? It's for the loop.
+//        do
+//          {
             std::cout << "Refinement cycle " << refinement_cycle << std::endl;
 
             if (refinement_cycle > 0)
               triangulation.refine_global (1);
             if (use_multigrid == false)
               std::cout << "Now running with ILU" << std::endl;
-            if (use_multigrid == true)
+            if (use_multigrid == true) // replace with "else"?
               std::cout << "Now running with Multigrid" << std::endl;
-            computing_timer.enter_subsection ("Setup");
+            computing_timer.enter_subsection ("Setup"); // move this and leave into the function
             setup_dofs(use_multigrid);
             computing_timer.leave_subsection();
             std::cout << "   Assembling..." << std::endl << std::flush;
             computing_timer.enter_subsection ("Assemble");
-            assemble_system (use_multigrid);
+            assemble_system ();
             computing_timer.leave_subsection();
             if (use_multigrid == true)
               {
@@ -1081,9 +1079,9 @@ namespace Step55
             computing_timer.reset ();
             output_results (refinement_cycle);
 
-            use_multigrid = !use_multigrid;
-          }
-        while (use_multigrid);
+//            use_multigrid = !use_multigrid;
+//          }
+//        while (use_multigrid);
       }
   }
 }
