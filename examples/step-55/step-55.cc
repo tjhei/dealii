@@ -546,12 +546,15 @@ namespace Step55
                                                 constraints,
                                                 fe.component_mask(velocities));
     }
-    constraints.close ();
+//    constraints.close ();
 
     std::vector<types::global_dof_index> dofs_per_block (2);
     DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
     const unsigned int n_u = dofs_per_block[0],
                        n_p = dofs_per_block[1];
+
+  //  constraints.add_line(n_u);
+    constraints.close ();
 
     std::cout << "   Number of active cells: "
               << triangulation.n_active_cells()
@@ -825,22 +828,23 @@ namespace Step55
   void StokesProblem<dim>::solve (bool use_multigrid)
   {
 	     // RG: Direct solve
-//	  system_matrix.block(1,1) = 0;
-//      SparseDirectUMFPACK A_direct; // Timo: UMFPack
-//      A_direct.initialize(system_matrix);
-//
-//      solution = system_rhs;
-//      A_direct.solve(system_matrix,
-//                     solution);
-//
-//     constraints.distribute (solution);
-//     return;
+	  system_matrix.block(1,1) = 0;
+      SparseDirectUMFPACK A_direct; // Timo: UMFPack
+      A_direct.initialize(system_matrix);
 
+      solution = system_rhs;
+      A_direct.solve(system_matrix,
+                     solution);
+
+     constraints.distribute (solution);
+     return;
+
+	  std::cout << system_rhs.block(1).l2_norm() << std::endl;
 
     computing_timer.enter_subsection ("Solve");
 
     SolverControl solver_control (system_matrix.m(),
-                                  1e-6*system_rhs.l2_norm());
+                                  1e-8*system_rhs.l2_norm()); // was 1e-6
 
     GrowingVectorMemory<BlockVector<double> > vector_memory;
     SolverGMRES<BlockVector<double> >::AdditionalData gmres_data;
@@ -867,7 +871,7 @@ namespace Step55
         pmass_preconditioner.initialize (pressure_mass_matrix,
                                          SparseILU<double>::AdditionalData());
 
-        bool use_expensive = false;
+        bool use_expensive = true;
 
         // If this cheaper solver is not desired, then simply short-cut
         // the attempt at solving with the cheaper preconditioner that consists
@@ -1103,10 +1107,10 @@ namespace Step55
     GridGenerator::hyper_cube (triangulation);
 
 
-    triangulation.refine_global (6-dim);
+    triangulation.refine_global (4-dim); //was 6
     //GridTools::distort_random(0.1, triangulation, true);
 
-    for (unsigned int refinement_cycle = 0; refinement_cycle<3;
+    for (unsigned int refinement_cycle = 0; refinement_cycle<5; //was 3
          ++refinement_cycle)
       {
         bool use_multigrid=false; // class member? Timo: Wait, what? It's for the loop.
