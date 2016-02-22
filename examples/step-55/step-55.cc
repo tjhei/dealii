@@ -1,10 +1,12 @@
-// - astyle! setup your IDE correctly!
-// - not compiling with deal 8.4
-// - remove all warnings
+// - not compiling with deal 8.4 & remove all warnings
+//            -- Timo: code in step-16_02.cc doesn't work in my code (need to upgrade dealii first I guess?)
 // - solution doesn't have div u = 0
 // - solution doesn't have int_\Omega p = 0
+//            -- Timo: It now has both of these in 2D and 3D
 // - put your notes into doc/ ! (test equation?)
+//            -- Timo: rough draft uploaded
 // - solver doesn't converge?
+//            -- Not for MG
 //
 // for wednesday:
 // - show and compute convergence rates (optimal!?)
@@ -448,6 +450,8 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::setup_dofs (bool use_multigrid)
   {
+    computing_timer.enter_subsection ("Setup");
+
     system_matrix.clear ();
     // We don't need the multigrid dofs for whole problem finite element
     dof_handler.distribute_dofs(fe);
@@ -568,6 +572,8 @@ namespace Step55
     system_rhs.block(0).reinit (n_u);
     system_rhs.block(1).reinit (n_p);
     system_rhs.collect_sizes ();
+
+    computing_timer.leave_subsection();
   }
 
 
@@ -577,6 +583,8 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::assemble_system ()
   {
+    computing_timer.enter_subsection ("Assemble");
+
     system_matrix=0;
     system_rhs=0;
 
@@ -658,6 +666,8 @@ namespace Step55
                                                 local_dof_indices,
                                                 system_matrix, system_rhs);
       }
+
+    computing_timer.leave_subsection();
   }
 
   // @sect4{StokesProblem::assemble_multigrid
@@ -667,6 +677,8 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::assemble_multigrid ()
   {
+    computing_timer.enter_subsection ("Assemble Multigrid");
+
     mg_matrices = 0.;
 
     QGauss<dim>   quadrature_formula(degree+2);
@@ -784,6 +796,8 @@ namespace Step55
                                      local_dof_indices,
                                      mg_interface_matrices[cell->level()]); // are you setting those back to zero?
       }
+
+    computing_timer.leave_subsection();
   }
 
 // @sect4{StokesProblem::solve}
@@ -794,6 +808,8 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::solve (bool use_multigrid)
   {
+    computing_timer.enter_subsection ("Solve");
+
     SolverControl solver_control (system_matrix.m(),
                                   1e-6*system_rhs.l2_norm());
 
@@ -839,6 +855,13 @@ namespace Step55
                      system_rhs,
                      preconditioner);
         computing_timer.leave_subsection();
+
+        // SparseDirectUMFPACK A_direct; // Timo: UMFPack
+        // A_direct.initialize(system_matrix);
+        // A_direct.solve(system_matrix,
+        //                solution,
+        //                system_rhs,
+        //                preconditioner));
 
         constraints.distribute (solution);
 
@@ -925,6 +948,8 @@ namespace Step55
                   << std::endl;
 
       }
+
+    computing_timer.leave_subsection();
   }
 
   // @sect4{StokesProblem::process_solution}
@@ -1072,29 +1097,29 @@ namespace Step55
 
         if (refinement_cycle > 0)
           triangulation.refine_global (1);
+
         if (use_multigrid == false)
           std::cout << "Now running with ILU" << std::endl;
-        if (use_multigrid == true) // replace with "else"?
+        else
           std::cout << "Now running with Multigrid" << std::endl;
-        computing_timer.enter_subsection ("Setup"); // move this and leave into the function
+
+        std::cout << "   Set-up..." << std::endl << std::flush;
         setup_dofs(use_multigrid);
-        computing_timer.leave_subsection();
+
         std::cout << "   Assembling..." << std::endl << std::flush;
-        computing_timer.enter_subsection ("Assemble");
         assemble_system ();
-        computing_timer.leave_subsection();
+
         if (use_multigrid == true)
           {
             std::cout << "   Assembling Multigrid..." << std::endl << std::flush;
-            computing_timer.enter_subsection ("Assemble Multigrid");
-            assemble_multigrid();
-            computing_timer.leave_subsection();
-          }
-        std::cout << "   Solving..." << std::flush;
-        computing_timer.enter_subsection ("Solve");
-        solve (use_multigrid);
-        computing_timer.leave_subsection();
 
+            assemble_multigrid ();
+          }
+
+        std::cout << "   Solving..." << std::flush;
+        solve (use_multigrid);
+
+        std::cout << "   Computing Errors..." << std::flush;
         process_solution ();
 
         computing_timer.print_summary ();
