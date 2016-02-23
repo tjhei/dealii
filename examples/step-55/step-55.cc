@@ -827,7 +827,8 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::solve (bool use_multigrid)
   {
-    // RG: Direct solve
+    // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
+
 //    system_matrix.block(1,1) = 0;
 //      SparseDirectUMFPACK A_direct; // Timo: UMFPack
 //      A_direct.initialize(system_matrix);
@@ -837,14 +838,16 @@ namespace Step55
 //     constraints.distribute (solution);
 //     return;
 
+    // We must set all constrained dofs of solution to zero (Timo: Why?)
     constraints.set_zero(solution);
 
     std::cout << system_rhs.block(1).l2_norm() << std::endl;
 
     computing_timer.enter_subsection ("Solve");
 
+    // Here we must make sure to solve for the residual with "good enough" accuracy
     SolverControl solver_control (system_matrix.m(),
-                                  1e-10*system_rhs.l2_norm()); // was 1e-6
+                                  1e-10*system_rhs.l2_norm());
 
     GrowingVectorMemory<BlockVector<double> > vector_memory;
     SolverFGMRES<BlockVector<double> >::AdditionalData gmres_data;
@@ -871,6 +874,7 @@ namespace Step55
         pmass_preconditioner.initialize (pressure_mass_matrix,
                                          SparseILU<double>::AdditionalData());
 
+        // This is used to pass whether or not we want to solve for A to the Block Schur Precondtioner
         bool use_expensive = true;
 
         // If this cheaper solver is not desired, then simply short-cut
