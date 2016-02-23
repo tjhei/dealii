@@ -105,7 +105,7 @@ namespace Step55
     Solution () : Function<dim>(dim+1) {}
     virtual double value (const Point<dim> &p,
                           const unsigned int component) const;
-        virtual Tensor<1,dim> gradient (const Point<dim> &p,
+    virtual Tensor<1,dim> gradient (const Point<dim> &p,
                                     const unsigned int component = 0) const;
   };
 
@@ -154,27 +154,27 @@ namespace Step55
   Solution<2>::gradient (const Point<2> &p,  // Timo: But okay for this to be a Tensor?
                          const unsigned int component) const  // component and you'd return like values
   {
-	    using numbers::PI;
-	    double x = p(0);
-	    double y = p(1);
-	    Tensor<1,2> return_value;
-      if (component == 0)
+    using numbers::PI;
+    double x = p(0);
+    double y = p(1);
+    Tensor<1,2> return_value;
+    if (component == 0)
       {
-     	return_value[0] = PI * cos (PI * x);
-     	return_value[1] = 0.0;
+        return_value[0] = PI * cos (PI * x);
+        return_value[1] = 0.0;
 
       }
-      if (component == 1)
+    if (component == 1)
       {
-       	return_value[0] = y * PI * PI * sin( PI * x);
-       	return_value[1] = - PI * cos (PI * x);
+        return_value[0] = y * PI * PI * sin( PI * x);
+        return_value[1] = - PI * cos (PI * x);
       }
-      if (component == 2)
+    if (component == 2)
       {
-       	return_value[0] = PI * cos (PI * x) * cos (PI * y);
-       	return_value[1] =  - PI * sin (PI * x) * sin(PI * y);
-        }
-      return return_value;
+        return_value[0] = PI * cos (PI * x) * cos (PI * y);
+        return_value[1] =  - PI * sin (PI * x) * sin(PI * y);
+      }
+    return return_value;
   }
 
 
@@ -553,7 +553,7 @@ namespace Step55
     const unsigned int n_u = dofs_per_block[0],
                        n_p = dofs_per_block[1];
 
-  //  constraints.add_line(n_u);
+    //  constraints.add_line(n_u);
     constraints.close ();
 
     std::cout << "   Number of active cells: "
@@ -827,31 +827,31 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::solve (bool use_multigrid)
   {
-	     // RG: Direct solve
-	  system_matrix.block(1,1) = 0;
-      SparseDirectUMFPACK A_direct; // Timo: UMFPack
-      A_direct.initialize(system_matrix);
+    // RG: Direct solve
+//    system_matrix.block(1,1) = 0;
+//      SparseDirectUMFPACK A_direct; // Timo: UMFPack
+//      A_direct.initialize(system_matrix);
+//      solution = system_rhs;
+//      A_direct.solve(system_matrix,
+//                     solution);
+//     constraints.distribute (solution);
+//     return;
 
-      solution = system_rhs;
-      A_direct.solve(system_matrix,
-                     solution);
+    constraints.set_zero(solution);
 
-     constraints.distribute (solution);
-     return;
-
-	  std::cout << system_rhs.block(1).l2_norm() << std::endl;
+    std::cout << system_rhs.block(1).l2_norm() << std::endl;
 
     computing_timer.enter_subsection ("Solve");
 
     SolverControl solver_control (system_matrix.m(),
-                                  1e-8*system_rhs.l2_norm()); // was 1e-6
+                                  1e-10*system_rhs.l2_norm()); // was 1e-6
 
     GrowingVectorMemory<BlockVector<double> > vector_memory;
-    SolverGMRES<BlockVector<double> >::AdditionalData gmres_data;
-    gmres_data.max_n_tmp_vectors = 100;
+    SolverFGMRES<BlockVector<double> >::AdditionalData gmres_data;
+//    gmres_data.max_n_tmp_vectors = 100;
 
-    SolverGMRES<BlockVector<double> > gmres(solver_control, vector_memory,
-                                            gmres_data);
+    SolverFGMRES<BlockVector<double> > gmres(solver_control, vector_memory,
+                                             gmres_data);
 
     SparseMatrix<double> pressure_mass_matrix;  // Timo: This block has trouble going to assembly for some reason.. even if I make pressure_mass_matrix global
     pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
@@ -983,12 +983,12 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::process_solution ()
   {
-	  double mean_value= VectorTools::compute_mean_value 	(dof_handler,
-			  QGauss<dim>(degree+2),
-	  		  solution,
-	  		  dim);
+    double mean_value= VectorTools::compute_mean_value  (dof_handler,
+                                                         QGauss<dim>(degree+2),
+                                                         solution,
+                                                         dim);
 
-	  solution.block(1).add(-mean_value);
+    solution.block(1).add(-mean_value);
 
     const FEValuesExtractors::Vector velocities (0);
     const FEValuesExtractors::Scalar pressure (dim);
@@ -1036,8 +1036,8 @@ namespace Step55
               << std::endl
               << "Pressure L2 Error: " << Pressure_L2_error
               << std::endl
-        << "Velocity H1 Error: "
-        << Velocity_H1_error
+              << "Velocity H1 Error: "
+              << Velocity_H1_error
               << std::endl;
   }
 
