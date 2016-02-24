@@ -992,6 +992,7 @@ namespace Step55
                                                          solution,
                                                          dim);
 
+    std::cout << "mean value adjusted by " << -mean_value << std::endl;
     solution.block(1).add(-mean_value);
 
     const FEValuesExtractors::Vector velocities (0);
