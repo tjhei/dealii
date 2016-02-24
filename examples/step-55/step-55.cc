@@ -126,6 +126,7 @@ namespace Step55
 
     return 0; // Timo: Or assert?
   }
+
   template <>
   double
   Solution<3>::value (const Point<3> &p,
@@ -162,7 +163,6 @@ namespace Step55
       {
         return_value[0] = PI * cos (PI * x);
         return_value[1] = 0.0;
-
       }
     if (component == 1)
       {
@@ -407,7 +407,7 @@ namespace Step55
 
   template <>
   double
-  RightHandSide<2>::value (const Point<2>   &p,   // Timo: This can be done using template specialization
+  RightHandSide<2>::value (const Point<2>   &p,
                            const unsigned int component) const
   {
     using numbers::PI;
@@ -833,15 +833,18 @@ namespace Step55
     // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
     if (0)
       {
-	system_matrix.block(1,1) = 0;
-	SparseDirectUMFPACK A_direct;
-	A_direct.initialize(system_matrix);
-	solution = system_rhs;
-	A_direct.solve(system_matrix, solution);
-	constraints.distribute (solution);
-	return;
+        system_matrix.block(1,1) = 0;
+
+        SparseDirectUMFPACK A_direct;
+        A_direct.initialize(system_matrix);
+
+        solution = system_rhs;
+        A_direct.solve(system_matrix, solution);
+
+        constraints.distribute (solution);
+        return;
       }
-   
+
     computing_timer.enter_subsection ("Solve");
 
     // Here we must make sure to solve for the residual with "good enough" accuracy
@@ -994,11 +997,10 @@ namespace Step55
     std::cout << "mean value adjusted by " << -mean_value << std::endl;
     solution.block(1).add(-mean_value);
 
-    const FEValuesExtractors::Vector velocities (0);
-    const FEValuesExtractors::Scalar pressure (dim);
 
-    const ComponentSelectFunction<dim> // Timo: Step-20 showed me this but errors seem to be the same
+    const ComponentSelectFunction<dim>
     pressure_mask (dim, dim+1);
+    // TODO: find a better way to do this inside deal.II, maybe with component_mask
     const ComponentSelectFunction<dim>
     velocity_mask(std::make_pair(0, dim), dim+1);
 
@@ -1011,7 +1013,6 @@ namespace Step55
                                        QGauss<dim>(degree+2), // Timo: degree+1 enough in Stokes?
                                        VectorTools::L2_norm,
                                        &velocity_mask);
-    //    fe.component_mask(velocities));  // Timo: These don't work
 
 
     const double Velocity_L2_error = difference_per_cell.l2_norm();
@@ -1023,7 +1024,6 @@ namespace Step55
                                        QGauss<dim>(degree+2),
                                        VectorTools::L2_norm,
                                        &pressure_mask);
-    //    fe.component_mask(pressure));
 
     const double Pressure_L2_error = difference_per_cell.l2_norm();
 
