@@ -293,7 +293,7 @@ namespace Step55
     {
       stokes_matrix.block(0,1).vmult(utmp, dst.block(1)); //B^T
       utmp*=-1.0;
-      utmp.add(src.block(0)); //Timo: Where to find what this was changed to
+      utmp+=src.block(0);
     }
 
     // Now either solve with the top left block (if do_solve_A==true)
