@@ -827,22 +827,21 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::solve (bool use_multigrid)
   {
-    // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
-
-//    system_matrix.block(1,1) = 0;
-//      SparseDirectUMFPACK A_direct; // Timo: UMFPack
-//      A_direct.initialize(system_matrix);
-//      solution = system_rhs;
-//      A_direct.solve(system_matrix,
-//                     solution);
-//     constraints.distribute (solution);
-//     return;
-
     // We must set all constrained dofs of solution to zero (Timo: Why?)
     constraints.set_zero(solution);
 
-    std::cout << system_rhs.block(1).l2_norm() << std::endl;
-
+    // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
+    if (0)
+      {
+	system_matrix.block(1,1) = 0;
+	SparseDirectUMFPACK A_direct;
+	A_direct.initialize(system_matrix);
+	solution = system_rhs;
+	A_direct.solve(system_matrix, solution);
+	constraints.distribute (solution);
+	return;
+      }
+   
     computing_timer.enter_subsection ("Solve");
 
     // Here we must make sure to solve for the residual with "good enough" accuracy
