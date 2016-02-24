@@ -301,13 +301,20 @@ namespace Step55
     // iterations of our two-stage outer GMRES iteration)
     if (do_solve_A == true)
       {
-        SolverControl solver_control(10000, utmp.l2_norm()*1e-2);
+        SolverControl solver_control(10000, utmp.l2_norm()*1e-2, true);
         SolverCG<>    cg (solver_control);
 
 
         dst.block(0) = 0.0;
+        try
+        {
         cg.solve(stokes_matrix.block(0,0), dst.block(0), utmp,
                  a_preconditioner);
+        }
+        catch(...)
+        {
+        	std::cout << "Oops" << std::endl;
+        }
 
         n_iterations_A_ += solver_control.last_step();
       }
@@ -509,7 +516,7 @@ namespace Step55
 
         typename FunctionMap<dim>::type      boundary_condition_function_map;
         BoundaryValuesForVelocity<dim>                velocity_boundary_condition;
-        boundary_condition_function_map[1] = &velocity_boundary_condition;
+        boundary_condition_function_map[0] = &velocity_boundary_condition;
 
         mg_constrained_dofs.clear();
         mg_constrained_dofs.initialize(velocity_dof_handler, boundary_condition_function_map);
@@ -849,13 +856,12 @@ namespace Step55
 
     // Here we must make sure to solve for the residual with "good enough" accuracy
     SolverControl solver_control (system_matrix.m(),
-                                  1e-10*system_rhs.l2_norm());
+                                  1e-10*system_rhs.l2_norm(), true);
 
-    GrowingVectorMemory<BlockVector<double> > vector_memory;
     SolverFGMRES<BlockVector<double> >::AdditionalData gmres_data;
 //    gmres_data.max_n_tmp_vectors = 100;
 
-    SolverFGMRES<BlockVector<double> > gmres(solver_control, vector_memory,
+    SolverFGMRES<BlockVector<double> > gmres(solver_control,
                                              gmres_data);
 
     SparseMatrix<double> pressure_mass_matrix;  // Timo: This block has trouble going to assembly for some reason.. even if I make pressure_mass_matrix global
@@ -1118,8 +1124,8 @@ namespace Step55
          ++refinement_cycle)
       {
         bool use_multigrid=false; // class member? Timo: Wait, what? It's for the loop.
-//        do
-//          {
+        do
+          {
         std::cout << "Refinement cycle " << refinement_cycle << std::endl;
 
         if (refinement_cycle > 0)
@@ -1153,9 +1159,9 @@ namespace Step55
         computing_timer.reset ();
         output_results (refinement_cycle);
 
-//            use_multigrid = !use_multigrid;
-//          }
-//        while (use_multigrid);
+            use_multigrid = !use_multigrid;
+          }
+        while (use_multigrid);
       }
   }
 }
@@ -1169,7 +1175,7 @@ int main ()
       using namespace dealii;
       using namespace Step55;
 
-      deallog.depth_console(1); // Timo: Need this or else there is too much output
+      deallog.depth_console(0); // Timo: Need this or else there is too much output
 
       StokesProblem<2> flow_problem(1);
 
