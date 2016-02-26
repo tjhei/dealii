@@ -306,17 +306,9 @@ namespace Step55
         SolverControl solver_control(10000, utmp.l2_norm()*1e-2, true);
         SolverCG<>    cg (solver_control);
 
-
         dst.block(0) = 0.0;
-        try
-        {
         cg.solve(stokes_matrix.block(0,0), dst.block(0), utmp,
                  a_preconditioner);
-        }
-        catch(...)
-        {
-        	std::cout << "Oops" << std::endl;
-        }
 
         n_iterations_A_ += solver_control.last_step();
       }
@@ -738,40 +730,42 @@ namespace Step55
     std::vector<double>                  div_phi_u   (dofs_per_cell);
     std::vector<double>                  phi_p       (dofs_per_cell);
 
-//    std::vector<ConstraintMatrix> boundary_constraints (triangulation.n_levels());
-//       std::vector<ConstraintMatrix> boundary_interface_constraints (triangulation.n_levels());
-//       for (unsigned int level=0; level<triangulation.n_levels(); ++level)
-//         {
-//           boundary_constraints[level].add_lines (mg_constrained_dofs.get_refinement_edge_indices(level));
-//           boundary_constraints[level].add_lines (mg_constrained_dofs.get_boundary_indices(level));
-//           boundary_constraints[level].close ();
-//
-//           IndexSet idx =
-//             mg_constrained_dofs.get_refinement_edge_indices(level)
-//             & mg_constrained_dofs.get_boundary_indices(level);
-//
-//           boundary_interface_constraints[level]
-//           .add_lines (idx);
-//           boundary_interface_constraints[level].close ();
-//         }
-
-    std::vector<std::vector<bool> > interface_dofs
-      = mg_constrained_dofs.get_refinement_edge_indices ();  // doesn't compile
-    std::vector<std::vector<bool> > boundary_interface_dofs
-      = mg_constrained_dofs.get_refinement_edge_boundary_indices (); // doesn't compile
-
+    //Timo: new
     std::vector<ConstraintMatrix> boundary_constraints (triangulation.n_levels());
     std::vector<ConstraintMatrix> boundary_interface_constraints (triangulation.n_levels());
     for (unsigned int level=0; level<triangulation.n_levels(); ++level)
       {
-        boundary_constraints[level].add_lines (interface_dofs[level]);
-        boundary_constraints[level].add_lines (mg_constrained_dofs.get_boundary_indices()[level]);
+        boundary_constraints[level].add_lines (mg_constrained_dofs.get_refinement_edge_indices(level));
+        boundary_constraints[level].add_lines (mg_constrained_dofs.get_boundary_indices(level));
         boundary_constraints[level].close ();
 
+        IndexSet idx =
+          mg_constrained_dofs.get_refinement_edge_indices(level)
+          & mg_constrained_dofs.get_boundary_indices(level);
+
         boundary_interface_constraints[level]
-        .add_lines (boundary_interface_dofs[level]);
+        .add_lines (idx);
         boundary_interface_constraints[level].close ();
       }
+
+    // Old
+//    std::vector<std::vector<bool> > interface_dofs
+//      = mg_constrained_dofs.get_refinement_edge_indices ();  // doesn't compile
+//    std::vector<std::vector<bool> > boundary_interface_dofs
+//      = mg_constrained_dofs.get_refinement_edge_boundary_indices (); // doesn't compile
+//
+//    std::vector<ConstraintMatrix> boundary_constraints (triangulation.n_levels());
+//    std::vector<ConstraintMatrix> boundary_interface_constraints (triangulation.n_levels());
+//    for (unsigned int level=0; level<triangulation.n_levels(); ++level)
+//      {
+//        boundary_constraints[level].add_lines (interface_dofs[level]);
+//        boundary_constraints[level].add_lines (mg_constrained_dofs.get_boundary_indices()[level]);
+//        boundary_constraints[level].close ();
+//
+//        boundary_interface_constraints[level]
+//        .add_lines (boundary_interface_dofs[level]);
+//        boundary_interface_constraints[level].close ();
+//      }
 
     // This iterator goes over all cells (not just active)
     typename DoFHandler<dim>::cell_iterator cell = velocity_dof_handler.begin(),
@@ -815,10 +809,21 @@ namespace Step55
                                      local_dof_indices,
                                      mg_matrices[cell->level()]);
 
+//        for (unsigned int i=0; i<dofs_per_cell; ++i)
+//          for (unsigned int j=0; j<dofs_per_cell; ++j)
+//            if ( !(interface_dofs[cell->level()][local_dof_indices[i]]==true &&
+//                   interface_dofs[cell->level()][local_dof_indices[j]]==false))
+//              cell_matrix(i,j) = 0;
+
+        // Timo: blind copy and paste
         for (unsigned int i=0; i<dofs_per_cell; ++i)
           for (unsigned int j=0; j<dofs_per_cell; ++j)
-            if ( !(interface_dofs[cell->level()][local_dof_indices[i]]==true &&
-                   interface_dofs[cell->level()][local_dof_indices[j]]==false))
+            if (
+              !mg_constrained_dofs.at_refinement_edge(cell->level(),
+                                                      local_dof_indices[i])
+              || mg_constrained_dofs.at_refinement_edge(cell->level(),
+                                                        local_dof_indices[j])
+            )
               cell_matrix(i,j) = 0;
 
         boundary_interface_constraints[cell->level()]
@@ -838,14 +843,14 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::solve ()
   {
-	computing_timer.enter_subsection ("Solve");
+    computing_timer.enter_subsection ("Solve");
     // We must set all constrained dofs of solution to zero (Timo: Why?)
     constraints.set_zero(solution);
 
     // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
     if (solver == Solver::UMFPACK)
       {
-    	std::cout << "Now solving with UMFPACK" <<std::endl;
+        std::cout << "Now solving with UMFPACK" <<std::endl;
         system_matrix.block(1,1) = 0;
 
         SparseDirectUMFPACK A_direct;
@@ -876,7 +881,7 @@ namespace Step55
 
     if (solver == Solver::FGMRES_ILU)
       {
-    	std::cout << "Now solving with FGMRES_ILU" <<std::endl;
+        std::cout << "Now solving with FGMRES_ILU" <<std::endl;
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
 
         std::cout << "   Computing preconditioner..." << std::endl << std::flush;
@@ -920,7 +925,7 @@ namespace Step55
       }
     else
       {
-    	std::cout << "Now solving with FGMRES_GMG" <<std::endl;
+        std::cout << "Now solving with FGMRES_GMG" <<std::endl;
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
         // Transfer operators between levels
         MGTransferPrebuilt<Vector<double> > mg_transfer(constraints, mg_constrained_dofs);
