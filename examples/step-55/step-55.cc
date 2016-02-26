@@ -94,6 +94,8 @@
 
 namespace Step55
 {
+  enum Solver {FGMRES_ILU, FGMRES_GMG, UMFPACK};
+
   using namespace dealii;
 
   // @sect3{Solution Function}
@@ -329,19 +331,20 @@ namespace Step55
   class StokesProblem
   {
   public:
-    StokesProblem (const unsigned int degree);
+    StokesProblem (const unsigned int degree, Solver solver);
     void run ();
 
   private:
-    void setup_dofs (bool use_multigrid);
+    void setup_dofs ();
     void assemble_system ();
     void assemble_multigrid ();
-    void solve (bool use_multigrid);
+    void solve ();
     void process_solution ();
     void output_results (const unsigned int refinement_cycle) const;
     void refine_mesh ();
 
     const unsigned int   degree;
+    Solver                 solver;
 
     Triangulation<dim>   triangulation;
     FESystem<dim>        fe;
@@ -454,9 +457,10 @@ namespace Step55
   }
 
   template <int dim>
-  StokesProblem<dim>::StokesProblem (const unsigned int degree)
+  StokesProblem<dim>::StokesProblem (const unsigned int degree, Solver solver)
     :
     degree (degree),
+    solver (solver),
     triangulation (Triangulation<dim>::maximum_smoothing),
     fe (FE_Q<dim>(degree+1), dim, // Finite element for whole system
         FE_Q<dim>(degree), 1),
@@ -471,7 +475,7 @@ namespace Step55
 
 // This function sets up things differently based on if you want to use ILU or GMG as a preconditioner.
   template <int dim>
-  void StokesProblem<dim>::setup_dofs (bool use_multigrid)
+  void StokesProblem<dim>::setup_dofs ()
   {
     computing_timer.enter_subsection ("Setup");
 
@@ -486,7 +490,7 @@ namespace Step55
     // This always knows how to use the dim (start at 0 one)
     FEValuesExtractors::Vector velocities(0);
 
-    if (use_multigrid==false)
+    if (solver != FGMRES_GMG)
       {
         DoFRenumbering::Cuthill_McKee (dof_handler);
 
@@ -832,14 +836,16 @@ namespace Step55
 // the same solver (GMRES) but require a different preconditioner to be assembled.  Here we time not only the entire solve
 // function, but we separately time the set-up of the preconditioner as well as the GMRES solve.
   template <int dim>
-  void StokesProblem<dim>::solve (bool use_multigrid)
+  void StokesProblem<dim>::solve ()
   {
+	computing_timer.enter_subsection ("Solve");
     // We must set all constrained dofs of solution to zero (Timo: Why?)
     constraints.set_zero(solution);
 
     // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
-    if (0)
+    if (solver == Solver::UMFPACK)
       {
+    	std::cout << "Now solving with UMFPACK" <<std::endl;
         system_matrix.block(1,1) = 0;
 
         SparseDirectUMFPACK A_direct;
@@ -849,10 +855,9 @@ namespace Step55
         A_direct.solve(system_matrix, solution);
 
         constraints.distribute (solution);
+        computing_timer.leave_subsection ();
         return;
       }
-
-    computing_timer.enter_subsection ("Solve");
 
     // Here we must make sure to solve for the residual with "good enough" accuracy
     SolverControl solver_control (system_matrix.m(),
@@ -869,8 +874,9 @@ namespace Step55
     pressure_mass_matrix.copy_from(system_matrix.block(1,1));
     system_matrix.block(1,1) = 0;
 
-    if (use_multigrid==false)
+    if (solver == Solver::FGMRES_ILU)
       {
+    	std::cout << "Now solving with FGMRES_ILU" <<std::endl;
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
 
         std::cout << "   Computing preconditioner..." << std::endl << std::flush;
@@ -914,6 +920,7 @@ namespace Step55
       }
     else
       {
+    	std::cout << "Now solving with FGMRES_GMG" <<std::endl;
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
         // Transfer operators between levels
         MGTransferPrebuilt<Vector<double> > mg_transfer(constraints, mg_constrained_dofs);
@@ -1123,26 +1130,23 @@ namespace Step55
     for (unsigned int refinement_cycle = 0; refinement_cycle<5; //was 3
          ++refinement_cycle)
       {
-        bool use_multigrid=false; // class member? Timo: Wait, what? It's for the loop.
-        do
-          {
         std::cout << "Refinement cycle " << refinement_cycle << std::endl;
 
         if (refinement_cycle > 0)
           triangulation.refine_global (1);
 
-        if (use_multigrid == false)
+        if (solver == FGMRES_ILU)
           std::cout << "Now running with ILU" << std::endl;
         else
           std::cout << "Now running with Multigrid" << std::endl;
 
         std::cout << "   Set-up..." << std::endl << std::flush;
-        setup_dofs(use_multigrid);
+        setup_dofs();
 
         std::cout << "   Assembling..." << std::endl << std::flush;
         assemble_system ();
 
-        if (use_multigrid == true)
+        if (solver == FGMRES_GMG)
           {
             std::cout << "   Assembling Multigrid..." << std::endl << std::flush;
 
@@ -1150,7 +1154,7 @@ namespace Step55
           }
 
         std::cout << "   Solving..." << std::flush;
-        solve (use_multigrid);
+        solve ();
 
         std::cout << "   Computing Errors..." << std::flush;
         process_solution ();
@@ -1158,10 +1162,6 @@ namespace Step55
         computing_timer.print_summary ();
         computing_timer.reset ();
         output_results (refinement_cycle);
-
-            use_multigrid = !use_multigrid;
-          }
-        while (use_multigrid);
       }
   }
 }
@@ -1177,7 +1177,7 @@ int main ()
 
       deallog.depth_console(0); // Timo: Need this or else there is too much output
 
-      StokesProblem<2> flow_problem(1);
+      StokesProblem<2> flow_problem(1, FGMRES_GMG); // UMFPACK FGMRES_ILU FGMRES_GMG
 
       flow_problem.run ();
     }
