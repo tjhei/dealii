@@ -6,7 +6,7 @@
 The problem I am solving is
 
 @f{align*}
-  - \Delta u + \nabla p = f
+  - \Delta u + \nabla p = f \\
  - \nabla \cdot u = 0 
 @f}
 
@@ -18,43 +18,54 @@ For this section, let $u_{x}$ be the derivative of $u$ with respect to $x$, $u_{
 
 \textbf{Solution (1): (3D)} 
 
-Let $u=(u_1,u_2,u_3)=(2\sin (\pi x), - \pi y \cos (\pi x),- \pi z \cos (\pi x))$ and $p = \sin (\pi x)\cos (\pi y)\sin (\pi z)$, therefore we need to find $\bf f$ such that:
+Let $u=(u_1,u_2,u_3)=(2\sin (\pi x), - \pi y \cos (\pi x),- \pi z \cos (\pi x))$ and $p = \sin (\pi x)\cos (\pi y)\sin (\pi z)$.
 
-\begin{eqnarray*}
-{\bf f} &=&  - \Delta u + \nabla p 
-\end{eqnarray*}
+Now, (RG: add explanation of Solution class in code)
+(RG: add input code for solution here)
+(RG: explain why only value is needed)
+
+Notice that for our reference solution we had to enforce that the divergence of $u$ is zero. (RG: add tex-ed version of divu being 0 worked out)
+
+In addition, we need to make sure our pressure has mean zero. (RG: add tex-ed version of mean pressure beign 0 worked out)
+We will come back to this issue soon.
+
+We need to find $\bf f$ such that:
+
+@f{align*}
+{\bf f} =  - \Delta u + \nabla p 
+@f}
 
 and this is equivalently written as:
 
-\begin{eqnarray*}
-{\bf f} &=&  -\left( u_{1xx} + u_{1yy} + u_{1zz},u_{2xx} + u_{2yy} + u_{2zz},u_{3xx} + u_{3yy} + u_{3zz} \right) + (p_x,p_y,p_z)
-\end{eqnarray*}
+@f{align}
+{\bf f} =  -\left( u_{1xx} + u_{1yy} + u_{1zz},u_{2xx} + u_{2yy} + u_{2zz},u_{3xx} + u_{3yy} + u_{3zz} \right) + (p_x,p_y,p_z)
+@f}
 
 Now, consider the following:
 
-\begin{eqnarray*}
-u_{1xx} &=& -2 \pi^2 \sin (\pi x)\\
-u_{1yy} &=& 0\\
-u_{1zz} &=& 0\\
-u_{2xx} &=& \pi^3 y \cos(\pi x)\\
-u_{2yy} &=& 0\\
-u_{2zz} &=& 0\\
-u_{3xx} &=& \pi^3 z \cos(\pi x)\\
-u_{3yy} &=& 0\\
-u_{3zz} &=& 0\\
-p_x &=& \pi \cos(\pi x) \cos(\pi y) \sin(\pi z) \\
-p_y &=& - \pi \sin(\pi y) \sin(\pi x) \sin(\pi z) \\
-p_z &=& \pi \cos(\pi z) \sin(\pi x) \cos(\pi y) \\ 
-\end{eqnarray*}
+@f{align*}
+u_{1xx} = -2 \pi^2 \sin (\pi x)\\
+u_{1yy} = 0\\
+u_{1zz} = 0\\
+u_{2xx} = \pi^3 y \cos(\pi x)\\
+u_{2yy} = 0\\
+u_{2zz} = 0\\
+u_{3xx} = \pi^3 z \cos(\pi x)\\
+u_{3yy} = 0\\
+u_{3zz} = 0\\
+p_x = \pi \cos(\pi x) \cos(\pi y) \sin(\pi z) \\
+p_y = - \pi \sin(\pi y) \sin(\pi x) \sin(\pi z) \\
+p_z = \pi \cos(\pi z) \sin(\pi x) \cos(\pi y) \\ 
+@f}
 
 and thus
 
-\begin{eqnarray*}
-{\bf f} &=& -(-2 \pi^2 \sin (\pi x),\pi^3 y \cos(\pi x),\pi^3 z \cos(\pi x))\\
-&+& (\pi \cos(\pi x) \cos(\pi y) \sin(\pi z) ,- \pi \sin(\pi y) \sin(\pi x) \sin(\pi z),  \pi \cos(\pi z) \sin(\pi x) \cos(\pi y)) \\
- &=& (2 \pi^2 \sin (\pi x),- \pi^3 y \cos(\pi x),- \pi^3 z \cos(\pi x))\\
-&+& (\pi \cos(\pi x) \cos(\pi y) \sin(\pi z) ,- \pi \sin(\pi y) \sin(\pi x) \sin(\pi z),  \pi \cos(\pi z) \sin(\pi x) \cos(\pi y))
-\end{eqnarray*}
+@f{align*}
+{\bf f} = -(-2 \pi^2 \sin (\pi x),\pi^3 y \cos(\pi x),\pi^3 z \cos(\pi x))\\
++ (\pi \cos(\pi x) \cos(\pi y) \sin(\pi z) ,- \pi \sin(\pi y) \sin(\pi x) \sin(\pi z),  \pi \cos(\pi z) \sin(\pi x) \cos(\pi y)) \\
+ = (2 \pi^2 \sin (\pi x),- \pi^3 y \cos(\pi x),- \pi^3 z \cos(\pi x))\\
++ (\pi \cos(\pi x) \cos(\pi y) \sin(\pi z) ,- \pi \sin(\pi y) \sin(\pi x) \sin(\pi z),  \pi \cos(\pi z) \sin(\pi x) \cos(\pi y))
+@f}
 
 This is different from step-22 in the sense that the problem is defined on the unit square.
 
@@ -66,6 +77,15 @@ For the preconditioner of the velocity block, we borrow a class from ASPECT call
 <h3> Linear Solvers </h3>
 We use a GMRES for an outside solver, whereas for the inside solver we will use multiple approaches: CG + ILU, just ILU, CG + GMG, or just GMG.  Also, there are a few iterations of CG for mass matrix (easy).
 
+We also use UMFPACK.
+
+(Timo: what all to say about the solvers?)
+(RG: explain enum)
+(RG: add talk about singular matrices here .. singular system since mean pressure not equal to zero not implemented)
+
+<h3> Computing Errors </h3>
+We need to make sure our mean pressure is zero.  to do this we use the compute_mean_value function in deal.ii. (RG: explain compute_mean_value and what we do with mean_pressure)(RG: add code for this)
+
+
 <h3> DoF Handlers </h3>
 There is currently no way in deal.ii to say "I want just part of a DoF handler" so in order to do this we create a new one and assure they have same ordering so that you can copy over one to the other.  In other words we want: u (velocity dof handler) = solution.block(0) (from system DofHandler)
-
