@@ -94,7 +94,7 @@
 
 namespace Step55
 {
-  enum Solver {FGMRES_ILU, FGMRES_GMG, UMFPACK};
+  enum SolverType {FGMRES_ILU, FGMRES_GMG, UMFPACK};
 
   using namespace dealii;
 
@@ -323,7 +323,7 @@ namespace Step55
   class StokesProblem
   {
   public:
-    StokesProblem (const unsigned int degree, Solver solver);
+    StokesProblem (const unsigned int degree, SolverType solver_type);
     void run ();
 
   private:
@@ -336,7 +336,7 @@ namespace Step55
     void refine_mesh ();
 
     const unsigned int   degree;
-    Solver                 solver;
+    SolverType             solver_type;
 
     Triangulation<dim>   triangulation;
     FESystem<dim>        fe;
@@ -449,10 +449,10 @@ namespace Step55
   }
 
   template <int dim>
-  StokesProblem<dim>::StokesProblem (const unsigned int degree, Solver solver)
+  StokesProblem<dim>::StokesProblem (const unsigned int degree, SolverType solver_type)
     :
     degree (degree),
-    solver (solver),
+    solver_type (solver_type),
     triangulation (Triangulation<dim>::maximum_smoothing),
     fe (FE_Q<dim>(degree+1), dim, // Finite element for whole system
         FE_Q<dim>(degree), 1),
@@ -482,7 +482,7 @@ namespace Step55
     // This always knows how to use the dim (start at 0 one)
     FEValuesExtractors::Vector velocities(0);
 
-    if (solver != FGMRES_GMG)
+    if (solver_type != FGMRES_GMG)
       {
         DoFRenumbering::Cuthill_McKee (dof_handler);
 
@@ -730,7 +730,6 @@ namespace Step55
     std::vector<double>                  div_phi_u   (dofs_per_cell);
     std::vector<double>                  phi_p       (dofs_per_cell);
 
-    //Timo: new
     std::vector<ConstraintMatrix> boundary_constraints (triangulation.n_levels());
     std::vector<ConstraintMatrix> boundary_interface_constraints (triangulation.n_levels());
     for (unsigned int level=0; level<triangulation.n_levels(); ++level)
@@ -747,25 +746,6 @@ namespace Step55
         .add_lines (idx);
         boundary_interface_constraints[level].close ();
       }
-
-    // Old
-//    std::vector<std::vector<bool> > interface_dofs
-//      = mg_constrained_dofs.get_refinement_edge_indices ();  // doesn't compile
-//    std::vector<std::vector<bool> > boundary_interface_dofs
-//      = mg_constrained_dofs.get_refinement_edge_boundary_indices (); // doesn't compile
-//
-//    std::vector<ConstraintMatrix> boundary_constraints (triangulation.n_levels());
-//    std::vector<ConstraintMatrix> boundary_interface_constraints (triangulation.n_levels());
-//    for (unsigned int level=0; level<triangulation.n_levels(); ++level)
-//      {
-//        boundary_constraints[level].add_lines (interface_dofs[level]);
-//        boundary_constraints[level].add_lines (mg_constrained_dofs.get_boundary_indices()[level]);
-//        boundary_constraints[level].close ();
-//
-//        boundary_interface_constraints[level]
-//        .add_lines (boundary_interface_dofs[level]);
-//        boundary_interface_constraints[level].close ();
-//      }
 
     // This iterator goes over all cells (not just active)
     typename DoFHandler<dim>::cell_iterator cell = velocity_dof_handler.begin(),
@@ -809,13 +789,6 @@ namespace Step55
                                      local_dof_indices,
                                      mg_matrices[cell->level()]);
 
-//        for (unsigned int i=0; i<dofs_per_cell; ++i)
-//          for (unsigned int j=0; j<dofs_per_cell; ++j)
-//            if ( !(interface_dofs[cell->level()][local_dof_indices[i]]==true &&
-//                   interface_dofs[cell->level()][local_dof_indices[j]]==false))
-//              cell_matrix(i,j) = 0;
-
-        // Timo: blind copy and paste
         for (unsigned int i=0; i<dofs_per_cell; ++i)
           for (unsigned int j=0; j<dofs_per_cell; ++j)
             if (
@@ -848,7 +821,7 @@ namespace Step55
     constraints.set_zero(solution);
 
     // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
-    if (solver == Solver::UMFPACK)
+    if (solver_type == SolverType::UMFPACK)
       {
         std::cout << "Now solving with UMFPACK" <<std::endl;
         system_matrix.block(1,1) = 0;
@@ -879,7 +852,7 @@ namespace Step55
     pressure_mass_matrix.copy_from(system_matrix.block(1,1));
     system_matrix.block(1,1) = 0;
 
-    if (solver == Solver::FGMRES_ILU)
+    if (solver_type == SolverType::FGMRES_ILU)
       {
         std::cout << "Now solving with FGMRES_ILU" <<std::endl;
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
@@ -1140,7 +1113,7 @@ namespace Step55
         if (refinement_cycle > 0)
           triangulation.refine_global (1);
 
-        if (solver == FGMRES_ILU)
+        if (solver_type == FGMRES_ILU)
           std::cout << "Now running with ILU" << std::endl;
         else
           std::cout << "Now running with Multigrid" << std::endl;
@@ -1151,7 +1124,7 @@ namespace Step55
         std::cout << "   Assembling..." << std::endl << std::flush;
         assemble_system ();
 
-        if (solver == FGMRES_GMG)
+        if (solver_type == FGMRES_GMG)
           {
             std::cout << "   Assembling Multigrid..." << std::endl << std::flush;
 
