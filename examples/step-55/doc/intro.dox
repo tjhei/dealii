@@ -3,31 +3,64 @@
 
 <h3> Stokes Problem </h3>
 
-The problem I am solving is
+This program deals with the Stokes system of equations which reads as follows in non-dimensionalized form:
 
-@f{align*}
-  - \Delta u + \nabla p = f \\
- - \nabla \cdot u = 0 
+@f{eqnarray*}
+  - \Delta u + \nabla p & =& f \\
+ - \nabla \cdot u &=& 0 
 @f}
 
-Note that we are using $\Delta u$ instead of the deformation tensor.  The differences between the two are that the deformation tensor is more physical as well as more expensive.
+Note that we are using $\Delta u$ instead of the deformation tensor (a detailed desription of the difference between the two can be found in Step-22, but in summary, the deformation tensor is more physical as well as more expensive.)
 
 <h3> Reference Solution </h3>
 
-For this section, let $u_{x}$ be the derivative of $u$ with respect to $x$, $u_{xx}$ be the second derivative of $u$ with respect to $x$, etc.
+The domain, right hand side and boundary conditions we implement are chosen because they are simple and they will allow us to compute errors using a reference solutions.  We model this situation by solving the following set of equations and boundary conditions on the domain Ω=[0,1]×[0,1]×[0,1]: 
 
-\textbf{Solution (1): (3D)} 
+For this section, let $u_{x}$ be the derivative of $u$ with respect to $x$, $u_{xx}$ be the second derivative of $u$ with respect to $x$, etc.
 
 Let $u=(u_1,u_2,u_3)=(2\sin (\pi x), - \pi y \cos (\pi x),- \pi z \cos (\pi x))$ and $p = \sin (\pi x)\cos (\pi y)\sin (\pi z)$.
 
 Now, (RG: add explanation of Solution class in code)
-(RG: add input code for solution here)
-(RG: explain why only value is needed)
+In order to implement our reference solution, we create a function <code>Solution@<dim@></code> that has a value function that gets a point in space (of the form ($x,y,z$)) and a component (either $u_x, u_y, u_z,$ or $p$) and returns a double.
 
-Notice that for our reference solution we had to enforce that the divergence of $u$ is zero. (RG: add tex-ed version of divu being 0 worked out)
+@code
+ template <int dim>
+  class Solution : public Function<dim>
+  {
+  public:
+    Solution () : Function<dim>(dim+1) {}
+    virtual double value (const Point<dim> &p,
+                          const unsigned int component) const;
+    virtual Tensor<1,dim> gradient (const Point<dim> &p,
+                                    const unsigned int component = 0) const;
+  };
 
-In addition, we need to make sure our pressure has mean zero. (RG: add tex-ed version of mean pressure beign 0 worked out)
-We will come back to this issue soon.
+ template <>
+  double
+  Solution<3>::value (const Point<3> &p,
+                      const unsigned int component) const
+  {
+    using numbers::PI;
+    double x = p(0);
+    double y = p(1);
+    double z = p(2);
+
+    if (component == 0)
+      return 2 * sin (PI * x);
+    if (component == 1)
+      return - PI * y * cos(PI * x);
+    if (component == 2)
+      return - PI * z * cos(PI * x);
+    if (component == 3)
+      return sin (PI * x) * cos (PI * y) * sin (PI * z);
+
+    return 0; // Timo: Or assert?
+  }
+@endcode
+
+If you look up in the deal.ii manual what is needed to create a class inherited from <code>Function@<dim@></code>, you will find not only a value function, but vector_value, value_list, etc.  Different things you use in your code will require one of these particular functions. This can be confusing at first, but luckily the only thing you actually need to implement is value.  The other ones have default implementations inside deal.ii and will be called on their own as long as you implement value correctly.
+
+Notice that for our reference solution we had to enforce that the divergence of $u$ is zero. In addition, we need to make sure our pressure has mean zero.
 
 We need to find $\bf f$ such that:
 
@@ -43,31 +76,29 @@ and this is equivalently written as:
 
 Now, consider the following:
 
-@f{align*}
-u_{1xx} = -2 \pi^2 \sin (\pi x)\\
-u_{1yy} = 0\\
-u_{1zz} = 0\\
-u_{2xx} = \pi^3 y \cos(\pi x)\\
-u_{2yy} = 0\\
-u_{2zz} = 0\\
-u_{3xx} = \pi^3 z \cos(\pi x)\\
-u_{3yy} = 0\\
-u_{3zz} = 0\\
-p_x = \pi \cos(\pi x) \cos(\pi y) \sin(\pi z) \\
-p_y = - \pi \sin(\pi y) \sin(\pi x) \sin(\pi z) \\
-p_z = \pi \cos(\pi z) \sin(\pi x) \cos(\pi y) \\ 
+@f{eqnarray*}
+u_{1xx} &=& -2 \pi^2 \sin (\pi x)\\
+u_{1yy} &=& 0\\
+u_{1zz} &=& 0\\
+u_{2xx} &=& \pi^3 y \cos(\pi x)\\
+u_{2yy} &=& 0\\
+u_{2zz} &=& 0\\
+u_{3xx} &=& \pi^3 z \cos(\pi x)\\
+u_{3yy} &=& 0\\
+u_{3zz} &=& 0\\
+p_x &=& \pi \cos(\pi x) \cos(\pi y) \sin(\pi z) \\
+p_y &=& - \pi \sin(\pi y) \sin(\pi x) \sin(\pi z) \\
+p_z &=& \pi \cos(\pi z) \sin(\pi x) \cos(\pi y) \\ 
 @f}
 
 and thus
 
-@f{align*}
-{\bf f} = -(-2 \pi^2 \sin (\pi x),\pi^3 y \cos(\pi x),\pi^3 z \cos(\pi x))\\
-+ (\pi \cos(\pi x) \cos(\pi y) \sin(\pi z) ,- \pi \sin(\pi y) \sin(\pi x) \sin(\pi z),  \pi \cos(\pi z) \sin(\pi x) \cos(\pi y)) \\
- = (2 \pi^2 \sin (\pi x),- \pi^3 y \cos(\pi x),- \pi^3 z \cos(\pi x))\\
-+ (\pi \cos(\pi x) \cos(\pi y) \sin(\pi z) ,- \pi \sin(\pi y) \sin(\pi x) \sin(\pi z),  \pi \cos(\pi z) \sin(\pi x) \cos(\pi y))
+@f{eqnarray*}
+{\bf f} &=& -(-2 \pi^2 \sin (\pi x),\pi^3 y \cos(\pi x),\pi^3 z \cos(\pi x))\\
+& & + (\pi \cos(\pi x) \cos(\pi y) \sin(\pi z) ,- \pi \sin(\pi y) \sin(\pi x) \sin(\pi z),  \pi \cos(\pi z) \sin(\pi x) \cos(\pi y)) \\
+ &=& (2 \pi^2 \sin (\pi x),- \pi^3 y \cos(\pi x),- \pi^3 z \cos(\pi x))\\
+& & + (\pi \cos(\pi x) \cos(\pi y) \sin(\pi z) ,- \pi \sin(\pi y) \sin(\pi x) \sin(\pi z),  \pi \cos(\pi z) \sin(\pi x) \cos(\pi y))
 @f}
-
-This is different from step-22 in the sense that the problem is defined on the unit square.
 
 <h3> Differences from Step-22 </h3>
 The main difference is that here we use block solvers instead of the Schur Complement approach used in step-22. Details of this approach can be found under the Block Schur complement preconditioner subsection of the Possible Extensions section of Step-22.  There you will find not only a description of what it is doing but also the code you can use.  That being said, we use an approach slightly different from what is used there.  
@@ -80,12 +111,26 @@ We use a GMRES for an outside solver, whereas for the inside solver we will use 
 We also use UMFPACK.
 
 (Timo: what all to say about the solvers?)
-(RG: explain enum)
-(RG: add talk about singular matrices here .. singular system since mean pressure not equal to zero not implemented)
+
+In order to make it easy to switch between the different solvers that are being using in Step-55, an enum was created that can be passed as an argument to the <code>StokesProblem</code> class. 
+
+@code
+enum SolverType {FGMRES_ILU, FGMRES_GMG, UMFPACK};
+@endcode
+
+If you want to use UMFPACK as a solver, it is important to note that you have a singular system since the integral of mean pressure being equal to zero not implemented.  So, to deal with this, we set a pressure node equal to zero.
 
 <h3> Computing Errors </h3>
-We need to make sure our mean pressure is zero.  to do this we use the compute_mean_value function in deal.ii. (RG: explain compute_mean_value and what we do with mean_pressure)(RG: add code for this)
+We need to make sure our mean pressure is zero.  To do this we use the <code>compute_mean_value</code> function in deal.ii to compute the mean value of pressure component of the solution. 
 
+This function integrates the chosen component over the whole domain and returns the result, i.e. it computes $\frac{1}{\Omega} \int_{\Omega} \left[ u_h(x) \right]_c dx $ where $c$ is the vector component and $u_h$ is the function representation of the nodal vector given as fourth argument. The integral is evaluated numerically using the quadrature formula given as third argument.
+
+@code
+    double mean_value= VectorTools::compute_mean_value  (dof_handler,
+                                                         QGauss<dim>(degree+2),
+                                                         solution,
+                                                         dim);
+@endcode
 
 <h3> DoF Handlers </h3>
 There is currently no way in deal.ii to say "I want just part of a DoF handler" so in order to do this we create a new one and assure they have same ordering so that you can copy over one to the other.  In other words we want: u (velocity dof handler) = solution.block(0) (from system DofHandler)
