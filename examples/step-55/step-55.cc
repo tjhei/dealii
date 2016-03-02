@@ -179,6 +179,43 @@ namespace Step55
     return return_value;
   }
 
+  template <>
+  Tensor<1,3>
+  Solution<3>::gradient (const Point<3> &p,  // Timo: But okay for this to be a Tensor?
+                         const unsigned int component) const  // component and you'd return like values
+  {
+    using numbers::PI;
+    double x = p(0);
+    double y = p(1);
+    double z = p(2);
+    Tensor<1,3> return_value;
+    if (component == 0)
+      {
+        return_value[0] = 2 * PI * cos (PI * x);
+        return_value[1] = 0.0;
+        return_value[2] = 0.0;
+      }
+    if (component == 1)
+      {
+        return_value[0] = y * PI * PI * sin( PI * x);
+        return_value[1] = - PI * cos (PI * x);
+        return_value[2] = 0.0;
+      }
+    if (component == 2)
+      {
+        return_value[0] = z * PI * PI * sin( PI * x);
+        return_value[1] = 0.0;
+        return_value[2] = - PI * cos (PI * x);
+      }
+    if (component == 3)
+      {
+        return_value[0] = PI * cos (PI * x) * cos (PI * y) * sin (PI * z);
+        return_value[1] =  - PI * sin (PI * x) * sin(PI * y) * sin (PI * z);
+        return_value[2] = PI * sin (PI * x) * cos (PI * y) * cos (PI * z);
+      }
+    return return_value;
+  }
+
 
   // @sect3{ASPECT BlockSchurPreconditioner}
 
@@ -549,14 +586,13 @@ namespace Step55
                                                 constraints,
                                                 fe.component_mask(velocities));
     }
-//    constraints.close ();
 
     std::vector<types::global_dof_index> dofs_per_block (2);
     DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
     const unsigned int n_u = dofs_per_block[0],
                        n_p = dofs_per_block[1];
-
-    //  constraints.add_line(n_u);
+//    if (solver_type == SolverType::UMFPACK)
+//    	constraints.add_line(n_u);
     constraints.close ();
 
     std::cout << "   Number of active cells: "
@@ -823,6 +859,7 @@ namespace Step55
     // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
     if (solver_type == SolverType::UMFPACK)
       {
+    	computing_timer.enter_subsection ("Solve - Initialize");
         std::cout << "Now solving with UMFPACK" <<std::endl;
         system_matrix.block(1,1) = 0;
 
@@ -830,7 +867,11 @@ namespace Step55
         A_direct.initialize(system_matrix);
 
         solution = system_rhs;
+        computing_timer.leave_subsection ();
+
+        computing_timer.enter_subsection ("Solve - Backslash");
         A_direct.solve(system_matrix, solution);
+        computing_timer.leave_subsection ();
 
         constraints.distribute (solution);
         computing_timer.leave_subsection ();
@@ -1102,10 +1143,10 @@ namespace Step55
     GridGenerator::hyper_cube (triangulation);
 
 
-    triangulation.refine_global (4-dim); //was 6
+    triangulation.refine_global (6-dim); //was 6
     //GridTools::distort_random(0.1, triangulation, true);
 
-    for (unsigned int refinement_cycle = 0; refinement_cycle<5; //was 3
+    for (unsigned int refinement_cycle = 0; refinement_cycle<3; //was 3
          ++refinement_cycle)
       {
         std::cout << "Refinement cycle " << refinement_cycle << std::endl;
@@ -1155,7 +1196,8 @@ int main ()
 
       deallog.depth_console(0); // Timo: Need this or else there is too much output
 
-      StokesProblem<2> flow_problem(1, FGMRES_GMG); // UMFPACK FGMRES_ILU FGMRES_GMG
+     StokesProblem<2> flow_problem(1, UMFPACK); // UMFPACK FGMRES_ILU FGMRES_GMG
+ //     StokesProblem<3> flow_problem(1, UMFPACK); // UMFPACK FGMRES_ILU FGMRES_GMG
 
       flow_problem.run ();
     }
