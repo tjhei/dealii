@@ -126,7 +126,7 @@ namespace Step55
     if (component == 2)
       return sin (PI * x) * cos (PI * y);
 
-    return 0; // Timo: Or assert?
+    return 0; // Timo: Or assert? RG: Assert!
   }
 
   template <>
@@ -148,14 +148,14 @@ namespace Step55
     if (component == 3)
       return sin (PI * x) * cos (PI * y) * sin (PI * z);
 
-    return 0; // Timo: Or assert?
+    return 0; // Timo: Or assert? RG: Assert!
   }
 
 
   template <>
   Tensor<1,2>
-  Solution<2>::gradient (const Point<2> &p,  // Timo: But okay for this to be a Tensor?
-                         const unsigned int component) const  // component and you'd return like values
+  Solution<2>::gradient (const Point<2> &p,
+                         const unsigned int component) const
   {
     using numbers::PI;
     double x = p(0);
@@ -166,23 +166,25 @@ namespace Step55
         return_value[0] = PI * cos (PI * x);
         return_value[1] = 0.0;
       }
-    if (component == 1)
+    else if (component == 1)
       {
         return_value[0] = y * PI * PI * sin( PI * x);
         return_value[1] = - PI * cos (PI * x);
       }
-    if (component == 2)
+    else if (component == 2)
       {
         return_value[0] = PI * cos (PI * x) * cos (PI * y);
         return_value[1] =  - PI * sin (PI * x) * sin(PI * y);
       }
+    // else
+      // RG: Assert!
     return return_value;
   }
 
   template <>
   Tensor<1,3>
-  Solution<3>::gradient (const Point<3> &p,  // Timo: But okay for this to be a Tensor?
-                         const unsigned int component) const  // component and you'd return like values
+  Solution<3>::gradient (const Point<3> &p,
+                         const unsigned int component) const
   {
     using numbers::PI;
     double x = p(0);
@@ -195,24 +197,26 @@ namespace Step55
         return_value[1] = 0.0;
         return_value[2] = 0.0;
       }
-    if (component == 1)
+    else if (component == 1)
       {
         return_value[0] = y * PI * PI * sin( PI * x);
         return_value[1] = - PI * cos (PI * x);
         return_value[2] = 0.0;
       }
-    if (component == 2)
+    else if (component == 2)
       {
         return_value[0] = z * PI * PI * sin( PI * x);
         return_value[1] = 0.0;
         return_value[2] = - PI * cos (PI * x);
       }
-    if (component == 3)
+    else if (component == 3)
       {
         return_value[0] = PI * cos (PI * x) * cos (PI * y) * sin (PI * z);
         return_value[1] =  - PI * sin (PI * x) * sin(PI * y) * sin (PI * z);
         return_value[2] = PI * sin (PI * x) * cos (PI * y) * cos (PI * z);
       }
+    // else
+      // RG: Assert!
     return return_value;
   }
 
@@ -421,6 +425,7 @@ namespace Step55
     Assert (component < this->n_components,
             ExcIndexRange (component, 0, this->n_components));
 
+    // Timo: use Solution here
     using numbers::PI;
     double x = p(0);
     double y = p(1);
@@ -459,7 +464,7 @@ namespace Step55
     if (component == 2)
       return 0;
 
-    return 0; // Timo: Or assert?
+    return 0; // RG: assert
 
   }
 
@@ -481,7 +486,7 @@ namespace Step55
     if (component == 3)
       return 0;
 
-    return 0; // Timo: Or assert?
+    return 0; // RG: assert
 
   }
 
@@ -527,6 +532,8 @@ namespace Step55
       }
     else
       {
+        //RG: this should be part of multigrid setup time
+
         // Distribute only the dofs for velocity finite element
         velocity_dof_handler.distribute_dofs(velocity_fe);
 
@@ -591,8 +598,10 @@ namespace Step55
     DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
     const unsigned int n_u = dofs_per_block[0],
                        n_p = dofs_per_block[1];
-//    if (solver_type == SolverType::UMFPACK)
-//    	constraints.add_line(n_u);
+
+    // RG: enable
+    if (solver_type == SolverType::UMFPACK)
+      constraints.add_line(n_u);
     constraints.close ();
 
     std::cout << "   Number of active cells: "
@@ -645,6 +654,8 @@ namespace Step55
 
     system_matrix=0;
     system_rhs=0;
+
+    double mass_factor = (solver_type == UMFPACK) ? 0.0 : 1.0;
 
     QGauss<dim>   quadrature_formula(degree+2);
 
@@ -702,7 +713,7 @@ namespace Step55
                     local_matrix(i,j) += (2 * (symgrad_phi_u[i] * symgrad_phi_u[j])
                                           - div_phi_u[i] * phi_p[j]
                                           - phi_p[i] * div_phi_u[j]
-                                          + phi_p[i] * phi_p[j])
+                                          + mass_factor * phi_p[i] * phi_p[j])
                                          * fe_values.JxW(q);
 
                   }
@@ -861,7 +872,7 @@ namespace Step55
       {
     	computing_timer.enter_subsection ("Solve - Initialize");
         std::cout << "Now solving with UMFPACK" <<std::endl;
-        system_matrix.block(1,1) = 0;
+        //RG: delete: system_matrix.block(1,1) = 0;
 
         SparseDirectUMFPACK A_direct;
         A_direct.initialize(system_matrix);
@@ -1154,6 +1165,7 @@ namespace Step55
         if (refinement_cycle > 0)
           triangulation.refine_global (1);
 
+        // RG: printing is wrong now
         if (solver_type == FGMRES_ILU)
           std::cout << "Now running with ILU" << std::endl;
         else
