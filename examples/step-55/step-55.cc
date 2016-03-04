@@ -125,8 +125,8 @@ namespace Step55
       return - PI * y * cos(PI * x);
     if (component == 2)
       return sin (PI * x) * cos (PI * y);
-
-    return 0; // Timo: Or assert? RG: Assert!
+    else
+      Assert (false, ExcMessage ("Component out of range in Solution"));
   }
 
   template <>
@@ -147,8 +147,8 @@ namespace Step55
       return - PI * z * cos(PI * x);
     if (component == 3)
       return sin (PI * x) * cos (PI * y) * sin (PI * z);
-
-    return 0; // Timo: Or assert? RG: Assert!
+    else
+      Assert (false, ExcMessage ("Component out of range in Solution"));
   }
 
 
@@ -176,9 +176,8 @@ namespace Step55
         return_value[0] = PI * cos (PI * x) * cos (PI * y);
         return_value[1] =  - PI * sin (PI * x) * sin(PI * y);
       }
-    // else
-      // RG: Assert!
-    return return_value;
+    else
+      Assert (false, ExcMessage ("Component out of range in Solution"));
   }
 
   template <>
@@ -215,9 +214,8 @@ namespace Step55
         return_value[1] =  - PI * sin (PI * x) * sin(PI * y) * sin (PI * z);
         return_value[2] = PI * sin (PI * x) * cos (PI * y) * cos (PI * z);
       }
-    // else
-      // RG: Assert!
-    return return_value;
+    else
+      Assert (false, ExcMessage ("Component out of range in Solution"));
   }
 
 
@@ -435,8 +433,8 @@ namespace Step55
       return - PI * y * cos(PI * x);
     if (component == 2)
       return sin (PI * x) * cos (PI * y);
-
-    return 0; // Timo: Or assert?
+    else
+      Assert (false, ExcMessage ("Component out of range in BoundaryValuesForVelocity"));
   }
 
   template <int dim>
@@ -463,8 +461,8 @@ namespace Step55
       return - PI * PI * PI * y * cos(PI * x) - PI * sin(PI * y) * sin(PI * x);
     if (component == 2)
       return 0;
-
-    return 0; // RG: assert
+    else
+          Assert (false, ExcMessage ("Component out of range in RightHandSide"));
 
   }
 
@@ -485,9 +483,8 @@ namespace Step55
       return - PI * PI * PI * z * cos (PI * x) + PI * cos(PI * z)*sin(PI * x)*cos(PI * y);
     if (component == 3)
       return 0;
-
-    return 0; // RG: assert
-
+    else
+       Assert (false, ExcMessage ("Component out of range in RightHandSide"));
   }
 
   template <int dim>
@@ -532,6 +529,7 @@ namespace Step55
       }
     else
       {
+        computing_timer.enter_subsection ("Setup - Multigrid");
         //RG: this should be part of multigrid setup time
 
         // Distribute only the dofs for velocity finite element
@@ -581,6 +579,7 @@ namespace Step55
             //std::cout << "mg_matrices[" << level << "] has size " <<  mg_matrices[level].m() << " by " << mg_matrices[level].n() << std::endl;
             mg_interface_matrices[level].reinit(mg_sparsity_patterns[level]);
           }
+        computing_timer.leave_subsection();
       }
 
     {
@@ -599,7 +598,6 @@ namespace Step55
     const unsigned int n_u = dofs_per_block[0],
                        n_p = dofs_per_block[1];
 
-    // RG: enable
     if (solver_type == SolverType::UMFPACK)
       constraints.add_line(n_u);
     constraints.close ();
@@ -872,7 +870,6 @@ namespace Step55
       {
     	computing_timer.enter_subsection ("Solve - Initialize");
         std::cout << "Now solving with UMFPACK" <<std::endl;
-        //RG: delete: system_matrix.block(1,1) = 0;
 
         SparseDirectUMFPACK A_direct;
         A_direct.initialize(system_matrix);
@@ -1165,12 +1162,12 @@ namespace Step55
         if (refinement_cycle > 0)
           triangulation.refine_global (1);
 
-        // RG: printing is wrong now
         if (solver_type == FGMRES_ILU)
           std::cout << "Now running with ILU" << std::endl;
-        else
+        else if (solver_type == FGMRES_GMG)
           std::cout << "Now running with Multigrid" << std::endl;
-
+        else
+          std::cout << "Now running with UMFPACK" << std::endl;
         std::cout << "   Set-up..." << std::endl << std::flush;
         setup_dofs();
 
