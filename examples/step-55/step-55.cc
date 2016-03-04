@@ -127,6 +127,7 @@ namespace Step55
       return sin (PI * x) * cos (PI * y);
     else
       Assert (false, ExcMessage ("Component out of range in Solution"));
+    return 0;
   }
 
   template <>
@@ -149,6 +150,7 @@ namespace Step55
       return sin (PI * x) * cos (PI * y) * sin (PI * z);
     else
       Assert (false, ExcMessage ("Component out of range in Solution"));
+    return 0;
   }
 
 
@@ -178,6 +180,7 @@ namespace Step55
       }
     else
       Assert (false, ExcMessage ("Component out of range in Solution"));
+    return return_value;
   }
 
   template <>
@@ -216,6 +219,7 @@ namespace Step55
       }
     else
       Assert (false, ExcMessage ("Component out of range in Solution"));
+    return return_value;
   }
 
 
@@ -435,6 +439,7 @@ namespace Step55
       return sin (PI * x) * cos (PI * y);
     else
       Assert (false, ExcMessage ("Component out of range in BoundaryValuesForVelocity"));
+    return 0;
   }
 
   template <int dim>
@@ -463,6 +468,7 @@ namespace Step55
       return 0;
     else
           Assert (false, ExcMessage ("Component out of range in RightHandSide"));
+    return 0;
 
   }
 
@@ -485,6 +491,7 @@ namespace Step55
       return 0;
     else
        Assert (false, ExcMessage ("Component out of range in RightHandSide"));
+    return 0;
   }
 
   template <int dim>
@@ -1150,8 +1157,14 @@ namespace Step55
   {
     GridGenerator::hyper_cube (triangulation);
 
-
     triangulation.refine_global (6-dim); //was 6
+
+   // Timo: Refinement
+   typename Triangulation<dim>::active_cell_iterator
+   cell = triangulation.begin_active();
+   cell->set_refine_flag ();
+   triangulation.execute_coarsening_and_refinement ();
+
     //GridTools::distort_random(0.1, triangulation, true);
 
     for (unsigned int refinement_cycle = 0; refinement_cycle<3; //was 3
