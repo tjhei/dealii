@@ -508,11 +508,9 @@ namespace Step55
     	  computing_timer.enter_subsection ("(ILU specific)");
     	else
           computing_timer.enter_subsection ("(UMFPACK specific)");
-    	// RG: include this in setup times
-    	// test if UMFPACK actually profits from this (<1% worse with it on)
-    	// test if ILU profits from this
-    	// include in setup times
-        //DoFRenumbering::Cuthill_McKee (dof_handler);
+    	// Timo: test if UMFPACK actually profits from this (<1% worse with it on) on most refined mesh
+    	// Timo: test if ILU profits from this (twice as long to solve without, 1/4 the set-up time) on most refined mesh
+        DoFRenumbering::Cuthill_McKee (dof_handler);
         computing_timer.leave_subsection ();
       }
 

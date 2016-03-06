@@ -1,82 +1,143 @@
 <h1>Results</h1>
 
-Running the program produces graphics of two grids (grid-1.eps and grid-2.eps). They look like this:
+<h3> Errors </h3>
 
-<TABLE WIDTH="60%" ALIGN="center">
+<table align="center" border="1">
   <tr>
-    <td ALIGN="center">
-      <img src="http://www.dealii.org/images/steps/developer/step-1.grid-1.png" alt="">
-    </td>
-
-    <td ALIGN="center">
-      <img src="http://www.dealii.org/images/steps/developer/step-1.grid-2r2.png" alt="">
-    </td>
+    <th>&nbsp;</th>
+    <th>L2 Velocity</th>
+    <th>Rate</th>
+    <th>L2 Pressure</th>
+    <th>Rate</th>
+    <th>H1 Velocity</th>
+    <th>Rate</th>
+  </tr>
+  <tr>
+    <th>3</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+  </tr>
+  <tr>
+    <th>4</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+  </tr>
+  <tr>
+    <th>5</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
   </tr>
 </table>
 
-The left one, well, is not very exciting. The right one is &mdash; at least
-&mdash; unconventional.
+<h3> Timing Results </h3>
 
-While the second mesh is entirely artificial and made-up, and
-certainly not very practical in applications, to everyone's surprise it
-has found its way into the literature: see the paper by M. Mu
-titled "PDE.MART: A network-based problem-solving environment", ACM
-Trans. Math. Software, vol. 31, pp. 508-531, 2005. Apparently it is
-good for some things at least.
+<table align="center" border="1">
+  <tr>
+    <th>&nbsp;</th>
+    <th colspan="2">UMFPACK</th>
+    <th colspan="5">ILU</th>
+    <th colspan="5">GMG</th>
+  </tr>
+  <tr>
+    <th>&nbsp;</th>
+    <th colspan="2">Timings</th>
+    <th colspan="2">Timings</th>
+    <th colspan="3">Iterations</th>
+    <th colspan="2">Timings</th>
+    <th colspan="3">Iterations</th>
+  </tr>
+  <tr>
+    <th>&nbsp;</th>
+    <th>Setup</th>
+    <th>Solve</th>
+    <th>Setup</th>
+    <th>Solve</th>
+    <th>Outer</th>
+    <th>Inner (A)</th>
+    <th>Inner (S)</th>
+    <th>Setup</th>
+    <th>Solve</th>
+    <th>Outer</th>
+    <th>Inner (A)</th>
+    <th>Inner (S)</th>
+  </tr>
+  <tr>
+    <td align="left">2D, Q1, cycle 9, 37,248 dofs</td>
+    <td align="center">5.34s</td>
+    <td align="center">0.7%</td>
+    <td align="center">1.2%</td>
+    <td align="center">89.5%</td>
+    <td align="center">0.9%</td>
+    <td align="center">2.3%</td>
+    <td align="center">5.4%</td>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+  </tr>
+  <tr>
+    <td align="left">2D, Q3, cycle 9, 74,496 dofs</td>
+    <td align="center">22.2s</td>
+    <td align="center">0.4%</td>
+    <td align="center">4.3%</td>
+    <td align="center">84.1%</td>
+    <td align="center">4.1%</td>
+    <td align="center">3.5%</td>
+    <td align="center">3.6%</td>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+  </tr>
+  <tr>
+    <td align="left">3D, Q1, cycle 7, 172,800 dofs</td>
+    <td align="center">9.06s</td>
+    <td align="center">3.1%</td>
+    <td align="center">8.9%</td>
+    <td align="center">42.7%</td>
+    <td align="center">7.0%</td>
+    <td align="center">20.6%</td>
+    <td align="center">17.7%</td>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+  </tr>
+  <tr>
+    <td align="left">3D, Q3, cycle 7, 691,200 dofs</td>
+    <td align="center">516s</td>
+    <td align="center">0.6%</td>
+    <td align="center">34.5%</td>
+    <td align="center">13.4%</td>
+    <td align="center">32.8%</td>
+    <td align="center">17.1%</td>
+    <td align="center">1.5%</td>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+    <th>&nbsp;</th>
+  </tr>
+</table>
 
+As can be seen from the table ...
 
 <h3> Possible extensions </h3>
 
-<h4> Different adaptive refinement strategies </h4>
+<h4> Extension 1 </h4>
 
-This program obviously does not have a whole lot of functionality, but
-in particular the <code>second_grid</code> function has a bunch of
-places where you can play with it. For example, you could modify the
-criterion by which we decide which cells to refine. An example would
-be to change the condition to this:
-@code
-      for (; cell!=endc; ++cell)
-        if (cell->center()[1] > 0)
-          cell->set_refine_flag ();
-@endcode
-This would refine all cells for which the $y$-coordinate of the cell's
-center is greater than zero (the <code>TriaAccessor::center</code>
-function that we call by dereferencing the <code>cell</code> iterator
-returns a Point<2> object; subscripting <code>[0]</code> would give
-the $x$-coordinate, subscripting <code>[1]</code> the
-$y$-coordinate). By looking at the functions that TriaAccessor
-provides, you can also use more complicated criteria for refinement.
-
-<h4> Different geometries </h4>
-
-Another possibility would be to generate meshes of entirely different
-geometries altogether. While for complex geometries there is no way around
-using meshes obtained from mesh generators, there is a good number of
-geometries for which deal.II can create meshes using the functions in the
-GridGenerator namespace. Take a look at what it provides and see how it could
-be used in a program like this.
-
-We also discuss a variety of other ways to create and manipulate meshes to
-step-49.
-
-
-<h4> Comments about programming and debugging </h4>
-
-We close with a comment about modifying or writing programs with deal.II in
-general. When you start working with tutorial programs or your own
-applications, you will find that mistakes happen: your program will contain
-code that either aborts the program right away or bugs that simply lead to
-wrong results. In either case, you will find it extremely helpful to know how
-to work with a debugger: you may get by for a while by just putting debug
-output into your program, compiling it, and running it, but ultimately finding
-bugs with a debugger is much faster, much more convenient, and more reliable
-because you don't have to recompile the program all the time and because you
-can inspect the values of variables and how they change.
-
-Rather than postponing learning how to use a debugger till you really can't
-see any other way to find a bug, here's the one piece of
-advice we will provide in this program: learn how to use a debugger as soon as
-possible. It will be time well invested. The deal.II Frequently Asked
-Questions (FAQ) page linked to from the top-level <a
-href="http://www.dealii.org/">deal.II webpage</a> also provides a good number
-of hints on debugging deal.II programs.
