@@ -120,6 +120,32 @@ enum SolverType {FGMRES_ILU, FGMRES_GMG, UMFPACK};
 
 If you want to use UMFPACK as a solver, it is important to note that you have a singular system since the integral of mean pressure being equal to zero not implemented.  So, to deal with this, we set a pressure node equal to zero.
 
+<h3> Linear solver and preconditioning issues </h3>
+The weak form of the discrete equations naturally leads to the following linear system for the nodal values of the velocity and pressure fields: 
+@f{eqnarray*} 
+\left(\begin{array}{cc} A & B^T \\ B & 0 \end{array}\right) \left(\begin{array}{c} U \\ P \end{array}\right) = \left(\begin{array}{c} F \\ 0 \end{array}\right),
+@f}
+
+Our alternative to the way Step-22 solved the problem is to attack the block system at once and use an approximate Schur complement as efficient preconditioner. The idea is as follows: If we find a block preconditioner $P$ such that the matrix 
+@f{eqnarray*}
+ P^{-1}\left(\begin{array}{cc} A & B^T \\ B & 0 \end{array}\right)
+@f}
+
+is simple, then an iterative solver with that preconditioner will converge in a few iterations. Using the Schur complement $S=BA^{-1}BT$, one finds that
+
+@f{eqnarray*}
+ P^{-1} = \left(\begin{array}{cc} \hat{A} & B^T \\ 0 & \hat{S} \end{array}\right)^{-1} 
+@f}
+
+is a good choice, where $M_p=\hat{S} \approx S$, $M_p$ is the mass matrix, and $\hat{A}$ is an approximation of A that has the enum to decide how you want to solve for it. Note that instead of $Mx=b$, we solve 
+
+@f{eqnarray*}
+MP^{-1}y &=& b\\
+x &=& P^{-1} y\\
+@f}
+
+where FMGRES is used because when it solves the first equation, it remembers $P^{-1}$ and uses it again in the second equation.
+
 <h3> Computing Errors </h3>
 We need to make sure our mean pressure is zero.  To do this we use the <code>compute_mean_value</code> function in deal.ii to compute the mean value of pressure component of the solution. 
 
