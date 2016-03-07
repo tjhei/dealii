@@ -112,8 +112,8 @@ namespace Step55
       return - PI * y * cos(PI * x);
     if (component == 2)
       return sin (PI * x) * cos (PI * y);
-    else // RG: Don't need the else here for either of these
-      Assert (false, ExcMessage ("Component out of range in Solution"));
+
+    Assert (false, ExcMessage ("Component out of range in Solution"));
     return 0;
   }
 
@@ -135,8 +135,8 @@ namespace Step55
       return - PI * z * cos(PI * x);
     if (component == 3)
       return sin (PI * x) * cos (PI * y) * sin (PI * z);
-    else // RG: same
-      Assert (false, ExcMessage ("Component out of range in Solution"));
+
+    Assert (false, ExcMessage ("Component out of range in Solution"));
     return 0;
   }
 
@@ -316,8 +316,6 @@ namespace Step55
                mp_preconditioner);
 
       n_iterations_S_ += solver_control.last_step();
-
-
       dst.block(1) *= -1.0;
     }
 
@@ -403,6 +401,9 @@ namespace Step55
 
     virtual double value (const Point<dim>   &p,
                           const unsigned int  component = 0) const;
+
+  private:
+    Solution<dim> solution;
   };
 
 
@@ -414,9 +415,7 @@ namespace Step55
     Assert (component < this->n_components,
             ExcIndexRange (component, 0, this->n_components));
 
-    Solution<dim> solution;
-
-    return solution.value(p, component); //RG: make sure this works
+    return solution.value(p, component);
   }
 
   template <int dim>
@@ -443,8 +442,8 @@ namespace Step55
       return - PI * PI * PI * y * cos(PI * x) - PI * sin(PI * y) * sin(PI * x);
     if (component == 2)
       return 0;
-    else
-          Assert (false, ExcMessage ("Component out of range in RightHandSide"));
+
+    Assert (false, ExcMessage ("Component out of range in RightHandSide"));
     return 0;
 
   }
@@ -466,8 +465,8 @@ namespace Step55
       return - PI * PI * PI * z * cos (PI * x) + PI * cos(PI * z)*sin(PI * x)*cos(PI * y);
     if (component == 3)
       return 0;
-    else
-       Assert (false, ExcMessage ("Component out of range in RightHandSide"));
+
+    Assert (false, ExcMessage ("Component out of range in RightHandSide"));
     return 0;
   }
 
@@ -505,16 +504,10 @@ namespace Step55
     // This always knows how to use the dim (start at 0 one)
     FEValuesExtractors::Vector velocities(0);
 
-    if (solver_type != SolverType::FGMRES_GMG)
+    if (solver_type == SolverType::FGMRES_ILU)
       {
-      if (solver_type != SolverType::FGMRES_GMG)
-    	  computing_timer.enter_subsection ("(ILU specific)");
-    	else
-          computing_timer.enter_subsection ("(UMFPACK specific)");
-    	// Timo: test if UMFPACK actually profits from this (<1% worse with it on) on most refined mesh
-    	// Timo: test if ILU profits from this (twice as long to solve without, 1/4 the set-up time) on most refined mesh
+        TimerOutput::Scope s(computing_timer, "(ILU specific)");
         DoFRenumbering::Cuthill_McKee (dof_handler);
-        computing_timer.leave_subsection ();
       }
 
     DoFRenumbering::component_wise (dof_handler, block_component);
@@ -1223,8 +1216,6 @@ int main ()
     {
       using namespace dealii;
       using namespace Step55;
-
-      deallog.depth_console(0); // Timo: Need this or else there is too much output
 
       const int degree = 1;
       const int dim = 2;
