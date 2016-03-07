@@ -78,7 +78,11 @@
 
 namespace Step55
 {
-  enum SolverType {FGMRES_ILU, FGMRES_GMG, UMFPACK};
+  // This enum is used to decide which linear solver to use
+  struct SolverType
+  {
+    enum type {FGMRES_ILU, FGMRES_GMG, UMFPACK};
+  };
 
   using namespace dealii;
 
@@ -350,7 +354,7 @@ namespace Step55
   class StokesProblem
   {
   public:
-    StokesProblem (const unsigned int degree, SolverType solver_type);
+    StokesProblem (const unsigned int degree, SolverType::type solver_type);
     void run ();
 
   private:
@@ -363,7 +367,7 @@ namespace Step55
     void refine_mesh ();
 
     const unsigned int   degree;
-    SolverType             solver_type;
+    SolverType::type     solver_type;
 
     Triangulation<dim>   triangulation;
     FESystem<dim>        fe;
@@ -469,7 +473,7 @@ namespace Step55
   }
 
   template <int dim>
-  StokesProblem<dim>::StokesProblem (const unsigned int degree, SolverType solver_type)
+  StokesProblem<dim>::StokesProblem (const unsigned int degree, SolverType::type solver_type)
     :
     degree (degree),
     solver_type (solver_type),
@@ -502,9 +506,9 @@ namespace Step55
     // This always knows how to use the dim (start at 0 one)
     FEValuesExtractors::Vector velocities(0);
 
-    if (solver_type != FGMRES_GMG)
+    if (solver_type != SolverType::FGMRES_GMG)
       {
-    	if (solver_type != FGMRES_GMG)
+      if (solver_type != SolverType::FGMRES_GMG)
     	  computing_timer.enter_subsection ("(ILU specific)");
     	else
           computing_timer.enter_subsection ("(UMFPACK specific)");
@@ -516,7 +520,7 @@ namespace Step55
 
     DoFRenumbering::component_wise (dof_handler, block_component);
 
-    if (solver_type == FGMRES_GMG)
+    if (solver_type == SolverType::FGMRES_GMG)
       {
     	computing_timer.enter_subsection ("(Multigrid specific)");
         computing_timer.enter_subsection ("Setup - Multigrid");
@@ -645,7 +649,7 @@ namespace Step55
     system_matrix=0;
     system_rhs=0;
 
-    double mass_factor = (solver_type == UMFPACK) ? 0.0 : 1.0;
+    double mass_factor = (solver_type == SolverType::UMFPACK) ? 0.0 : 1.0;
 
     QGauss<dim>   quadrature_formula(degree+2);
 
@@ -1175,9 +1179,9 @@ namespace Step55
         if (refinement_cycle > 0)
           triangulation.refine_global (1);
 
-        if (solver_type == FGMRES_ILU)
+        if (solver_type == SolverType::FGMRES_ILU)
           std::cout << "Now running with ILU" << std::endl;
-        else if (solver_type == FGMRES_GMG)
+        else if (solver_type == SolverType::FGMRES_GMG)
           std::cout << "Now running with Multigrid" << std::endl;
         else
           std::cout << "Now running with UMFPACK" << std::endl;
@@ -1187,7 +1191,7 @@ namespace Step55
         std::cout << "   Assembling..." << std::endl << std::flush;
         assemble_system ();
 
-        if (solver_type == FGMRES_GMG)
+        if (solver_type == SolverType::FGMRES_GMG)
           {
             std::cout << "   Assembling Multigrid..." << std::endl << std::flush;
 
@@ -1218,8 +1222,9 @@ int main ()
 
       deallog.depth_console(0); // Timo: Need this or else there is too much output
 
-     StokesProblem<2> flow_problem(1, FGMRES_ILU); // UMFPACK FGMRES_ILU FGMRES_GMG
- //     StokesProblem<3> flow_problem(1, UMFPACK); // UMFPACK FGMRES_ILU FGMRES_GMG
+      const int degree = 1;
+      const int dim = 2;
+      StokesProblem<dim> flow_problem(degree, SolverType::FGMRES_ILU); // UMFPACK FGMRES_ILU FGMRES_GMG
 
       flow_problem.run ();
     }
