@@ -1,9 +1,6 @@
-// TODO:
-// Timo: Memory Consumption
-
 /* ---------------------------------------------------------------------
  *
- * Copyright (C) 1999 - 2016 by the deal.II authors
+ * Copyright (C) 2016 by the deal.II authors
  *
  * This file is part of the deal.II library.
  *
@@ -16,6 +13,8 @@
  *
  * ---------------------------------------------------------------------
 
+ * Author: Ryan Grove, Clemson University
+ *         Timo Heister, Clemson University
  */
 
 // @sect3{Include files}
@@ -1204,9 +1203,14 @@ namespace Step55
         std::cout << "   Computing Errors..." << std::flush;
         process_solution ();
 
+        Utilities::System::MemoryStats mem;
+        Utilities::System::get_memory_stats(mem);
+        std::cout << "   VM Peak: " << mem.VmPeak << std::endl;
+
         computing_timer.print_summary ();
         computing_timer.reset ();
         output_results (refinement_cycle);
+
       }
   }
 }
