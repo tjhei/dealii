@@ -359,7 +359,7 @@ namespace Step55
     void assemble_system ();
     void assemble_multigrid ();
     void solve ();
-    void process_solution ();
+    void compute_errors ();
     void output_results (const unsigned int refinement_cycle) const;
     void refine_mesh ();
 
@@ -725,9 +725,9 @@ namespace Step55
     computing_timer.leave_subsection();
   }
 
-  // @sect4{StokesProblem::assemble_multigrid
+  // @sect4{StokesProblem::assemble_multigrid}
 
-  // Here, like step-40, we have a function that assembles everything necessary for the multigrid preconditioner
+  // Here, like step-16, we have a function that assembles everything necessary for the multigrid preconditioner
 
   template <int dim>
   void StokesProblem<dim>::assemble_multigrid ()
@@ -1023,7 +1023,7 @@ namespace Step55
   // @sect4{StokesProblem::process_solution}
 
   template <int dim>
-  void StokesProblem<dim>::process_solution ()
+  void StokesProblem<dim>::compute_errors ()
   {
     double mean_value = VectorTools::compute_mean_value (dof_handler,
                                                          QGauss<dim>(degree+2),
@@ -1193,8 +1193,7 @@ namespace Step55
         std::cout << "   Solving..." << std::flush;
         solve ();
 
-        std::cout << "   Computing Errors..." << std::flush;
-        process_solution ();
+        compute_errors ();
 
         Utilities::System::MemoryStats mem;
         Utilities::System::get_memory_stats(mem);
