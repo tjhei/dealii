@@ -209,6 +209,86 @@ namespace Step55
     return return_value;
   }
 
+  template <int dim>
+  class RightHandSide : public Function<dim>
+  {
+  public:
+    RightHandSide () : Function<dim>(dim+1) {}
+
+    virtual double value (const Point<dim>   &p,
+                          const unsigned int  component = 0) const;
+  };
+
+  template <>
+  double
+  RightHandSide<2>::value (const Point<2>   &p,
+                           const unsigned int component) const
+  {
+    using numbers::PI;
+    double x = p(0);
+    double y = p(1);
+    if (component == 0)
+      return PI * PI * sin(PI * x) + PI * cos(PI * x) * cos(PI * y);
+    if (component == 1)
+      return - PI * PI * PI * y * cos(PI * x) - PI * sin(PI * y) * sin(PI * x);
+    if (component == 2)
+      return 0;
+
+    Assert (false, ExcMessage ("Component out of range in RightHandSide"));
+    return 0;
+
+  }
+
+  template <>
+  double
+  RightHandSide<3>::value (const Point<3>   &p,
+                           const unsigned int component) const
+  {
+    using numbers::PI;
+    double x = p(0);
+    double y = p(1);
+    double z = p(2);
+    if (component == 0)
+      return 2 * PI * PI * sin(PI * x) + PI * cos(PI * x) * cos(PI * y) * sin(PI * z);
+    if (component == 1)
+      return  - PI * PI * PI * y * cos (PI * x) + PI * (-1) * sin(PI * y)*sin(PI * x)*sin(PI * z);
+    if (component == 2)
+      return - PI * PI * PI * z * cos (PI * x) + PI * cos(PI * z)*sin(PI * x)*cos(PI * y);
+    if (component == 3)
+      return 0;
+
+    Assert (false, ExcMessage ("Component out of range in RightHandSide"));
+    return 0;
+  }
+
+
+
+  template <int dim>
+  class BoundaryValuesForVelocity : public Function<dim>
+  {
+  public:
+    BoundaryValuesForVelocity () : Function<dim>(dim) {}
+
+    virtual double value (const Point<dim>   &p,
+                          const unsigned int  component = 0) const;
+
+  private:
+    Solution<dim> solution;
+  };
+
+
+  template <int dim>
+  double
+  BoundaryValuesForVelocity<dim>::value (const Point<dim>  &p,
+                                         const unsigned int component) const
+  {
+    Assert (component < this->n_components,
+            ExcIndexRange (component, 0, this->n_components));
+
+    return solution.value(p, component);
+  }
+
+
 
   // @sect3{ASPECT BlockSchurPreconditioner}
 
@@ -394,82 +474,6 @@ namespace Step55
   };
 
 
-  template <int dim>
-  class BoundaryValuesForVelocity : public Function<dim>
-  {
-  public:
-    BoundaryValuesForVelocity () : Function<dim>(dim) {}
-
-    virtual double value (const Point<dim>   &p,
-                          const unsigned int  component = 0) const;
-
-  private:
-    Solution<dim> solution;
-  };
-
-
-  template <int dim>
-  double
-  BoundaryValuesForVelocity<dim>::value (const Point<dim>  &p,
-                                         const unsigned int component) const
-  {
-    Assert (component < this->n_components,
-            ExcIndexRange (component, 0, this->n_components));
-
-    return solution.value(p, component);
-  }
-
-  template <int dim>
-  class RightHandSide : public Function<dim>
-  {
-  public:
-    RightHandSide () : Function<dim>(dim+1) {}
-
-    virtual double value (const Point<dim>   &p,
-                          const unsigned int  component = 0) const;
-  };
-
-  template <>
-  double
-  RightHandSide<2>::value (const Point<2>   &p,
-                           const unsigned int component) const
-  {
-    using numbers::PI;
-    double x = p(0);
-    double y = p(1);
-    if (component == 0)
-      return PI * PI * sin(PI * x) + PI * cos(PI * x) * cos(PI * y);
-    if (component == 1)
-      return - PI * PI * PI * y * cos(PI * x) - PI * sin(PI * y) * sin(PI * x);
-    if (component == 2)
-      return 0;
-
-    Assert (false, ExcMessage ("Component out of range in RightHandSide"));
-    return 0;
-
-  }
-
-  template <>
-  double
-  RightHandSide<3>::value (const Point<3>   &p,
-                           const unsigned int component) const
-  {
-    using numbers::PI;
-    double x = p(0);
-    double y = p(1);
-    double z = p(2);
-    if (component == 0)
-      return 2 * PI * PI * sin(PI * x) + PI * cos(PI * x) * cos(PI * y) * sin(PI * z);
-    if (component == 1)
-      return  - PI * PI * PI * y * cos (PI * x) + PI * (-1) * sin(PI * y)*sin(PI * x)*sin(PI * z);
-    if (component == 2)
-      return - PI * PI * PI * z * cos (PI * x) + PI * cos(PI * z)*sin(PI * x)*cos(PI * y);
-    if (component == 3)
-      return 0;
-
-    Assert (false, ExcMessage ("Component out of range in RightHandSide"));
-    return 0;
-  }
 
   template <int dim>
   StokesProblem<dim>::StokesProblem (const unsigned int degree, SolverType::type solver_type)
@@ -485,6 +489,8 @@ namespace Step55
     computing_timer (std::cout, TimerOutput::summary,
                      TimerOutput::wall_times)
   {}
+
+
 
 // @sect4{StokesProblem::setup_dofs}
 
