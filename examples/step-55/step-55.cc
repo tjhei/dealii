@@ -390,6 +390,7 @@ namespace Step55
     MGConstrainedDoFs                     mg_constrained_dofs;
 
     TimerOutput computing_timer;
+    SparseMatrix<double> pressure_mass_matrix;
   };
 
 
@@ -514,7 +515,7 @@ namespace Step55
 
     if (solver_type == SolverType::FGMRES_GMG)
       {
-    	computing_timer.enter_subsection ("(Multigrid specific)");
+        computing_timer.enter_subsection ("(Multigrid specific)");
         computing_timer.enter_subsection ("Setup - Multigrid");
 
         // Distribute only the dofs for velocity finite element
@@ -583,11 +584,11 @@ namespace Step55
                        n_p = dofs_per_block[1];
 
     if (solver_type == SolverType::UMFPACK)
-    {
-      computing_timer.enter_subsection ("(UMFPACK specific)");
-      constraints.add_line(n_u);
-      computing_timer.leave_subsection();
-    }
+      {
+        computing_timer.enter_subsection ("(UMFPACK specific)");
+        constraints.add_line(n_u);
+        computing_timer.leave_subsection();
+      }
     constraints.close ();
 
     std::cout << "   Number of active cells: "
@@ -722,6 +723,10 @@ namespace Step55
                                                 system_matrix, system_rhs);
       }
 
+    pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
+    pressure_mass_matrix.copy_from(system_matrix.block(1,1));
+    system_matrix.block(1,1) = 0;
+
     computing_timer.leave_subsection();
   }
 
@@ -732,7 +737,7 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::assemble_multigrid ()
   {
-	computing_timer.enter_subsection ("(Multigrid specific)");
+    computing_timer.enter_subsection ("(Multigrid specific)");
     computing_timer.enter_subsection ("Assemble Multigrid");
 
     mg_matrices = 0.;
@@ -857,8 +862,8 @@ namespace Step55
     // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
     if (solver_type == SolverType::UMFPACK)
       {
-    	computing_timer.enter_subsection ("(UMFPACK specific)");
-    	computing_timer.enter_subsection ("Solve - Initialize");
+        computing_timer.enter_subsection ("(UMFPACK specific)");
+        computing_timer.enter_subsection ("Solve - Initialize");
         std::cout << "Now solving with UMFPACK" <<std::endl;
 
         SparseDirectUMFPACK A_direct;
@@ -887,14 +892,9 @@ namespace Step55
     SolverFGMRES<BlockVector<double> > gmres(solver_control,
                                              gmres_data);
 
-    SparseMatrix<double> pressure_mass_matrix;                // RG: move this to assemble
-    pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));  //
-    pressure_mass_matrix.copy_from(system_matrix.block(1,1));  //
-    system_matrix.block(1,1) = 0;                              //
-
     if (solver_type == SolverType::FGMRES_ILU)
       {
-    	computing_timer.enter_subsection ("(ILU specific)");
+        computing_timer.enter_subsection ("(ILU specific)");
         std::cout << "Now solving with FGMRES_ILU" <<std::endl;
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
 
@@ -941,7 +941,7 @@ namespace Step55
       }
     else
       {
-    	computing_timer.enter_subsection ("(Multigrid specific)");
+        computing_timer.enter_subsection ("(Multigrid specific)");
         std::cout << "Now solving with FGMRES_GMG" <<std::endl;
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
         // Transfer operators between levels
@@ -1155,11 +1155,11 @@ namespace Step55
 
     triangulation.refine_global (6-dim); //was 6
 
-   // Timo: Refinement
-   typename Triangulation<dim>::active_cell_iterator
-   cell = triangulation.begin_active();
-   cell->set_refine_flag ();
-   triangulation.execute_coarsening_and_refinement ();
+    // Timo: Refinement
+//   typename Triangulation<dim>::active_cell_iterator
+//   cell = triangulation.begin_active();
+//   cell->set_refine_flag ();
+//   triangulation.execute_coarsening_and_refinement ();
 
     //GridTools::distort_random(0.1, triangulation, true);
 
@@ -1218,7 +1218,7 @@ int main ()
 
       const int degree = 1;
       const int dim = 2;
-      StokesProblem<dim> flow_problem(degree, SolverType::FGMRES_ILU); // UMFPACK FGMRES_ILU FGMRES_GMG
+      StokesProblem<dim> flow_problem(degree, SolverType::FGMRES_GMG); // UMFPACK FGMRES_ILU FGMRES_GMG
 
       flow_problem.run ();
     }
