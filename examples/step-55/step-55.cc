@@ -77,7 +77,9 @@
 
 namespace Step55
 {
-  // This enum is used to decide which linear solver to use
+  // In order to make it easy to switch between the different solvers that are being
+  // using in Step-55, an enum was created that can be passed as an argument to the
+  // StokesProblem class.
   struct SolverType
   {
     enum type {FGMRES_ILU, FGMRES_GMG, UMFPACK};
@@ -98,6 +100,10 @@ namespace Step55
                                     const unsigned int component = 0) const;
   };
 
+  // In order to implement our reference solution, we create a function that has a
+  // value function that gets a point in space (of the form ($x,y,z$)) and a component
+  // (either $u_x, u_y, u_z,$ or $p$) and returns a double. See the Introduction for
+  // more information.
   template <>
   double
   Solution<2>::value (const Point<2> &p,
@@ -209,6 +215,7 @@ namespace Step55
     return return_value;
   }
 
+  // Implementation of $f$. See the Introduction for more information.
   template <int dim>
   class RightHandSide : public Function<dim>
   {
@@ -1025,6 +1032,11 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::compute_errors ()
   {
+	// This function integrates the chosen component over the whole domain and returns the result,
+	// i.e. it computes $\frac{1}{\Omega} \int_{\Omega} \left[ u_h(x) \right]_c dx $ where $c$ is
+	// the vector component and $u_h$ is the function representation of the nodal vector given as
+	// fourth argument. The integral is evaluated numerically using the quadrature formula given
+	// as third argument.
     double mean_value = VectorTools::compute_mean_value (dof_handler,
                                                          QGauss<dim>(degree+2),
                                                          solution,

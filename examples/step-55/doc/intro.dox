@@ -10,7 +10,7 @@ This program deals with the Stokes system of equations which reads as follows in
  - \nabla \cdot u &=& 0 
 @f}
 
-Note that we are using $\Delta u$ instead of the deformation tensor (a detailed desription of the difference between the two can be found in Step-22, but in summary, the deformation tensor is more physical as well as more expensive.)
+Note that we are using the deformation tensor instead of $\Delta u$ (a detailed desription of the difference between the two can be found in Step-22, but in summary, the deformation tensor is more physical as well as more expensive.)
 
 <h3> Reference Solution </h3>
 
@@ -19,44 +19,6 @@ The domain, right hand side and boundary conditions we implement are chosen beca
 For this section, let $u_{x}$ be the derivative of $u$ with respect to $x$, $u_{xx}$ be the second derivative of $u$ with respect to $x$, etc.
 
 Let $u=(u_1,u_2,u_3)=(2\sin (\pi x), - \pi y \cos (\pi x),- \pi z \cos (\pi x))$ and $p = \sin (\pi x)\cos (\pi y)\sin (\pi z)$.
-
-Now, (RG: add explanation of Solution class in code)
-In order to implement our reference solution, we create a function <code>Solution@<dim@></code> that has a value function that gets a point in space (of the form ($x,y,z$)) and a component (either $u_x, u_y, u_z,$ or $p$) and returns a double.
-
-@code
- template <int dim>
-  class Solution : public Function<dim>
-  {
-  public:
-    Solution () : Function<dim>(dim+1) {}
-    virtual double value (const Point<dim> &p,
-                          const unsigned int component) const;
-    virtual Tensor<1,dim> gradient (const Point<dim> &p,
-                                    const unsigned int component = 0) const;
-  };
-
- template <>
-  double
-  Solution<3>::value (const Point<3> &p,
-                      const unsigned int component) const
-  {
-    using numbers::PI;
-    double x = p(0);
-    double y = p(1);
-    double z = p(2);
-
-    if (component == 0)
-      return 2 * sin (PI * x);
-    if (component == 1)
-      return - PI * y * cos(PI * x);
-    if (component == 2)
-      return - PI * z * cos(PI * x);
-    if (component == 3)
-      return sin (PI * x) * cos (PI * y) * sin (PI * z);
-
-    return 0; // Timo: Or assert?
-  }
-@endcode
 
 If you look up in the deal.ii manual what is needed to create a class inherited from <code>Function@<dim@></code>, you will find not only a value function, but vector_value, value_list, etc.  Different things you use in your code will require one of these particular functions. This can be confusing at first, but luckily the only thing you actually need to implement is value.  The other ones have default implementations inside deal.ii and will be called on their own as long as you implement value correctly.
 
@@ -112,12 +74,6 @@ We also use UMFPACK.
 
 (Timo: what all to say about the solvers?)
 
-In order to make it easy to switch between the different solvers that are being using in Step-55, an enum was created that can be passed as an argument to the <code>StokesProblem</code> class. 
-
-@code
-enum SolverType {FGMRES_ILU, FGMRES_GMG, UMFPACK};
-@endcode
-
 If you want to use UMFPACK as a solver, it is important to note that you have a singular system since the integral of mean pressure being equal to zero not implemented.  So, to deal with this, we set a pressure node equal to zero.
 
 <h3> Linear solver and preconditioning issues </h3>
@@ -148,15 +104,6 @@ where FMGRES is used because when it solves the first equation, it remembers $P^
 
 <h3> Computing Errors </h3>
 We need to make sure our mean pressure is zero.  To do this we use the <code>compute_mean_value</code> function in deal.ii to compute the mean value of pressure component of the solution. 
-
-This function integrates the chosen component over the whole domain and returns the result, i.e. it computes $\frac{1}{\Omega} \int_{\Omega} \left[ u_h(x) \right]_c dx $ where $c$ is the vector component and $u_h$ is the function representation of the nodal vector given as fourth argument. The integral is evaluated numerically using the quadrature formula given as third argument.
-
-@code
-    double mean_value= VectorTools::compute_mean_value  (dof_handler,
-                                                         QGauss<dim>(degree+2),
-                                                         solution,
-                                                         dim);
-@endcode
 
 <h3> DoF Handlers </h3>
 There is currently no way in deal.ii to say "I want just part of a DoF handler" so in order to do this we create a new one and assure they have same ordering so that you can copy over one to the other.  In other words we want: u (velocity dof handler) = solution.block(0) (from system DofHandler)
