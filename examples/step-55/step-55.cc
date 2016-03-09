@@ -513,7 +513,7 @@ namespace Step55
 
     if (solver_type == SolverType::FGMRES_ILU)
       {
-        TimerOutput::Scope s(computing_timer, "(ILU specific)");
+        TimerOutput::Scope ilu_specific(computing_timer, "(ILU specific)");
         DoFRenumbering::Cuthill_McKee (dof_handler);
       }
 
@@ -521,8 +521,8 @@ namespace Step55
 
     if (solver_type == SolverType::FGMRES_GMG)
       {
-        computing_timer.enter_subsection ("(Multigrid specific)");
-        computing_timer.enter_subsection ("Setup - Multigrid");
+        TimerOutput::Scope multigrid_specific(computing_timer, "(Multigrid specific)");
+        TimerOutput::Scope setup_multigrid(computing_timer, "Setup - Multigrid");
 
         // Distribute only the dofs for velocity finite element
         velocity_dof_handler.distribute_dofs(velocity_fe);
@@ -569,8 +569,6 @@ namespace Step55
             //std::cout << "mg_matrices[" << level << "] has size " <<  mg_matrices[level].m() << " by " << mg_matrices[level].n() << std::endl;
             mg_interface_matrices[level].reinit(mg_sparsity_patterns[level]);
           }
-        computing_timer.leave_subsection();
-        computing_timer.leave_subsection();
       }
 
     {
@@ -591,9 +589,8 @@ namespace Step55
 
     if (solver_type == SolverType::UMFPACK)
       {
-        computing_timer.enter_subsection ("(UMFPACK specific)");
+        TimerOutput::Scope umfpack_specific(computing_timer, "(UMFPACK specific)");
         constraints.add_line(n_u);
-        computing_timer.leave_subsection();
       }
     constraints.close ();
 
@@ -632,8 +629,6 @@ namespace Step55
     system_rhs.block(0).reinit (n_u);
     system_rhs.block(1).reinit (n_p);
     system_rhs.collect_sizes ();
-
-    computing_timer.leave_subsection();
   }
 
 
@@ -643,8 +638,7 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::assemble_system ()
   {
-    computing_timer.enter_subsection ("Assemble");
-
+	TimerOutput::Scope assemble(computing_timer, "Assemble");
     system_matrix=0;
     system_rhs=0;
 
@@ -732,8 +726,6 @@ namespace Step55
     pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
     pressure_mass_matrix.copy_from(system_matrix.block(1,1));
     system_matrix.block(1,1) = 0;
-
-    computing_timer.leave_subsection();
   }
 
   // @sect4{StokesProblem::assemble_multigrid}
@@ -743,8 +735,8 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::assemble_multigrid ()
   {
-    computing_timer.enter_subsection ("(Multigrid specific)");
-    computing_timer.enter_subsection ("Assemble Multigrid");
+    TimerOutput::Scope multigrid_specific(computing_timer, "(Multigrid specific)");
+    TimerOutput::Scope assemble_multigrid(computing_timer, "Assemble Multigrid");
 
     mg_matrices = 0.;
 
@@ -849,9 +841,6 @@ namespace Step55
                                      local_dof_indices,
                                      mg_interface_matrices[cell->level()]); // are you setting those back to zero?
       }
-
-    computing_timer.leave_subsection();
-    computing_timer.leave_subsection();
   }
 
 // @sect4{StokesProblem::solve}
@@ -862,7 +851,7 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::solve ()
   {
-    computing_timer.enter_subsection ("Solve");
+    TimerOutput::Scope solve(computing_timer, "Solve");
     constraints.set_zero(solution);
 
     // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
@@ -870,21 +859,23 @@ namespace Step55
       {
         computing_timer.enter_subsection ("(UMFPACK specific)");
         computing_timer.enter_subsection ("Solve - Initialize");
+
         std::cout << "Now solving with UMFPACK" <<std::endl;
 
         SparseDirectUMFPACK A_direct;
         A_direct.initialize(system_matrix);
 
         solution = system_rhs;
+
         computing_timer.leave_subsection ();
         computing_timer.leave_subsection ();
 
-        computing_timer.enter_subsection ("Solve - Backslash");
-        A_direct.solve(system_matrix, solution);
-        computing_timer.leave_subsection ();
+        {
+        	 TimerOutput::Scope solve_backslash(computing_timer, "Solve - Backslash");
+        	 A_direct.solve(system_matrix, solution);
+        }
 
         constraints.distribute (solution);
-        computing_timer.leave_subsection ();
         return;
       }
 
@@ -901,8 +892,9 @@ namespace Step55
     if (solver_type == SolverType::FGMRES_ILU)
       {
         computing_timer.enter_subsection ("(ILU specific)");
-        std::cout << "Now solving with FGMRES_ILU" <<std::endl;
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
+
+        std::cout << "Now solving with FGMRES_ILU" <<std::endl;
 
         std::cout << "   Computing preconditioner..." << std::endl << std::flush;
 
@@ -924,17 +916,20 @@ namespace Step55
                             pressure_mass_matrix,
                             pmass_preconditioner, A_preconditioner,
                             use_expensive);
+
         computing_timer.leave_subsection();
         computing_timer.leave_subsection();
 
-        computing_timer.enter_subsection ("Solve - GMRES");
+        {
+        TimerOutput::Scope solve_fmgres(computing_timer, "Solve - FGMRES");
+
         gmres.solve (system_matrix,
                      solution,
                      system_rhs,
                      preconditioner);
 
         constraints.distribute (solution);
-        computing_timer.leave_subsection();
+        }
 
         std::cout << " "
                   << solver_control.last_step()
@@ -1002,11 +997,15 @@ namespace Step55
                               use_expensive);
 
         computing_timer.leave_subsection();
-        computing_timer.enter_subsection ("Solve - GMRES");
+        computing_timer.leave_subsection();
+
+        {
+        TimerOutput::Scope solve_fmgres(computing_timer, "Solve - FGMRES");
         gmres.solve (system_matrix,
                      solution,
                      system_rhs,
                      preconditioner);
+        }
 
         constraints.distribute (solution);
 
@@ -1018,12 +1017,7 @@ namespace Step55
                   << "Number of iterations used for approximation of A inverse: " << preconditioner.n_iterations_A() << std::endl
                   << "Number of iterations used for approximation of S inverse: " << preconditioner.n_iterations_S() << std::endl
                   << std::endl;
-
-        computing_timer.leave_subsection();
-        computing_timer.leave_subsection();
       }
-
-    computing_timer.leave_subsection();
   }
 
   // @sect4{StokesProblem::process_solution}
