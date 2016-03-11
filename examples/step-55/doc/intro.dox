@@ -3,7 +3,7 @@
 
 <h3> Stokes Problem </h3>
 
-The purpose of this tutorial is to compare linear solvers and to ultimately find better linear solvers than we had.  We see that the inner solvers used in Step-22 cannot keep up with FGMRES using geometric multigrid as a precondtioner, since multigrid is the only way to get $O(n)$ solve time. Using the Timer class, we collect some statistics that compare setup times, solve times, number of iterations, and computing errors to make sure that what we have implemented is correct.
+The purpose of this tutorial is to compare linear solvers and to ultimately find better linear solvers than we had.  We see that the linear solvers used in Step-22 cannot keep up with FGMRES using geometric multigrid as a precondtioner for the velocity block, since multigrid is the only way to get $O(n)$ solve time. Using the Timer class, we collect some statistics that compare setup times, solve times, number of iterations, and computing errors to make sure that what we have implemented is correct.
 
 This program deals with the Stokes system of equations which reads as follows in non-dimensionalized form:
 
@@ -51,20 +51,23 @@ x &=& P^{-1} y\\
 
 where FGMRES is used because when it solves the first equation, it remembers $P^{-1}$ and uses it again in the second equation.
 
-Since $P$ is aimed to be a preconditioner only, we shall use approximations to the inverse of the Schur complement $S$ and the matrix $A$. Hence, the Schur complement will be approximated by the pressure mass matrix $M_p$, whereas we use multiple methods for approximating $A$.
+It is important to note that
+@f{eqnarray*}
+ P = \left(\begin{array}{cc} A^{-1} & 0 \\ 0 & I \end{array}\right) \left(\begin{array}{cc} I & B^T \\ 0 & -I \end{array}\right) \left(\begin{array}{cc} I & 0 \\ 0 & S^{-1} \end{array}\right)
+@f}
+
+Since $P$ is aimed to be a preconditioner only, we shall use approximations to the inverse of the Schur complement $S$ and the matrix $A$. Hence, the Schur complement will be approximated by the pressure mass matrix $M_p$, whereas we use multiple methods for approximating $A$.  These approximations only have to be "good enough" and are actually solved with relatively small precision.
 
 <h3> Linear Solvers </h3>
-We use a FGMRES for an outside solver, but we have two inner solves.  The first of which is the inner solve for $S$ which is approximated by a mass matrix $M_p$ and is solved by using CG + ILU, whereas for the inside solver for $A$ we will use multiple approaches: CG + ILU, just ILU, CG + GMG, or just GMG. 
+The main solver this tutorial showcases is using FGMRES for an outside solver, but we also have two inner solves.  The first of which is the inner solve for $S$ which is approximated by the nagative of a mass matrix $-M_p$ and is solved by using CG + ILU, whereas for the inside solver for $A$ we will use multiple approaches: CG + ILU, just ILU, CG + GMG, or just GMG.   
 
-We also use UMFPACK.
-
-If you want to use UMFPACK as a solver, it is important to note that you have a singular system since the integral of mean pressure being equal to zero not implemented.  So, to deal with this, we set a pressure node equal to zero.
+Instead of FGMRES, we also use the direct solver UMFPACK to compare ourr results to.  If you want to use UMFPACK as a solver, it is important to note that you have a singular system since the integral of mean pressure being equal to zero not implemented.  So, to deal with this, we set the first pressure node equal to zero.
 
 <h3> Reference Solution </h3>
 
 The domain, right hand side and boundary conditions we implement are chosen because they are simple and they will allow us to compute errors using a reference solutions.  We model this situation by solving the following set of equations and boundary conditions on the domain Ω=[0,1]×[0,1]×[0,1]: 
 
-For this section, let $u_{x}$ be the derivative of $u$ with respect to $x$, $u_{xx}$ be the second derivative of $u$ with respect to $x$, etc.
+For this section, let $u_{x}$ be the derivative of $u$ with respect to $x$, $u_{xx}$ be the second derivative of $u$ with respect to $x$, etc.  Note that the boundary indicators and geometry used in Step-22 are different for this tutorial, as we have the same boundary conditions everwhere on the unit cell.  To enforce the boundary conditions we can just use our reference solution that we will now define.
 
 Let $u=(u_1,u_2,u_3)=(2\sin (\pi x), - \pi y \cos (\pi x),- \pi z \cos (\pi x))$ and $p = \sin (\pi x)\cos (\pi y)\sin (\pi z)$.
 
@@ -88,14 +91,9 @@ Now, consider the following:
 
 @f{eqnarray*}
 u_{1xx} &=& -2 \pi^2 \sin (\pi x)\\
-u_{1yy} &=& 0\\
-u_{1zz} &=& 0\\
 u_{2xx} &=& \pi^3 y \cos(\pi x)\\
-u_{2yy} &=& 0\\
-u_{2zz} &=& 0\\
 u_{3xx} &=& \pi^3 z \cos(\pi x)\\
-u_{3yy} &=& 0\\
-u_{3zz} &=& 0\\
+u_{1yy} &=& u_{1zz} = u_{2yy} = u_{2zz} = u_{3yy} = u_{3zz} = 0\\
 p_x &=& \pi \cos(\pi x) \cos(\pi y) \sin(\pi z) \\
 p_y &=& - \pi \sin(\pi y) \sin(\pi x) \sin(\pi z) \\
 p_z &=& \pi \cos(\pi z) \sin(\pi x) \cos(\pi y) \\ 
