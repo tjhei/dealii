@@ -3,7 +3,7 @@
 
 <h3> Stokes Problem </h3>
 
-The purpose of this tutorial is to compare linear solvers and to ultimately find better linear solvers than we had.  We see that the inner solvers used in Step-22 cannot keep up with FGMRES using geometric multigrid as a precondtioner, since multigrid is the only way to get $O(n)$ solve time.  We will show this using setup times, solve times, number of iterations, and computing errors to make sure that what we have implemented is correct.
+The purpose of this tutorial is to compare linear solvers and to ultimately find better linear solvers than we had.  We see that the inner solvers used in Step-22 cannot keep up with FGMRES using geometric multigrid as a precondtioner, since multigrid is the only way to get $O(n)$ solve time. Using the Timer class, we collect some statistics that compare setup times, solve times, number of iterations, and computing errors to make sure that what we have implemented is correct.
 
 This program deals with the Stokes system of equations which reads as follows in non-dimensionalized form:
 
@@ -14,19 +14,16 @@ This program deals with the Stokes system of equations which reads as follows in
 
 Note that we are using the deformation tensor instead of $\Delta u$ (a detailed desription of the difference between the two can be found in Step-22, but in summary, the deformation tensor is more physical as well as more expensive.)
 
+Note that we also have the following conditions on our problem:
+@f{eqnarray*}
+  \nabla \cdot u & =& 0 \\
+ \int_\Omega p &=& 0 
+@f}
+
 <h3> Differences from Step-22 </h3>
-The main difference is that here we use block solvers instead of the Schur Complement approach used in step-22. Details of this approach can be found under the Block Schur complement preconditioner subsection of the Possible Extensions section of Step-22.  There you will find not only a description of what it is doing but also the code you can use.  That being said, we use an approach slightly different from what is used there.  
+The main difference is that here we use block solvers instead of the Schur Complement approach used in step-22. Details of this approach can be found under the Block Schur complement preconditioner subsection of the Possible Extensions section of Step-22. Since we act on the whole block system now, we have to live with the disadvantage that we need to perform the solver iterations on the whole block system. There you will find not only a description of what it is doing but also the code you can use.  That being said, we use an approach slightly different from what is used there.  
 
 For the preconditioner of the velocity block, we borrow a class from ASPECT called BlockSchurPreconditioner that does the same thing but in a more efficient way for our purposes.  The major difference is that it does not use a smart pointer or InverseMatrix, as well as having the option to solve for the inverse of A or just apply one preconditioner sweep for it instead.
-
-<h3> Linear Solvers </h3>
-We use a FGMRES for an outside solver, but we have two inner solves.  The first of which is the inner solve for $S$ which is approximated by a mass matrix $M_p$ and is solved by using CG + ILU, whereas for the inside solver for $A$ we will use multiple approaches: CG + ILU, just ILU, CG + GMG, or just GMG. 
-
-We also use UMFPACK.
-
-(Timo: what all to say about the solvers?)
-
-If you want to use UMFPACK as a solver, it is important to note that you have a singular system since the integral of mean pressure being equal to zero not implemented.  So, to deal with this, we set a pressure node equal to zero.
 
 <h3> Linear solver and preconditioning issues </h3>
 The weak form of the discrete equations naturally leads to the following linear system for the nodal values of the velocity and pressure fields: 
@@ -34,12 +31,12 @@ The weak form of the discrete equations naturally leads to the following linear 
 \left(\begin{array}{cc} A & B^T \\ B & 0 \end{array}\right) \left(\begin{array}{c} U \\ P \end{array}\right) = \left(\begin{array}{c} F \\ 0 \end{array}\right),
 @f}
 
-Our alternative to the way Step-22 solved the problem is to attack the block system at once and use an approximate Schur complement as efficient preconditioner. The idea is as follows: If we find a block preconditioner $P$ such that the matrix 
+Our alternative to the way Step-22 solved the problem is to attack the block system at once and use an approximate Schur complement as efficient preconditioner. The idea is as follows: if we find a block preconditioner $P$ such that the matrix 
 @f{eqnarray*}
 \left(\begin{array}{cc} A & B^T \\ B & 0 \end{array}\right)  P^{-1}
 @f}
 
-is simple, then an iterative solver with that preconditioner will converge in a few iterations. Using the Schur complement $S=BA^{-1}BT$, one finds that
+is simple, then an iterative solver with that preconditioner will converge in a few iterations. Notice that we are doing right preconditioning for this.  Using the Schur complement $S=BA^{-1}BT$, one finds that
 
 @f{eqnarray*}
  P^{-1} = \left(\begin{array}{cc} \hat{A} & B^T \\ 0 & \hat{S} \end{array}\right)^{-1} 
@@ -54,6 +51,14 @@ x &=& P^{-1} y\\
 
 where FGMRES is used because when it solves the first equation, it remembers $P^{-1}$ and uses it again in the second equation.
 
+Since $P$ is aimed to be a preconditioner only, we shall use approximations to the inverse of the Schur complement $S$ and the matrix $A$. Hence, the Schur complement will be approximated by the pressure mass matrix $M_p$, whereas we use multiple methods for approximating $A$.
+
+<h3> Linear Solvers </h3>
+We use a FGMRES for an outside solver, but we have two inner solves.  The first of which is the inner solve for $S$ which is approximated by a mass matrix $M_p$ and is solved by using CG + ILU, whereas for the inside solver for $A$ we will use multiple approaches: CG + ILU, just ILU, CG + GMG, or just GMG. 
+
+We also use UMFPACK.
+
+If you want to use UMFPACK as a solver, it is important to note that you have a singular system since the integral of mean pressure being equal to zero not implemented.  So, to deal with this, we set a pressure node equal to zero.
 
 <h3> Reference Solution </h3>
 
