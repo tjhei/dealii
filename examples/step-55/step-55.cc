@@ -1167,7 +1167,7 @@ namespace Step55
 
     triangulation.refine_global (6-dim); //was 6
 
-    // Timo: Refinement
+    // Timo: Refinement : Seems to be fine
 //   typename Triangulation<dim>::active_cell_iterator
 //   cell = triangulation.begin_active();
 //   cell->set_refine_flag ();

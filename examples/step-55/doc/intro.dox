@@ -3,6 +3,8 @@
 
 <h3> Stokes Problem </h3>
 
+The purpose of this tutorial is to compare linear solvers and to ultimately find better linear solvers than we had.  We see that the inner solvers used in Step-22 cannot keep up with FGMRES using geometric multigrid as a precondtioner, since multigrid is the only way to get $O(n)$ solve time.  We will show this using setup times, solve times, number of iterations, and computing errors to make sure that what we have implemented is correct.
+
 This program deals with the Stokes system of equations which reads as follows in non-dimensionalized form:
 
 @f{eqnarray*}
@@ -50,7 +52,7 @@ MP^{-1}y &=& b\\
 x &=& P^{-1} y\\
 @f}
 
-where FMGRES is used because when it solves the first equation, it remembers $P^{-1}$ and uses it again in the second equation.
+where FGMRES is used because when it solves the first equation, it remembers $P^{-1}$ and uses it again in the second equation.
 
 
 <h3> Reference Solution </h3>
@@ -107,4 +109,4 @@ and thus
 We need to make sure our mean pressure is zero.  To do this we use the <code>compute_mean_value</code> function in deal.ii to compute the mean value of pressure component of the solution. 
 
 <h3> DoF Handlers </h3>
-There is currently no way in deal.ii to say "I want just part of a DoF handler" so in order to do this we create a new one and assure they have same ordering so that you can copy over one to the other.  In other words we want: u (velocity dof handler) = solution.block(0) (from system DofHandler)
+Geometric multigrid needs to know about the finite element system for the velocity but this is now part of the entire system which is hard to access.  The reason for this is that there is currently no way in deal.ii to say "I want just part of a DoF handler" so in order to do this we create a new one and assure they have same ordering so that you can copy over one to the other.  In other words we want: u (velocity dof handler) = solution.block(0) (from system DofHandler)
