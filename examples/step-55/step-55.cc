@@ -505,9 +505,11 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::setup_dofs ()
   {
-    computing_timer.enter_subsection ("Setup");
+    TimerOutput::Scope scope(computing_timer, "Setup");
 
     system_matrix.clear ();
+    pressure_mass_matrix.clear ();
+    
     // We don't need the multigrid dofs for whole problem finite element
     dof_handler.distribute_dofs(fe);
 
@@ -645,7 +647,7 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::assemble_system ()
   {
-	TimerOutput::Scope assemble(computing_timer, "Assemble");
+    TimerOutput::Scope assemble(computing_timer, "Assemble");
     system_matrix=0;
     system_rhs=0;
 
@@ -730,9 +732,12 @@ namespace Step55
                                                 system_matrix, system_rhs);
       }
 
-    pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
-    pressure_mass_matrix.copy_from(system_matrix.block(1,1));
-    system_matrix.block(1,1) = 0;
+    if (solver_type != SolverType::UMFPACK)
+      {
+	pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
+	pressure_mass_matrix.copy_from(system_matrix.block(1,1));
+	system_matrix.block(1,1) = 0;
+      }
   }
 
   // @sect4{StokesProblem::assemble_multigrid}
@@ -1229,7 +1234,7 @@ int main ()
       using namespace Step55;
 
       const int degree = 1;
-      const int dim = 2;
+      const int dim = 3;
       StokesProblem<dim> flow_problem(degree, SolverType::FGMRES_GMG); // UMFPACK FGMRES_ILU FGMRES_GMG
 
       flow_problem.run ();
