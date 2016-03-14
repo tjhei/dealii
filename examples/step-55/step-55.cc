@@ -113,6 +113,7 @@ namespace Step55
     using numbers::PI;
     double x = p(0);
     double y = p(1);
+
     if (component == 0)
       return sin (PI * x);
     if (component == 1)
@@ -135,7 +136,7 @@ namespace Step55
     double z = p(2);
 
     if (component == 0)
-      return 2 * sin (PI * x);
+      return 2.0 * sin (PI * x);
     if (component == 1)
       return - PI * y * cos(PI * x);
     if (component == 2)
@@ -429,7 +430,6 @@ namespace Step55
     void solve ();
     void compute_errors ();
     void output_results (const unsigned int refinement_cycle) const;
-    void refine_mesh ();
 
     const unsigned int   degree;
     SolverType::type     solver_type;
@@ -826,25 +826,20 @@ namespace Step55
     TimerOutput::Scope solve(computing_timer, "Solve");
     constraints.set_zero(solution);
 
-    // The following code can be uncommented so that instead of using ILU, you use UMFPACK (a direct solver) to solve
     if (solver_type == SolverType::UMFPACK)
       {
         computing_timer.enter_subsection ("(UMFPACK specific)");
         computing_timer.enter_subsection ("Solve - Initialize");
 
-        std::cout << "Now solving with UMFPACK" <<std::endl;
-
         SparseDirectUMFPACK A_direct;
         A_direct.initialize(system_matrix);
-
-        solution = system_rhs;
 
         computing_timer.leave_subsection ();
         computing_timer.leave_subsection ();
 
         {
           TimerOutput::Scope solve_backslash(computing_timer, "Solve - Backslash");
-          A_direct.solve(system_matrix, solution);
+          A_direct.vmult(solution, system_rhs);
         }
 
         constraints.distribute (solution);
@@ -853,41 +848,35 @@ namespace Step55
 
     // Here we must make sure to solve for the residual with "good enough" accuracy
     SolverControl solver_control (system_matrix.m(),
-                                  1e-10*system_rhs.l2_norm(), true);
+                                  1e-10*system_rhs.l2_norm());
+    unsigned int n_iterations_A;
+    unsigned int n_iterations_S;
 
-    SolverFGMRES<BlockVector<double> >::AdditionalData gmres_data;
-//    gmres_data.max_n_tmp_vectors = 100;
+    // This is used to pass whether or not we want to solve for A inside
+    // the preconditioner
+    const bool use_expensive = true;
 
-    SolverFGMRES<BlockVector<double> > gmres(solver_control,
-                                             gmres_data);
+    SolverFGMRES<BlockVector<double> > solver (solver_control);
 
     if (solver_type == SolverType::FGMRES_ILU)
       {
         computing_timer.enter_subsection ("(ILU specific)");
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
 
-        std::cout << "Now solving with FGMRES_ILU" <<std::endl;
-
         std::cout << "   Computing preconditioner..." << std::endl << std::flush;
 
-        SparseILU<double>       A_preconditioner;
-        A_preconditioner.initialize (system_matrix.block(0,0),SparseILU<double>::AdditionalData());
+        SparseILU<double> A_preconditioner;
+        A_preconditioner.initialize (system_matrix.block(0,0));
 
         SparseILU<double> pmass_preconditioner;
-        pmass_preconditioner.initialize (pressure_mass_matrix,
-                                         SparseILU<double>::AdditionalData());
+        pmass_preconditioner.initialize (pressure_mass_matrix);
 
-        // This is used to pass whether or not we want to solve for A to the Block Schur Precondtioner
-        bool use_expensive = true;
-
-        // If this cheaper solver is not desired, then simply short-cut
-        // the attempt at solving with the cheaper preconditioner that consists
-        // of only a single V-cycle
-        const BlockSchurPreconditioner<SparseILU<double>, SparseILU<double>>
-            preconditioner (system_matrix,
-                            pressure_mass_matrix,
-                            pmass_preconditioner, A_preconditioner,
-                            use_expensive);
+        const BlockSchurPreconditioner<SparseILU<double>, SparseILU<double> >
+        preconditioner (system_matrix,
+                        pressure_mass_matrix,
+                        A_preconditioner,
+                        pmass_preconditioner,
+                        use_expensive);
 
         computing_timer.leave_subsection();
         computing_timer.leave_subsection();
@@ -895,47 +884,38 @@ namespace Step55
         {
           TimerOutput::Scope solve_fmgres(computing_timer, "Solve - FGMRES");
 
-          gmres.solve (system_matrix,
-                       solution,
-                       system_rhs,
-                       preconditioner);
-
-          constraints.distribute (solution);
+          solver.solve (system_matrix,
+                        solution,
+                        system_rhs,
+                        preconditioner);
+          n_iterations_A = preconditioner.n_iterations_A;
+          n_iterations_S = preconditioner.n_iterations_S;
         }
 
-        std::cout << " "
-                  << solver_control.last_step()
-                  << " block GMRES iterations";
-
-        std::cout << std::endl
-                  << "Number of iterations used for approximation of A inverse: "
-                  << preconditioner.n_iterations_A << std::endl
-                  << "Number of iterations used for approximation of S inverse: "
-                  << preconditioner.n_iterations_S << std::endl
-                  << std::endl;
       }
     else
       {
         computing_timer.enter_subsection ("(Multigrid specific)");
-        std::cout << "Now solving with FGMRES_GMG" <<std::endl;
         computing_timer.enter_subsection ("Solve - Set-up Preconditioner");
+
         // Transfer operators between levels
         MGTransferPrebuilt<Vector<double> > mg_transfer(constraints, mg_constrained_dofs);
         mg_transfer.build_matrices(velocity_dof_handler);
 
         // Coarse grid solver
+        // Timo: TODO: should we use something like LACIteration?
         FullMatrix<double> coarse_matrix;
-        coarse_matrix.copy_from (mg_matrices[0]); //Timo: TODO: coarse_grid_solver.initialize(mg_matrices[0])  --- failed
-        MGCoarseGridHouseholder<> coarse_grid_solver; // Timo: TODO: need to do something else for coarse solver LACIteration
+        coarse_matrix.copy_from (mg_matrices[0]);
+        MGCoarseGridHouseholder<> coarse_grid_solver;
         coarse_grid_solver.initialize (coarse_matrix);
-        //coarse_grid_solver.initialize(mg_matrices[0]);
 
         typedef PreconditionSOR<SparseMatrix<double> > Smoother;
         mg::SmootherRelaxation<Smoother, Vector<double> > mg_smoother;
         mg_smoother.initialize(mg_matrices);
         mg_smoother.set_steps(2);
 
-        // Multigrid, when used as a preconditioner for CG, expects the smoother to be symmetric, and this takes care of that
+        // Multigrid, when used as a preconditioner for CG, expects the
+        // smoother to be symmetric, and this takes care of that
         mg_smoother.set_symmetric(true);
 
         mg::Matrix<Vector<double> > mg_matrix(mg_matrices);
@@ -951,7 +931,6 @@ namespace Step55
                                       mg_smoother);
         mg.set_edge_matrices(mg_interface_down, mg_interface_up);
 
-        // The velocity_dof_handler takes care of fact that we want block(0,0) here, as that is A.
         PreconditionMG<dim, Vector<double>, MGTransferPrebuilt<Vector<double> > >
         A_Multigrid(velocity_dof_handler, mg, mg_transfer);
 
@@ -959,11 +938,6 @@ namespace Step55
         pmass_preconditioner.initialize (pressure_mass_matrix,
                                          SparseILU<double>::AdditionalData());
 
-        bool use_expensive = true;
-
-        // If this cheaper solver is not desired, then simply short-cut
-        // the attempt at solving with the cheaper preconditioner that
-        // consists of only a single V-cycle
         const BlockSchurPreconditioner<
         PreconditionMG<dim, Vector<double>, MGTransferPrebuilt<Vector<double> > >,
                        SparseILU<double> >
@@ -978,51 +952,48 @@ namespace Step55
 
         {
           TimerOutput::Scope solve_fmgres(computing_timer, "Solve - FGMRES");
-          gmres.solve (system_matrix,
-                       solution,
-                       system_rhs,
-                       preconditioner);
+          solver.solve (system_matrix,
+                        solution,
+                        system_rhs,
+                        preconditioner);
+          n_iterations_A = preconditioner.n_iterations_A;
+          n_iterations_S = preconditioner.n_iterations_S;
         }
-
-        constraints.distribute (solution);
-
-        std::cout << " "
-                  << solver_control.last_step()
-                  << " block GMRES iterations";
-
-        std::cout << std::endl
-                  << "Number of iterations used for approximation of A inverse: "
-                  << preconditioner.n_iterations_A << std::endl
-                  << "Number of iterations used for approximation of S inverse: "
-                  << preconditioner.n_iterations_S << std::endl
-                  << std::endl;
       }
+
+    constraints.distribute (solution);
+
+    std::cout << " "
+              << solver_control.last_step()
+              << " block GMRES iterations" << std::endl
+              << "\tNumber of iterations used for approximation of A inverse: "
+              << n_iterations_A << std::endl
+              << "\tNumber of iterations used for approximation of S inverse: "
+              << n_iterations_S << std::endl
+              << std::endl;
   }
 
-  // @sect4{StokesProblem::process_solution}
+
+// @sect4{StokesProblem::process_solution}
 
   template <int dim>
   void StokesProblem<dim>::compute_errors ()
   {
-    // This function integrates the chosen component over the whole domain and returns the result,
-    // i.e. it computes $\frac{1}{\Omega} \int_{\Omega} \left[ u_h(x) \right]_c dx $ where $c$ is
-    // the vector component and $u_h$ is the function representation of the nodal vector given as
-    // fourth argument. The integral is evaluated numerically using the quadrature formula given
-    // as third argument.
-    double mean_value = VectorTools::compute_mean_value (dof_handler,
-                                                         QGauss<dim>(degree+2),
-                                                         solution,
-                                                         dim);
+    // Compute the mean pressure $\frac{1}{\Omega} \int_{\Omega} p(x) dx $
+    // and then subtract it from each pressure coefficient. This will result
+    // in a pressure with mean value zero. Here we make use of the fact that
+    // the pressure is component $dim$ and that the finite element space
+    // is nodal.
+    double mean_pressure = VectorTools::compute_mean_value (dof_handler,
+                                                            QGauss<dim>(degree+2),
+                                                            solution,
+                                                            dim);
+    solution.block(1).add(-mean_pressure);
+    std::cout << "mean value adjusted by " << -mean_pressure << std::endl;
 
-    std::cout << "mean value adjusted by " << -mean_value << std::endl;
-    solution.block(1).add(-mean_value);
-
-
-    const ComponentSelectFunction<dim>
-    pressure_mask (dim, dim+1);
+    const ComponentSelectFunction<dim> pressure_mask (dim, dim+1);
     // TODO: find a better way to do this inside deal.II, maybe with component_mask
-    const ComponentSelectFunction<dim>
-    velocity_mask(std::make_pair(0, dim), dim+1);
+    const ComponentSelectFunction<dim> velocity_mask(std::make_pair(0, dim), dim+1);
 
     /*
      Timo: think about this
@@ -1040,7 +1011,6 @@ namespace Step55
                                        QGauss<dim>(degree+2),
                                        VectorTools::L2_norm,
                                        &velocity_mask);
-
 
     const double Velocity_L2_error = difference_per_cell.l2_norm();
 
@@ -1063,7 +1033,9 @@ namespace Step55
                                        &velocity_mask);
 
     const double Velocity_H1_error = difference_per_cell.l2_norm();
-    std::cout << std::endl << "Velocity L2 Error: " << Velocity_L2_error
+
+    std::cout << std::endl
+              << "Velocity L2 Error: " << Velocity_L2_error
               << std::endl
               << "Pressure L2 Error: " << Pressure_L2_error
               << std::endl
@@ -1073,7 +1045,7 @@ namespace Step55
   }
 
 
-  // @sect4{StokesProblem::output_results}
+// @sect4{StokesProblem::output_results}
 
   template <int dim>
   void
@@ -1105,47 +1077,25 @@ namespace Step55
   }
 
 
-  // @sect4{StokesProblem::refine_mesh}
 
-  template <int dim>
-  void
-  StokesProblem<dim>::refine_mesh ()
-  {
-    Vector<float> estimated_error_per_cell (triangulation.n_active_cells());
+// @sect4{StokesProblem::run}
 
-    FEValuesExtractors::Scalar pressure(dim);
-    KellyErrorEstimator<dim>::estimate (dof_handler,
-                                        QGauss<dim-1>(degree+1),
-                                        typename FunctionMap<dim>::type(),
-                                        solution,
-                                        estimated_error_per_cell,
-                                        fe.component_mask(pressure));
-
-    GridRefinement::refine_and_coarsen_fixed_number (triangulation,
-                                                     estimated_error_per_cell,
-                                                     0.3, 0.0);
-    triangulation.execute_coarsening_and_refinement ();
-  }
-
-  // @sect4{StokesProblem::run}
-
-  // The last step in the Stokes class is, as usual, the function that
-  // generates the initial grid and calls the other functions in the
-  // respective order.
+// The last step in the Stokes class is, as usual, the function that
+// generates the initial grid and calls the other functions in the
+// respective order.
   template <int dim>
   void StokesProblem<dim>::run ()
   {
     GridGenerator::hyper_cube (triangulation);
+    triangulation.refine_global (6-dim);
 
-    triangulation.refine_global (6-dim); //was 6
+    if (solver_type == SolverType::FGMRES_ILU)
+      std::cout << "Now running with ILU" << std::endl;
+    else if (solver_type == SolverType::FGMRES_GMG)
+      std::cout << "Now running with Multigrid" << std::endl;
+    else
+      std::cout << "Now running with UMFPACK" << std::endl;
 
-    // Timo: Refinement : Seems to be fine
-//   typename Triangulation<dim>::active_cell_iterator
-//   cell = triangulation.begin_active();
-//   cell->set_refine_flag ();
-//   triangulation.execute_coarsening_and_refinement ();
-
-    //GridTools::distort_random(0.1, triangulation, true);
 
     for (unsigned int refinement_cycle = 0; refinement_cycle<3; //was 3
          ++refinement_cycle)
@@ -1155,12 +1105,6 @@ namespace Step55
         if (refinement_cycle > 0)
           triangulation.refine_global (1);
 
-        if (solver_type == SolverType::FGMRES_ILU)
-          std::cout << "Now running with ILU" << std::endl;
-        else if (solver_type == SolverType::FGMRES_GMG)
-          std::cout << "Now running with Multigrid" << std::endl;
-        else
-          std::cout << "Now running with UMFPACK" << std::endl;
         std::cout << "   Set-up..." << std::endl << std::flush;
         setup_dofs();
 
@@ -1186,13 +1130,11 @@ namespace Step55
         computing_timer.print_summary ();
         computing_timer.reset ();
         output_results (refinement_cycle);
-
       }
   }
 }
 
 // @sect3{The main function}
-
 int main ()
 {
   try
@@ -1202,7 +1144,8 @@ int main ()
 
       const int degree = 1;
       const int dim = 3;
-      StokesProblem<dim> flow_problem(degree, SolverType::FGMRES_GMG); // UMFPACK FGMRES_ILU FGMRES_GMG
+      // options for SolverType: UMFPACK FGMRES_ILU FGMRES_GMG
+      StokesProblem<dim> flow_problem(degree, SolverType::FGMRES_GMG);
 
       flow_problem.run ();
     }
