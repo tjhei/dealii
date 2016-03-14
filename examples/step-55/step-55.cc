@@ -440,24 +440,21 @@ namespace Step55
     DoFHandler<dim>      dof_handler;
     DoFHandler<dim>      velocity_dof_handler;
 
-    // The following are related to constraints associated with the hanging nodes for both the
-    // entire system as well as just the A block.
     ConstraintMatrix     constraints;
-    ConstraintMatrix     velocity_constraints;
 
     BlockSparsityPattern      sparsity_pattern;
     BlockSparseMatrix<double> system_matrix;
+    SparseMatrix<double> pressure_mass_matrix;
 
     BlockVector<double> solution;
     BlockVector<double> system_rhs;
 
     MGLevelObject<SparsityPattern>        mg_sparsity_patterns;
-    MGLevelObject<SparseMatrix<double> > mg_matrices;
-    MGLevelObject<SparseMatrix<double> > mg_interface_matrices;
+    MGLevelObject<SparseMatrix<double> >  mg_matrices;
+    MGLevelObject<SparseMatrix<double> >  mg_interface_matrices;
     MGConstrainedDoFs                     mg_constrained_dofs;
 
     TimerOutput computing_timer;
-    SparseMatrix<double> pressure_mass_matrix;
   };
 
 
@@ -519,20 +516,8 @@ namespace Step55
         // Multigrid only needs the dofs for velocity
         velocity_dof_handler.distribute_mg_dofs(velocity_fe);
 
-        velocity_constraints.clear ();
-
-        // For adaptivity, these must be taken care of (correctly)
-        DoFTools::make_hanging_node_constraints (velocity_dof_handler, velocity_constraints);
-
-        VectorTools::interpolate_boundary_values (velocity_dof_handler,
-                                                  0,
-                                                  BoundaryValuesForVelocity<dim>(),
-                                                  velocity_constraints);
-
-        velocity_constraints.close ();
-
-        typename FunctionMap<dim>::type      boundary_condition_function_map;
-        BoundaryValuesForVelocity<dim>                velocity_boundary_condition;
+        typename FunctionMap<dim>::type boundary_condition_function_map;
+        BoundaryValuesForVelocity<dim> velocity_boundary_condition;
         boundary_condition_function_map[0] = &velocity_boundary_condition;
 
         mg_constrained_dofs.clear();
@@ -547,15 +532,12 @@ namespace Step55
 
         for (unsigned int level=0; level<n_levels; ++level)
           {
-            DynamicSparsityPattern csp;
-            csp.reinit(velocity_dof_handler.n_dofs(level), // Generates sparsity pattern, matrices, interface matrices for each matrix on each level
-                       velocity_dof_handler.n_dofs(level));
+            DynamicSparsityPattern csp (velocity_dof_handler.n_dofs(level),
+                                        velocity_dof_handler.n_dofs(level));
             MGTools::make_sparsity_pattern(velocity_dof_handler, csp, level);
-
             mg_sparsity_patterns[level].copy_from (csp);
 
             mg_matrices[level].reinit(mg_sparsity_patterns[level]);
-            //std::cout << "mg_matrices[" << level << "] has size " <<  mg_matrices[level].m() << " by " << mg_matrices[level].n() << std::endl;
             mg_interface_matrices[level].reinit(mg_sparsity_patterns[level]);
           }
       }
@@ -590,8 +572,6 @@ namespace Step55
               << dof_handler.n_dofs()
               << " (" << n_u << '+' << n_p << ')'
               << std::endl;
-
-    //Assert (n_u == velocity_dof_handler.n_dofs(), ExcMessage ("Numbers of degrees of freedom must match for the velocity part of the main dof handler and the whole velocity dof handler."));
 
     {
       BlockDynamicSparsityPattern csp (2,2);
