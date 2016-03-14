@@ -61,13 +61,10 @@
 #include <deal.II/lac/sparse_ilu.h>
 #include <deal.II/grid/grid_out.h>
 
-#include <fstream>
-#include <sstream>
-
 // We need to include this class for all of the timings between ILU and Multigrid
 #include <deal.II/base/timer.h>
 
-// This includes the files necessary for us to use Multigrid
+// This includes the files necessary for us to use geometric Multigrid
 #include <deal.II/multigrid/multigrid.h>
 #include <deal.II/multigrid/mg_transfer.h>
 #include <deal.II/multigrid/mg_tools.h>
@@ -75,20 +72,28 @@
 #include <deal.II/multigrid/mg_smoother.h>
 #include <deal.II/multigrid/mg_matrix.h>
 
+#include <fstream>
+#include <sstream>
+
 namespace Step55
 {
+  using namespace dealii;
+
   // In order to make it easy to switch between the different solvers that are being
-  // using in Step-55, an enum was created that can be passed as an argument to the
-  // StokesProblem class.
+  // used in Step-55, an enum was created that can be passed as an argument to the
+  // constructor of the main class.
   struct SolverType
   {
     enum type {FGMRES_ILU, FGMRES_GMG, UMFPACK};
   };
 
-  using namespace dealii;
-
-  // @sect3{Solution Function}
-
+  // @sect3{Functions for Solution and Righthand side}
+  //
+  // The class Solution is used to define the boundary conditions and to
+  // compute errors of the numerical solution. Note that we need to define
+  // the values and gradients in order to compute L2 and H1 errors. Here
+  // we decided to separate the implementations for 2d and 3d using
+  // template specialization.
   template <int dim>
   class Solution : public Function<dim>
   {
@@ -100,10 +105,6 @@ namespace Step55
                                     const unsigned int component = 0) const;
   };
 
-  // In order to implement our reference solution, we create a function that has a
-  // value function that gets a point in space (of the form ($x,y,z$)) and a component
-  // (either $u_x, u_y, u_z,$ or $p$) and returns a double. See the Introduction for
-  // more information.
   template <>
   double
   Solution<2>::value (const Point<2> &p,
@@ -215,20 +216,20 @@ namespace Step55
     return return_value;
   }
 
-  // Implementation of $f$. See the Introduction for more information.
+  // Implementation of $f$. See the introduction for more information.
   template <int dim>
   class RightHandSide : public Function<dim>
   {
   public:
     RightHandSide () : Function<dim>(dim+1) {}
 
-    virtual double value (const Point<dim>   &p,
-                          const unsigned int  component = 0) const;
+    virtual double value (const Point<dim> &p,
+                          const unsigned int component = 0) const;
   };
 
   template <>
   double
-  RightHandSide<2>::value (const Point<2>   &p,
+  RightHandSide<2>::value (const Point<2> &p,
                            const unsigned int component) const
   {
     using numbers::PI;
@@ -268,8 +269,13 @@ namespace Step55
     return 0;
   }
 
-
-
+  // Sadly, we need a separate function for the boundary conditions
+  // to be used in the geometric multigrid. This is because it needs
+  // to be a function with $dim$ components, whereas Solution has
+  // $dim+1$ components. Rather than copying the implementation of
+  // Solution, we forward the calls to Solution::value. For that we need
+  // an instance of the class Solution, which you can find as a private
+  // member.
   template <int dim>
   class BoundaryValuesForVelocity : public Function<dim>
   {
@@ -299,87 +305,59 @@ namespace Step55
 
   // @sect3{ASPECT BlockSchurPreconditioner}
 
-  // Implement the block Schur preconditioner for the Stokes system.
-  template <class PreconditionerA, class PreconditionerMp>
+  // This class, which is taken from ASPECT and then slightly modified,
+  // implements the block Schur preconditioner for the Stokes system discussed
+  // above. It is templated on the types
+  // for the preconditioner blocks for velocity and schur complement.
+  //
+  // The bool flag @p do_solve_A in the constructor allows us to either
+  // apply the preconditioner for the velocity block once or use an inner
+  // iterative solver for a more accurate approximation instead.
+  //
+  // Notice how we keep track of the sum of the inner iterations
+  // (preconditioner applications).
+  template <class PreconditionerAType, class PreconditionerSType>
   class BlockSchurPreconditioner : public Subscriptor
   {
   public:
-    // Constructor of the BlockSchurPreconditioner.
-    //
-    // S is The entire Stokes matrix.
-    //
-    // Spre is the matrix whose blocks are used in the definition of
-    // the preconditioning of the Stokes matrix, i.e. containing approximations
-    // of the A and S blocks.
-    //
-    // Mppreconditioner is the Preconditioner object for the Schur complement,
-    //     typically chosen as the mass matrix.
-    //
-    // Apreconditioner is the Preconditioner object for the matrix A.
-    //
-    // do_solve_A is a flag indicating whether we should actually solve with
-    //     the matrix $A$, or only apply one preconditioner step with it.
-    BlockSchurPreconditioner (const BlockSparseMatrix<double>                 &S,
-                              const SparseMatrix<double>                 &P,
-                              const PreconditionerMp                     &Mppreconditioner,
-                              const PreconditionerA                      &Apreconditioner,
-                              const bool                                do_solve_A);
+    BlockSchurPreconditioner (const BlockSparseMatrix<double>  &system_matrix,
+                              const SparseMatrix<double> &schur_complement_matrix,
+                              const PreconditionerAType &preconditioner_A,
+                              const PreconditionerSType &preconditioner_S,
+                              const bool do_solve_A);
 
-
-    // Matrix vector product with this preconditioner object.
     void vmult (BlockVector<double>       &dst,
                 const BlockVector<double> &src) const;
 
-    unsigned int n_iterations_A() const;
-    unsigned int n_iterations_S() const;
+    mutable unsigned int n_iterations_A;
+    mutable unsigned int n_iterations_S;
 
   private:
+    const BlockSparseMatrix<double> &system_matrix;
+    const SparseMatrix<double> &schur_complement_matrix;
+    const PreconditionerAType &preconditioner_A;
+    const PreconditionerSType &preconditioner_S;
 
-    // References to the various matrix object this preconditioner works on.
-    const BlockSparseMatrix<double> &stokes_matrix;
-    const SparseMatrix<double> &pressure_mass_matrix;
-    const PreconditionerMp                    &mp_preconditioner;
-    const PreconditionerA                     &a_preconditioner;
-
-
-    // Whether to actually invert the $\tilde A$ part of the preconditioner matrix
-    // or to just apply a single preconditioner step with it.
     const bool do_solve_A;
-    mutable unsigned int n_iterations_A_;
-    mutable unsigned int n_iterations_S_;
   };
 
-  template <class PreconditionerA, class PreconditionerMp>
-  BlockSchurPreconditioner<PreconditionerA, PreconditionerMp>::
-  BlockSchurPreconditioner (const BlockSparseMatrix<double>  &S,
-                            const SparseMatrix<double>                &P,
-                            const PreconditionerMp                     &Mppreconditioner,
-                            const PreconditionerA                      &Apreconditioner,
-                            const bool                                  do_solve_A)
+  template <class PreconditionerAType, class PreconditionerSType>
+  BlockSchurPreconditioner<PreconditionerAType, PreconditionerSType>::
+  BlockSchurPreconditioner (const BlockSparseMatrix<double>  &system_matrix,
+                            const SparseMatrix<double> &schur_complement_matrix,
+                            const PreconditionerAType &preconditioner_A,
+                            const PreconditionerSType &preconditioner_S,
+                            const bool do_solve_A)
     :
-    stokes_matrix     (S),
-    pressure_mass_matrix (P),
-    mp_preconditioner (Mppreconditioner),
-    a_preconditioner  (Apreconditioner),
-    do_solve_A        (do_solve_A),
-    n_iterations_A_(0),
-    n_iterations_S_(0)
+    n_iterations_A (0),
+    n_iterations_S (0),
+    system_matrix (system_matrix),
+    schur_complement_matrix (schur_complement_matrix),
+    preconditioner_A (preconditioner_A),
+    preconditioner_S (preconditioner_S),
+    do_solve_A (do_solve_A)
   {}
 
-  template <class PreconditionerA, class PreconditionerMp>
-  unsigned int
-  BlockSchurPreconditioner<PreconditionerA, PreconditionerMp>::
-  n_iterations_A() const
-  {
-    return n_iterations_A_;
-  }
-  template <class PreconditionerA, class PreconditionerMp>
-  unsigned int
-  BlockSchurPreconditioner<PreconditionerA, PreconditionerMp>::
-  n_iterations_S() const
-  {
-    return n_iterations_S_;
-  }
 
 
   template <class PreconditionerA, class PreconditionerMp>
@@ -390,50 +368,53 @@ namespace Step55
   {
     Vector<double> utmp(src.block(0));
 
-    // First solve with the bottom left block, which we have built
-    // as a mass matrix with the inverse of the viscosity
+    // First solve with the approximation for S
     {
       SolverControl solver_control(1000, 1e-6 * src.block(1).l2_norm());
       SolverCG<>    cg (solver_control);
 
-      // This takes care of the mass matrix
       dst.block(1) = 0.0;
-      cg.solve(pressure_mass_matrix,
-               dst.block(1), src.block(1),
-               mp_preconditioner);
+      cg.solve(schur_complement_matrix,
+               dst.block(1),
+               src.block(1),
+               preconditioner_S);
 
-      n_iterations_S_ += solver_control.last_step();
+      n_iterations_S += solver_control.last_step();
       dst.block(1) *= -1.0;
     }
 
-    // Apply the top right block
+    // Second, apply the top right block (B^T)
     {
-      stokes_matrix.block(0,1).vmult(utmp, dst.block(1)); //B^T
-      utmp*=-1.0;
-      utmp+=src.block(0);
+      system_matrix.block(0,1).vmult(utmp, dst.block(1));
+      utmp *= -1.0;
+      utmp += src.block(0);
     }
 
-    // Now either solve with the top left block (if do_solve_A==true)
-    // or just apply one preconditioner sweep (for the first few
-    // iterations of our two-stage outer GMRES iteration)
+    // Finally, either solve with the top left block (if do_solve_A==true)
+    // or just apply one preconditioner sweep
     if (do_solve_A == true)
       {
         SolverControl solver_control(10000, utmp.l2_norm()*1e-2, true);
         SolverCG<>    cg (solver_control);
 
         dst.block(0) = 0.0;
-        cg.solve(stokes_matrix.block(0,0), dst.block(0), utmp,
-                 a_preconditioner);
+        cg.solve(system_matrix.block(0,0),
+                 dst.block(0),
+                 utmp,
+                 preconditioner_A);
 
-        n_iterations_A_ += solver_control.last_step();
+        n_iterations_A += solver_control.last_step();
       }
     else
       {
-        a_preconditioner.vmult (dst.block(0), utmp);
-        n_iterations_A_ += 1;
+        preconditioner_A.vmult (dst.block(0), utmp);
+        n_iterations_A += 1;
       }
   }
 
+  // @sect3{The StokesProblem class}
+  //
+  // This is the main class of the problem.
   template <int dim>
   class StokesProblem
   {
@@ -460,8 +441,7 @@ namespace Step55
     DoFHandler<dim>      velocity_dof_handler;
 
     // The following are related to constraints associated with the hanging nodes for both the
-    // entire system as well as just the A block.  Here we allocate space for an object constraints
-    // that will hold a list of these constraints.
+    // entire system as well as just the A block.
     ConstraintMatrix     constraints;
     ConstraintMatrix     velocity_constraints;
 
@@ -509,7 +489,7 @@ namespace Step55
 
     system_matrix.clear ();
     pressure_mass_matrix.clear ();
-    
+
     // We don't need the multigrid dofs for whole problem finite element
     dof_handler.distribute_dofs(fe);
 
@@ -734,9 +714,9 @@ namespace Step55
 
     if (solver_type != SolverType::UMFPACK)
       {
-	pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
-	pressure_mass_matrix.copy_from(system_matrix.block(1,1));
-	system_matrix.block(1,1) = 0;
+        pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
+        pressure_mass_matrix.copy_from(system_matrix.block(1,1));
+        system_matrix.block(1,1) = 0;
       }
   }
 
@@ -883,8 +863,8 @@ namespace Step55
         computing_timer.leave_subsection ();
 
         {
-        	 TimerOutput::Scope solve_backslash(computing_timer, "Solve - Backslash");
-        	 A_direct.solve(system_matrix, solution);
+          TimerOutput::Scope solve_backslash(computing_timer, "Solve - Backslash");
+          A_direct.solve(system_matrix, solution);
         }
 
         constraints.distribute (solution);
@@ -933,14 +913,14 @@ namespace Step55
         computing_timer.leave_subsection();
 
         {
-        TimerOutput::Scope solve_fmgres(computing_timer, "Solve - FGMRES");
+          TimerOutput::Scope solve_fmgres(computing_timer, "Solve - FGMRES");
 
-        gmres.solve (system_matrix,
-                     solution,
-                     system_rhs,
-                     preconditioner);
+          gmres.solve (system_matrix,
+                       solution,
+                       system_rhs,
+                       preconditioner);
 
-        constraints.distribute (solution);
+          constraints.distribute (solution);
         }
 
         std::cout << " "
@@ -948,8 +928,10 @@ namespace Step55
                   << " block GMRES iterations";
 
         std::cout << std::endl
-                  << "Number of iterations used for approximation of A inverse: " << preconditioner.n_iterations_A() << std::endl
-                  << "Number of iterations used for approximation of S inverse: " << preconditioner.n_iterations_S() << std::endl
+                  << "Number of iterations used for approximation of A inverse: "
+                  << preconditioner.n_iterations_A << std::endl
+                  << "Number of iterations used for approximation of S inverse: "
+                  << preconditioner.n_iterations_S << std::endl
                   << std::endl;
       }
     else
@@ -1002,21 +984,24 @@ namespace Step55
         // If this cheaper solver is not desired, then simply short-cut
         // the attempt at solving with the cheaper preconditioner that
         // consists of only a single V-cycle
-        const BlockSchurPreconditioner<PreconditionMG<dim, Vector<double>, MGTransferPrebuilt<Vector<double> > >,
-              SparseILU<double>>
-              preconditioner (system_matrix, pressure_mass_matrix,
-                              pmass_preconditioner, A_Multigrid,
-                              use_expensive);
+        const BlockSchurPreconditioner<
+        PreconditionMG<dim, Vector<double>, MGTransferPrebuilt<Vector<double> > >,
+                       SparseILU<double> >
+                       preconditioner (system_matrix,
+                                       pressure_mass_matrix,
+                                       A_Multigrid,
+                                       pmass_preconditioner,
+                                       use_expensive);
 
         computing_timer.leave_subsection();
         computing_timer.leave_subsection();
 
         {
-        TimerOutput::Scope solve_fmgres(computing_timer, "Solve - FGMRES");
-        gmres.solve (system_matrix,
-                     solution,
-                     system_rhs,
-                     preconditioner);
+          TimerOutput::Scope solve_fmgres(computing_timer, "Solve - FGMRES");
+          gmres.solve (system_matrix,
+                       solution,
+                       system_rhs,
+                       preconditioner);
         }
 
         constraints.distribute (solution);
@@ -1026,8 +1011,10 @@ namespace Step55
                   << " block GMRES iterations";
 
         std::cout << std::endl
-                  << "Number of iterations used for approximation of A inverse: " << preconditioner.n_iterations_A() << std::endl
-                  << "Number of iterations used for approximation of S inverse: " << preconditioner.n_iterations_S() << std::endl
+                  << "Number of iterations used for approximation of A inverse: "
+                  << preconditioner.n_iterations_A << std::endl
+                  << "Number of iterations used for approximation of S inverse: "
+                  << preconditioner.n_iterations_S << std::endl
                   << std::endl;
       }
   }
@@ -1037,11 +1024,11 @@ namespace Step55
   template <int dim>
   void StokesProblem<dim>::compute_errors ()
   {
-	// This function integrates the chosen component over the whole domain and returns the result,
-	// i.e. it computes $\frac{1}{\Omega} \int_{\Omega} \left[ u_h(x) \right]_c dx $ where $c$ is
-	// the vector component and $u_h$ is the function representation of the nodal vector given as
-	// fourth argument. The integral is evaluated numerically using the quadrature formula given
-	// as third argument.
+    // This function integrates the chosen component over the whole domain and returns the result,
+    // i.e. it computes $\frac{1}{\Omega} \int_{\Omega} \left[ u_h(x) \right]_c dx $ where $c$ is
+    // the vector component and $u_h$ is the function representation of the nodal vector given as
+    // fourth argument. The integral is evaluated numerically using the quadrature formula given
+    // as third argument.
     double mean_value = VectorTools::compute_mean_value (dof_handler,
                                                          QGauss<dim>(degree+2),
                                                          solution,
