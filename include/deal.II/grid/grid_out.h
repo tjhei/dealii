@@ -1080,6 +1080,26 @@ public:
                   std::ostream                      &out) const;
 
   /**
+   * Write triangulation in VTU format for each processor, then combine these
+   * files into a .pvtu file. The output is in the form
+   * <tt>filename_without_extension.proc000*.vtu</tt> where * is 0,1,...,n_proc-1 and
+   * <tt>filename_without_extension.pvtu</tt>. The input <tt>view_levels</tt> can be
+   * set as true to view each level of a multilevel method. The input
+   * <tt>include_artificial</tt> can be set as true to view the artificial cells for
+   * each processor. Each .vtu and .pvtu file will have the attributes subdomain,
+   * lvlsubdomain, level, and proc_writing. The level value can be used to seperate the
+   * image into the view of the grid on each level of a multilevel method and the
+   * proc_writing value can be used to seperate the image into each processors owned and
+   * ghost cells. This is accomplished by applying the "warp by scalar" filter in paraview
+   * to each of the values.
+   */
+  template <int dim, int spacedim>
+  void write_debug_vtu_per_processor (const Triangulation<dim,spacedim> &tria,
+                                      const std::string                 &filename_without_extension,
+                                      const bool                        view_levels=false,
+                                      const bool                        include_artificial=false) const;
+
+  /**
    * Write grid to @p out according to the given data format. This function
    * simply calls the appropriate <tt>write_*</tt> function.
    */
