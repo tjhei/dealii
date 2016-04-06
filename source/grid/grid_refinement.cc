@@ -71,8 +71,13 @@ namespace
       // to get the array of values from PETSc
       // in every iteration), but works
       PetscScalar m = 0;
+#ifndef PETSC_USE_COMPLEX
       for (unsigned int i=0; i<criteria.size(); ++i)
         m = std::max (m, criteria(i));
+#else
+      Assert(false, ExcMessage("The GridRefinement functions should only get real-valued vectors of refinement indicators."
+                               " Using these functions with complex-valued PETSc vectors does not make sense."))
+#endif
       return m;
     }
 
@@ -85,8 +90,13 @@ namespace
       // to get the array of values from PETSc
       // in every iteration), but works
       PetscScalar m = criteria(0);
+#ifndef PETSC_USE_COMPLEX
       for (unsigned int i=1; i<criteria.size(); ++i)
         m = std::min (m, criteria(i));
+#else
+      Assert(false, ExcMessage("The GridRefinement functions should only get real-valued vectors of refinement indicators."
+                               " Using these functions with complex-valued PETSc vectors does not make sense."))
+#endif
       return m;
     }
 #endif

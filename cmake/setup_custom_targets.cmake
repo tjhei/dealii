@@ -1,6 +1,6 @@
 ## ---------------------------------------------------------------------
 ##
-## Copyright (C) 2013 - 2015 by the deal.II authors
+## Copyright (C) 2013 - 2016 by the deal.II authors
 ##
 ## This file is part of the deal.II library.
 ##
@@ -91,6 +91,16 @@ IF(NOT DEAL_II_COMPONENT_PACKAGE)
 ENDIF()
 
 #
+# Provide "indent" target for indenting all headers and source files
+#
+ADD_CUSTOM_TARGET(indent
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  COMMAND ./contrib/utilities/indent
+  COMMENT "Indenting all files in the deal.II directories"
+  )
+
+
+#
 # Provide an "info" target to print a help message:
 #
 IF(CMAKE_GENERATOR MATCHES "Ninja")
@@ -128,8 +138,31 @@ FILE(WRITE ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/print_info.cmake
 #    setup_tests    - set up testsuite subprojects
 #    prune_tests    - remove all testsuite subprojects
 #
+#    indent         - indent all headers and source file
+")
+
+#
+# Provide "relocate" target to run install_name_tool on all external libraries
+# under ${DEAL_II_CPACK_EXTERNAL_LIBS_TREE}
+#
+IF(CMAKE_SYSTEM_NAME MATCHES "Darwin" AND 
+  NOT "${DEAL_II_CPACK_EXTERNAL_LIBS_TREE}" STREQUAL "")
+  ADD_CUSTOM_TARGET(relocate
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ./contrib/utilities/relocate_libraries.py
+    COMMENT "Running install_name_tool under ${DEAL_II_CPACK_EXTERNAL_LIBS_TREE}"
+    )
+  FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/print_info.cmake
+  "#
+#    relocate       - fix RPATH for external libraries, if packaging was requested
+"
+   )
+ENDIF()
+
+FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/print_info.cmake
+"#
 ###\")"
-  )
+)
 
 ADD_CUSTOM_TARGET(info
   COMMAND ${CMAKE_COMMAND} -P ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/print_info.cmake

@@ -23,6 +23,7 @@
 #include "../tests.h"
 
 #include <deal.II/base/utilities.h>
+#include <deal.II/dofs/dof_handler.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/fe/mapping_fe_field.h>
@@ -55,7 +56,7 @@ void test_real_to_unit_cell()
   // set the boundary indicator for
   // one face of the single cell
   triangulation.set_boundary (1, boundary);
-  triangulation.begin_active()->face(0)->set_boundary_indicator (1);
+  triangulation.begin_active()->face(0)->set_boundary_id (1);
 
 
   const unsigned int n_points = 5;

@@ -50,8 +50,8 @@ namespace
    */
   template <int spacedim>
   void
-  assign_1d_boundary_indicators (const std::map<unsigned int, types::boundary_id> &boundary_ids,
-                                 Triangulation<1,spacedim>                        &triangulation)
+  assign_1d_boundary_ids (const std::map<unsigned int, types::boundary_id> &boundary_ids,
+                          Triangulation<1,spacedim>                        &triangulation)
   {
     if (boundary_ids.size() > 0)
       for (typename Triangulation<1,spacedim>::active_cell_iterator
@@ -71,8 +71,8 @@ namespace
 
   template <int dim, int spacedim>
   void
-  assign_1d_boundary_indicators (const std::map<unsigned int, types::boundary_id> &,
-                                 Triangulation<dim,spacedim> &)
+  assign_1d_boundary_ids (const std::map<unsigned int, types::boundary_id> &,
+                          Triangulation<dim,spacedim> &)
   {
     // we shouldn't get here since boundary ids are not assigned to
     // vertices except in 1d
@@ -1559,7 +1559,7 @@ void GridIn<dim, spacedim>::read_msh (std::istream &in)
   // in 1d, we also have to attach boundary ids to vertices, which does not
   // currently work through the call above
   if (dim == 1)
-    assign_1d_boundary_indicators (boundary_ids_1d, *tria);
+    assign_1d_boundary_ids (boundary_ids_1d, *tria);
 }
 
 
@@ -2437,7 +2437,7 @@ void GridIn<2>::read_tecplot (std::istream &in)
             cells[cell].vertices[3]=i  +(j+1)*I;
             ++cell;
           }
-      Assert(cell=n_cells, ExcInternalError());
+      Assert(cell==n_cells, ExcInternalError());
       std::vector<unsigned int> boundary_vertices(2*I+2*J-4);
       unsigned int k=0;
       for (unsigned int i=1; i<I+1; ++i)

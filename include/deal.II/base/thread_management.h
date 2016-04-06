@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------
 //
-// Copyright (C) 2000 - 2015 by the deal.II authors
+// Copyright (C) 2000 - 2016 by the deal.II authors
 //
 // This file is part of the deal.II library.
 //
@@ -1736,6 +1736,85 @@ namespace Threads
     return Thread<RT>(function);
   }
 
+
+#ifdef DEAL_II_WITH_CXX11
+
+  /**
+   * Overload of the new_thread() function for objects that can be called like a
+   * function object without arguments. In particular, this function allows
+   * calling Threads::new_thread() with either objects that result from using
+   * std::bind, or using lambda functions. For example, this function is called
+   * when writing code such as
+   * @code
+   * Threads::Thread<int>
+   *   thread = Threads::new_thread ( [] () {
+   *                                          do_this();
+   *                                          then_do_that();
+   *                                          return 42;
+   *                                        });
+   * @endcode
+   * Here, we run the sequence of functions
+   * <code>do_this()</code> and <code>then_do_that()</code> on
+   * a separate thread, by making the lambda function declared here the
+   * function to execute on the thread. The lambda function then returns
+   * 42 (which is a bit pointless here, but it could of course be some
+   * computed number), and this is going to be the returned value you
+   * can later retrieve via <code>thread.return_value()</code> once the
+   * thread (i.e., the body of the lambda function) has completed.
+   *
+   * @note Every lambda function (or whatever else it is you pass to
+   *   the new_thread() function here, for example the result of a
+   *   std::bind() expression) has a return type and consequently
+   *   returns an object of this type. This type can be inferred
+   *   using the C++11 <code>decltype</code> statement used in the
+   *   declaration of this function, and it is then used as the template
+   *   argument of the Threads::Thread object returned by the current function.
+   *   In the example above, because the lambda function returns 42
+   *   (which in C++ has data type <code>int</code>), the inferred
+   *   type is <code>int</code> and the task object will have type
+   *   <code>Task@<int@></code>. In other words, it is not <i>necessary</i>
+   *   to explicitly specify in user code what that return type
+   *   of the lambda or std::bind expression will be, though it is
+   *   possible to explicitly do so by (entirely equivalently) writing
+   *   @code
+   *   Threads::Thread<int>
+   *     thread = Threads::new_thread ( [] () -> int {
+   *                                                   do_this();
+   *                                                   then_do_that();
+   *                                                   return 42;
+   *                                                 });
+   *   @endcode
+   *
+   * @note In practice, the lambda functions you will pass to
+   *   new_thread() will of course typically be more complicated.
+   *   In particular, they will likely <i>capture</i> variables
+   *   from the surrounding context and use them within the lambda.
+   *   See https://en.wikipedia.org/wiki/Anonymous_function#C.2B.2B_.28since_C.2B.2B11.29
+   *   for more on how lambda functions work.
+   *
+   * @note If you pass a lambda function as an argument to the
+   *   current function that captures a variable <i>by reference</i>,
+   *   or if you use a std::bind that binds a function argument to
+   *   a reference variable using std::ref() or std::cref(), then
+   *   obviously you can only do this if the variables you reference
+   *   or capture have a lifetime that extends at least until the time
+   *   where the thread finishes.
+   *
+   * @ingroup CPP11
+   */
+  template <typename FunctionObjectType>
+  inline
+  auto
+  new_thread (FunctionObjectType function_object)
+  -> Thread<decltype(function_object())>
+  {
+    typedef decltype(function_object()) return_type;
+    return Thread<return_type>(std_cxx11::function<return_type ()>(function_object));
+  }
+
+#endif
+
+
   /**
    * Overload of the new_thread function for non-member or static member
    * functions with no arguments.
@@ -1747,7 +1826,7 @@ namespace Threads
   Thread<RT>
   new_thread (RT (*fun_ptr)())
   {
-    return Thread<RT>(fun_ptr);
+    return new_thread (std_cxx11::function<RT ()> (fun_ptr));
   }
 
 
@@ -1764,8 +1843,8 @@ namespace Threads
               typename identity<C>::type &c)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::ref(c))));
   }
 
 
@@ -1783,8 +1862,8 @@ namespace Threads
               const typename identity<C>::type &c)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::cref(c))));
   }
 #endif
 
@@ -1805,9 +1884,9 @@ namespace Threads
               typename identity<Arg1>::type arg1)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr,
+                                   internal::maybe_make_ref<Arg1>::act(arg1))));
   }
 
 
@@ -1826,9 +1905,9 @@ namespace Threads
               typename identity<Arg1>::type arg1)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -1846,9 +1925,9 @@ namespace Threads
               typename identity<Arg1>::type arg1)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1))));
   }
 #endif
 
@@ -1868,10 +1947,10 @@ namespace Threads
               typename identity<Arg2>::type arg2)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr,
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2))));
   }
 
 
@@ -1891,10 +1970,10 @@ namespace Threads
               typename identity<Arg2>::type arg2)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -1913,10 +1992,10 @@ namespace Threads
               typename identity<Arg2>::type arg2)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2))));
   }
 #endif
 
@@ -1938,11 +2017,11 @@ namespace Threads
               typename identity<Arg3>::type arg3)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr,
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3))));
   }
 
 
@@ -1964,11 +2043,11 @@ namespace Threads
               typename identity<Arg3>::type arg3)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -1989,11 +2068,11 @@ namespace Threads
               typename identity<Arg3>::type arg3)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3))));
   }
 #endif
 
@@ -2017,12 +2096,12 @@ namespace Threads
               typename identity<Arg4>::type arg4)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr,
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4))));
   }
 
 
@@ -2045,12 +2124,12 @@ namespace Threads
               typename identity<Arg4>::type arg4)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -2072,12 +2151,12 @@ namespace Threads
               typename identity<Arg4>::type arg4)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4))));
   }
 #endif
 
@@ -2102,13 +2181,13 @@ namespace Threads
               typename identity<Arg5>::type arg5)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr,
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5))));
   }
 
 
@@ -2133,13 +2212,13 @@ namespace Threads
               typename identity<Arg5>::type arg5)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -2163,13 +2242,13 @@ namespace Threads
               typename identity<Arg5>::type arg5)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5))));
   }
 #endif
 
@@ -2195,14 +2274,14 @@ namespace Threads
               typename identity<Arg6>::type arg6)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr,
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6))));
   }
 
 
@@ -2228,14 +2307,14 @@ namespace Threads
               typename identity<Arg6>::type arg6)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -2260,14 +2339,14 @@ namespace Threads
               typename identity<Arg6>::type arg6)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6))));
   }
 #endif
 
@@ -2295,15 +2374,15 @@ namespace Threads
               typename identity<Arg7>::type arg7)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr,
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6),
+                                   internal::maybe_make_ref<Arg7>::act(arg7))));
   }
 
 
@@ -2331,15 +2410,15 @@ namespace Threads
               typename identity<Arg7>::type arg7)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6),
+                                   internal::maybe_make_ref<Arg7>::act(arg7))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -2366,15 +2445,15 @@ namespace Threads
               typename identity<Arg7>::type arg7)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6),
+                                   internal::maybe_make_ref<Arg7>::act(arg7))));
   }
 #endif
 
@@ -2404,16 +2483,16 @@ namespace Threads
               typename identity<Arg8>::type arg8)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr,
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6),
+                                   internal::maybe_make_ref<Arg7>::act(arg7),
+                                   internal::maybe_make_ref<Arg8>::act(arg8))));
   }
 
 
@@ -2443,16 +2522,16 @@ namespace Threads
               typename identity<Arg8>::type arg8)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6),
+                                   internal::maybe_make_ref<Arg7>::act(arg7),
+                                   internal::maybe_make_ref<Arg8>::act(arg8))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -2481,16 +2560,16 @@ namespace Threads
               typename identity<Arg8>::type arg8)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6),
+                                   internal::maybe_make_ref<Arg7>::act(arg7),
+                                   internal::maybe_make_ref<Arg8>::act(arg8))));
   }
 #endif
 
@@ -2521,17 +2600,17 @@ namespace Threads
               typename identity<Arg9>::type arg9)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8),
-                       internal::maybe_make_ref<Arg9>::act(arg9)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr,
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6),
+                                   internal::maybe_make_ref<Arg7>::act(arg7),
+                                   internal::maybe_make_ref<Arg8>::act(arg8),
+                                   internal::maybe_make_ref<Arg9>::act(arg9))));
   }
 
 
@@ -2562,17 +2641,17 @@ namespace Threads
               typename identity<Arg9>::type arg9)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8),
-                       internal::maybe_make_ref<Arg9>::act(arg9)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6),
+                                   internal::maybe_make_ref<Arg7>::act(arg7),
+                                   internal::maybe_make_ref<Arg8>::act(arg8),
+                                   internal::maybe_make_ref<Arg9>::act(arg9))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -2602,17 +2681,17 @@ namespace Threads
               typename identity<Arg9>::type arg9)
   {
     return
-      Thread<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8),
-                       internal::maybe_make_ref<Arg9>::act(arg9)));
+      new_thread (std_cxx11::function<RT ()>
+                  (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                   internal::maybe_make_ref<Arg1>::act(arg1),
+                                   internal::maybe_make_ref<Arg2>::act(arg2),
+                                   internal::maybe_make_ref<Arg3>::act(arg3),
+                                   internal::maybe_make_ref<Arg4>::act(arg4),
+                                   internal::maybe_make_ref<Arg5>::act(arg5),
+                                   internal::maybe_make_ref<Arg6>::act(arg6),
+                                   internal::maybe_make_ref<Arg7>::act(arg7),
+                                   internal::maybe_make_ref<Arg8>::act(arg8),
+                                   internal::maybe_make_ref<Arg9>::act(arg9))));
   }
 #endif
 
@@ -3088,6 +3167,84 @@ namespace Threads
     return Task<RT>(function);
   }
 
+
+#ifdef DEAL_II_WITH_CXX11
+
+  /**
+   * Overload of the new_task function for objects that can be called like a
+   * function object without arguments. In particular, this function allows
+   * calling Threads::new_task() with either objects that result from using
+   * std::bind, or using lambda functions. For example, this function is called
+   * when writing code such as
+   * @code
+   * Threads::Task<int>
+   *   task = Threads::new_task ( [] () {
+   *                                      do_this();
+   *                                      then_do_that();
+   *                                      return 42;
+   *                                    });
+   * @endcode
+   * Here, we schedule the call to the sequence of functions
+   * <code>do_this()</code> and <code>then_do_that()</code> on
+   * a separate task, by making the lambda function declared here the
+   * function to execute on the task. The lambda function then returns
+   * 42 (which is a bit pointless here, but it could of course be some
+   * computed number), and this is going to be the returned value you
+   * can later retrieve via <code>task.return_value()</code> once the
+   * task (i.e., the body of the lambda function) has completed.
+   *
+   * @note Every lambda function (or whatever else it is you pass to
+   *   the new_task() function here, for example the result of a
+   *   std::bind() expression) has a return type and consequently
+   *   returns an object of this type. This type can be inferred
+   *   using the C++11 <code>decltype</code> statement used in the
+   *   declaration of this function, and it is then used as the template
+   *   argument of the Threads::Task object returned by the current function.
+   *   In the example above, because the lambda function returns 42
+   *   (which in C++ has data type <code>int</code>), the inferred
+   *   type is <code>int</code> and the task object will have type
+   *   <code>Task@<int@></code>. In other words, it is not <i>necessary</i>
+   *   to explicitly specify in user code what that return type
+   *   of the lambda or std::bind expression will be, though it is
+   *   possible to explicitly do so by (entirely equivalently) writing
+   *   @code
+   *   Threads::Task<int>
+   *     task = Threads::new_task ( [] () -> int {
+   *                                               do_this();
+   *                                               then_do_that();
+   *                                               return 42;
+   *                                             });
+   *   @endcode
+   *
+   * @note In practice, the lambda functions you will pass to
+   *   new_task() will of course typically be more complicated.
+   *   In particular, they will likely <i>capture</i> variables
+   *   from the surrounding context and use them within the lambda.
+   *   See https://en.wikipedia.org/wiki/Anonymous_function#C.2B.2B_.28since_C.2B.2B11.29
+   *   for more on how lambda functions work.
+   *
+   * @note If you pass a lambda function as an argument to the
+   *   current function that captures a variable <i>by reference</i>,
+   *   or if you use a std::bind that binds a function argument to
+   *   a reference variable using std::ref() or std::cref(), then
+   *   obviously you can only do this if the variables you reference
+   *   or capture have a lifetime that extends at least until the time
+   *   where the task finishes.
+   *
+   * @ingroup CPP11
+   */
+  template <typename FunctionObjectType>
+  inline
+  auto
+  new_task (FunctionObjectType function_object)
+  -> Task<decltype(function_object())>
+  {
+    typedef decltype(function_object()) return_type;
+    return Task<return_type>(std_cxx11::function<return_type ()>(function_object));
+  }
+
+#endif
+
   /**
    * Overload of the new_task function for non-member or static member
    * functions with no arguments.
@@ -3099,7 +3256,7 @@ namespace Threads
   Task<RT>
   new_task (RT (*fun_ptr)())
   {
-    return new_task<RT>(std_cxx11::function<RT ()>(fun_ptr));
+    return new_task (std_cxx11::function<RT ()>(fun_ptr));
   }
 
 
@@ -3116,8 +3273,8 @@ namespace Threads
             typename identity<C>::type &c)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::ref(c))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -3134,8 +3291,8 @@ namespace Threads
             const typename identity<C>::type &c)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::cref(c))));
   }
 #endif
 
@@ -3156,9 +3313,9 @@ namespace Threads
             typename identity<Arg1>::type arg1)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr,
+                                 internal::maybe_make_ref<Arg1>::act(arg1))));
   }
 
 
@@ -3177,9 +3334,9 @@ namespace Threads
             typename identity<Arg1>::type arg1)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -3197,9 +3354,9 @@ namespace Threads
             typename identity<Arg1>::type arg1)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1))));
   }
 #endif
 
@@ -3219,10 +3376,10 @@ namespace Threads
             typename identity<Arg2>::type arg2)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr,
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2))));
   }
 
 
@@ -3242,10 +3399,10 @@ namespace Threads
             typename identity<Arg2>::type arg2)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -3264,10 +3421,10 @@ namespace Threads
             typename identity<Arg2>::type arg2)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2))));
   }
 #endif
 
@@ -3289,11 +3446,11 @@ namespace Threads
             typename identity<Arg3>::type arg3)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr,
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3))));
   }
 
 
@@ -3315,11 +3472,11 @@ namespace Threads
             typename identity<Arg3>::type arg3)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -3340,11 +3497,11 @@ namespace Threads
             typename identity<Arg3>::type arg3)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3))));
   }
 #endif
 
@@ -3368,12 +3525,12 @@ namespace Threads
             typename identity<Arg4>::type arg4)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr,
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4))));
   }
 
 
@@ -3396,12 +3553,12 @@ namespace Threads
             typename identity<Arg4>::type arg4)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -3423,12 +3580,12 @@ namespace Threads
             typename identity<Arg4>::type arg4)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4))));
   }
 #endif
 
@@ -3453,13 +3610,13 @@ namespace Threads
             typename identity<Arg5>::type arg5)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr,
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5))));
   }
 
 
@@ -3484,13 +3641,13 @@ namespace Threads
             typename identity<Arg5>::type arg5)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -3514,13 +3671,13 @@ namespace Threads
             typename identity<Arg5>::type arg5)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5))));
   }
 #endif
 
@@ -3546,14 +3703,14 @@ namespace Threads
             typename identity<Arg6>::type arg6)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr,
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6))));
   }
 
 
@@ -3579,14 +3736,14 @@ namespace Threads
             typename identity<Arg6>::type arg6)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -3611,14 +3768,14 @@ namespace Threads
             typename identity<Arg6>::type arg6)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6))));
   }
 #endif
 
@@ -3646,15 +3803,15 @@ namespace Threads
             typename identity<Arg7>::type arg7)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr,
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6),
+                                 internal::maybe_make_ref<Arg7>::act(arg7))));
   }
 
 
@@ -3682,15 +3839,15 @@ namespace Threads
             typename identity<Arg7>::type arg7)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6),
+                                 internal::maybe_make_ref<Arg7>::act(arg7))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -3717,15 +3874,15 @@ namespace Threads
             typename identity<Arg7>::type arg7)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6),
+                                 internal::maybe_make_ref<Arg7>::act(arg7))));
   }
 #endif
 
@@ -3755,16 +3912,16 @@ namespace Threads
             typename identity<Arg8>::type arg8)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr,
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6),
+                                 internal::maybe_make_ref<Arg7>::act(arg7),
+                                 internal::maybe_make_ref<Arg8>::act(arg8))));
   }
 
 
@@ -3794,16 +3951,16 @@ namespace Threads
             typename identity<Arg8>::type arg8)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6),
+                                 internal::maybe_make_ref<Arg7>::act(arg7),
+                                 internal::maybe_make_ref<Arg8>::act(arg8))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -3832,16 +3989,16 @@ namespace Threads
             typename identity<Arg8>::type arg8)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6),
+                                 internal::maybe_make_ref<Arg7>::act(arg7),
+                                 internal::maybe_make_ref<Arg8>::act(arg8))));
   }
 #endif
 
@@ -3872,17 +4029,17 @@ namespace Threads
             typename identity<Arg9>::type arg9)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr,
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8),
-                       internal::maybe_make_ref<Arg9>::act(arg9)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr,
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6),
+                                 internal::maybe_make_ref<Arg7>::act(arg7),
+                                 internal::maybe_make_ref<Arg8>::act(arg8),
+                                 internal::maybe_make_ref<Arg9>::act(arg9))));
   }
 
 
@@ -3913,17 +4070,17 @@ namespace Threads
             typename identity<Arg9>::type arg9)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8),
-                       internal::maybe_make_ref<Arg9>::act(arg9)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::ref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6),
+                                 internal::maybe_make_ref<Arg7>::act(arg7),
+                                 internal::maybe_make_ref<Arg8>::act(arg8),
+                                 internal::maybe_make_ref<Arg9>::act(arg9))));
   }
 
 #ifndef DEAL_II_CONST_MEMBER_DEDUCTION_BUG
@@ -3953,17 +4110,17 @@ namespace Threads
             typename identity<Arg9>::type arg9)
   {
     return
-      new_task<RT>
-      (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
-                       internal::maybe_make_ref<Arg1>::act(arg1),
-                       internal::maybe_make_ref<Arg2>::act(arg2),
-                       internal::maybe_make_ref<Arg3>::act(arg3),
-                       internal::maybe_make_ref<Arg4>::act(arg4),
-                       internal::maybe_make_ref<Arg5>::act(arg5),
-                       internal::maybe_make_ref<Arg6>::act(arg6),
-                       internal::maybe_make_ref<Arg7>::act(arg7),
-                       internal::maybe_make_ref<Arg8>::act(arg8),
-                       internal::maybe_make_ref<Arg9>::act(arg9)));
+      new_task (std_cxx11::function<RT ()>
+                (std_cxx11::bind(fun_ptr, std_cxx11::cref(c),
+                                 internal::maybe_make_ref<Arg1>::act(arg1),
+                                 internal::maybe_make_ref<Arg2>::act(arg2),
+                                 internal::maybe_make_ref<Arg3>::act(arg3),
+                                 internal::maybe_make_ref<Arg4>::act(arg4),
+                                 internal::maybe_make_ref<Arg5>::act(arg5),
+                                 internal::maybe_make_ref<Arg6>::act(arg6),
+                                 internal::maybe_make_ref<Arg7>::act(arg7),
+                                 internal::maybe_make_ref<Arg8>::act(arg8),
+                                 internal::maybe_make_ref<Arg9>::act(arg9))));
   }
 #endif
 

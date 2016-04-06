@@ -35,16 +35,6 @@ DEAL_II_NAMESPACE_OPEN
 namespace parallel
 {
   template <int, int> class Triangulation;
-
-  namespace distributed
-  {
-    template <int, int> class Triangulation;
-  }
-
-  namespace shared
-  {
-    template <int, int> class Triangulation;
-  }
 }
 
 
@@ -1855,16 +1845,6 @@ TriaAccessor<structdim, dim, spacedim>::boundary_id () const
 
 
 template <int structdim, int dim, int spacedim>
-types::boundary_id
-TriaAccessor<structdim, dim, spacedim>::boundary_indicator () const
-{
-  return boundary_id();
-}
-
-
-
-
-template <int structdim, int dim, int spacedim>
 void
 TriaAccessor<structdim, dim, spacedim>::
 set_boundary_id (const types::boundary_id boundary_ind) const
@@ -1873,16 +1853,6 @@ set_boundary_id (const types::boundary_id boundary_ind) const
   Assert (this->used(), TriaAccessorExceptions::ExcCellNotUsed());
 
   this->objects().boundary_or_material_id[this->present_index].boundary_id = boundary_ind;
-}
-
-
-
-template <int structdim, int dim, int spacedim>
-void
-TriaAccessor<structdim, dim, spacedim>::
-set_boundary_indicator (const types::boundary_id boundary_ind) const
-{
-  set_boundary_id (boundary_ind);
 }
 
 
@@ -1911,16 +1881,6 @@ set_all_boundary_ids (const types::boundary_id boundary_ind) const
     default:
       Assert (false, ExcNotImplemented());
     }
-}
-
-
-
-template <int structdim, int dim, int spacedim>
-void
-TriaAccessor<structdim, dim, spacedim>::
-set_all_boundary_indicators (const types::boundary_id boundary_ind) const
-{
-  set_all_boundary_ids (boundary_ind);
 }
 
 
@@ -2774,16 +2734,6 @@ TriaAccessor<0, 1, spacedim>::boundary_id () const
 
 template <int spacedim>
 inline
-types::boundary_id
-TriaAccessor<0, 1, spacedim>::boundary_indicator () const
-{
-  return boundary_id();
-}
-
-
-
-template <int spacedim>
-inline
 types::manifold_id
 TriaAccessor<0, 1, spacedim>::manifold_id () const
 {
@@ -2925,17 +2875,6 @@ TriaAccessor<0, 1, spacedim>::set_boundary_id (const types::boundary_id b)
 template <int spacedim>
 inline
 void
-TriaAccessor<0, 1, spacedim>::set_boundary_indicator (const types::boundary_id b)
-{
-  set_boundary_id (b);
-}
-
-
-
-
-template <int spacedim>
-inline
-void
 TriaAccessor<0, 1, spacedim>::set_manifold_id (const types::manifold_id b)
 {
   (*tria->vertex_to_manifold_id_map_1d)[this->vertex_index()] = b;
@@ -2948,15 +2887,6 @@ inline
 void TriaAccessor<0, 1, spacedim>::set_all_boundary_ids (const types::boundary_id b)
 {
   set_boundary_id (b);
-}
-
-
-
-template <int spacedim>
-inline
-void TriaAccessor<0, 1, spacedim>::set_all_boundary_indicators (const types::boundary_id b)
-{
-  set_all_boundary_ids (b);
 }
 
 
@@ -3275,7 +3205,6 @@ CellAccessor<3>::subface_case(const unsigned int face_no) const
     {
     case RefinementCase<3>::no_refinement:
       return dealii::internal::SubfaceCase<3>::case_none;
-      break;
     case RefinementCase<3>::cut_x:
       if (face(face_no)->child(0)->has_children())
         {
@@ -3301,7 +3230,6 @@ CellAccessor<3>::subface_case(const unsigned int face_no) const
           else
             return dealii::internal::SubfaceCase<3>::case_x;
         }
-      break;
     case RefinementCase<3>::cut_y:
       if (face(face_no)->child(0)->has_children())
         {
@@ -3327,10 +3255,8 @@ CellAccessor<3>::subface_case(const unsigned int face_no) const
           else
             return dealii::internal::SubfaceCase<3>::case_y;
         }
-      break;
     case RefinementCase<3>::cut_xy:
       return dealii::internal::SubfaceCase<3>::case_xy;
-      break;
     default:
       Assert(false, ExcInternalError());
     }

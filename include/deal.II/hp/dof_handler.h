@@ -24,6 +24,7 @@
 #include <deal.II/base/smartpointer.h>
 #include <deal.II/base/iterator_range.h>
 #include <deal.II/dofs/function_map.h>
+#include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_iterator_selector.h>
 #include <deal.II/dofs/number_cache.h>
 #include <deal.II/hp/fe_collection.h>
@@ -35,6 +36,8 @@
 #include <set>
 
 DEAL_II_NAMESPACE_OPEN
+
+template <int dim, int spacedim> class Triangulation;
 
 namespace internal
 {
@@ -201,11 +204,6 @@ namespace hp
     typedef typename LevelSelector::FaceAccessor          level_face_accessor;
 
     typedef typename LevelSelector::face_iterator         level_face_iterator;
-
-    /**
-     * Alias the @p FunctionMap type declared elsewhere.
-     */
-    typedef typename FunctionMap<spacedim>::type FunctionMap;
 
     /**
      * Make the dimension available in function templates.
@@ -526,9 +524,12 @@ namespace hp
      * reason that a @p map rather than a @p set is used is the same as
      * described in the section on the @p make_boundary_sparsity_pattern
      * function.
+     *
+     * The type of @p boundary_ids equals typename FunctionMap<spacedim,number>::type.
      */
+    template <typename number>
     types::global_dof_index
-    n_boundary_dofs (const FunctionMap &boundary_ids) const;
+    n_boundary_dofs (const std::map<types::boundary_id, const Function<spacedim,number>*> &boundary_ids) const;
 
     /**
      * Same function, but with different data type of the argument, which is

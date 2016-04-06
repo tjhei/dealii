@@ -35,7 +35,6 @@ DEAL_II_NAMESPACE_OPEN
 template <int dim, int spacedim> class Triangulation;
 template <int, int, int> class TriaAccessorBase;
 
-template <typename> class TriaRawIterator;
 template <typename> class TriaIterator;
 template <typename> class TriaActiveIterator;
 
@@ -363,24 +362,6 @@ public:
    * Assignment operator.
    */
   TriaRawIterator &operator = (const TriaRawIterator &);
-
-  /**
-   * Assignment operator.
-   */
-//    template <class OtherAccessor>
-//    TriaRawIterator & operator = (const TriaRawIterator<OtherAccessor>&);
-
-  /**
-   * Assignment operator.
-   */
-//    template <class OtherAccessor>
-//    TriaRawIterator & operator = (const TriaIterator<OtherAccessor>&);
-
-  /**
-   * Assignment operator.
-   */
-//    template <class OtherAccessor>
-//    TriaRawIterator & operator = (const TriaActiveIterator<OtherAccessor>&);
 
   /**
    * Compare for equality.

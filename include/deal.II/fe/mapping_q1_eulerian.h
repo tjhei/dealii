@@ -20,8 +20,12 @@
 #include <deal.II/base/std_cxx11/array.h>
 #include <deal.II/base/smartpointer.h>
 #include <deal.II/fe/mapping_q1.h>
+#include <deal.II/dofs/dof_handler.h>
 
 DEAL_II_NAMESPACE_OPEN
+
+template <typename> class Vector;
+
 
 /*!@addtogroup mapping */
 /*@{*/

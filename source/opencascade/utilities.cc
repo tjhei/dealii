@@ -1,3 +1,18 @@
+// ---------------------------------------------------------------------
+//
+// Copyright (C) 2014 - 2016 by the deal.II authors
+//
+// This file is part of the deal.II library.
+//
+// The deal.II library is free software; you can use it, redistribute
+// it, and/or modify it under the terms of the GNU Lesser General
+// Public License as published by the Free Software Foundation; either
+// version 2.1 of the License, or (at your option) any later version.
+// The full text of the license can be found in the file LICENSE at
+// the top level of the deal.II distribution.
+//
+// ---------------------------------------------------------------------
+
 #include <deal.II/opencascade/utilities.h>
 
 #ifdef DEAL_II_WITH_OPENCASCADE
@@ -600,6 +615,17 @@ namespace OpenCASCADE
     Assert(props.IsCurvatureDefined(), ExcMessage("Curvature is not well defined!"));
     Standard_Real Mean_Curvature = props.MeanCurvature();
     Point<3> normal = Point<3>(Normal.X(),Normal.Y(),Normal.Z());
+
+    // In the case your manifold changes from convex to concave or viceversa
+    // the normal could jump from "inner" to "outer" normal.
+    // However, you should be able to change the normal sense preserving
+    // the manifold orientation:
+    if (face.Orientation()==TopAbs_REVERSED)
+      {
+        normal *= -1;
+        Mean_Curvature *= -1;
+      }
+
     return std_cxx11::tuple<Point<3>, Point<3>, double>(point(Value), normal, Mean_Curvature);
   }
 

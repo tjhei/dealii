@@ -19,16 +19,12 @@
 
 #include <deal.II/base/config.h>
 #include <deal.II/base/exceptions.h>
-#include <deal.II/base/table.h>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/point.h>
 #include <deal.II/lac/constraint_matrix.h>
-#include <deal.II/lac/sparsity_pattern.h>
-#include <deal.II/dofs/function_map.h>
 #include <deal.II/dofs/dof_handler.h>
-#include <deal.II/fe/fe.h>
 #include <deal.II/fe/component_mask.h>
-#include <deal.II/hp/mapping_collection.h>
+#include <deal.II/hp/dof_handler.h>
 
 #include <vector>
 #include <set>
@@ -36,20 +32,19 @@
 
 DEAL_II_NAMESPACE_OPEN
 
-template<int dim, class T> class Table;
-class SparsityPattern;
-template <typename number> class Vector;
+class BlockMask;
 template <int dim, typename Number> class Function;
 template <int dim, int spacedim> class FiniteElement;
-template <int dim, int spacedim> class DoFHandler;
 namespace hp
 {
-  template <int dim, int spacedim> class DoFHandler;
   template <int dim, int spacedim> class MappingCollection;
+  template <int dim, int spacedim> class FECollection;
 }
-class ConstraintMatrix;
 template <class MeshType> class InterGridMap;
 template <int dim, int spacedim> class Mapping;
+class SparsityPattern;
+template <int dim, class T> class Table;
+template <typename Number> class Vector;
 
 namespace GridTools
 {
@@ -681,17 +676,17 @@ namespace DoFTools
    * This function could have been written by passing a @p set of boundary_id
    * numbers. However, most of the functions throughout deal.II dealing with
    * boundary indicators take a mapping of boundary indicators and the
-   * corresponding boundary function, i.e., a FunctionMap argument.
+   * corresponding boundary function, i.e., a std::map<types::boundary_id, const Function<spacedim,number>*> argument.
    * Correspondingly, this function does the same, though the actual boundary
    * function is ignored here. (Consequently, if you don't have any such
    * boundary functions, just create a map with the boundary indicators you
    * want and set the function pointers to null pointers).
    */
-  template <typename DoFHandlerType, typename SparsityPatternType>
+  template <typename DoFHandlerType, typename SparsityPatternType, typename number>
   void
   make_boundary_sparsity_pattern
   (const DoFHandlerType                                              &dof,
-   const typename FunctionMap<DoFHandlerType::space_dimension>::type &boundary_ids,
+   const std::map<types::boundary_id, const Function<DoFHandlerType::space_dimension,number>*> &boundary_ids,
    const std::vector<types::global_dof_index>                        &dof_to_boundary_mapping,
    SparsityPatternType                                               &sparsity);
 
@@ -1697,8 +1692,8 @@ namespace DoFTools
    * @note The ordering of rows (cells) follows the ordering of the standard
    * cell iterators.
    */
-  template <typename DoFHandlerType, class Sparsity>
-  void make_cell_patches(Sparsity                &block_list,
+  template <typename DoFHandlerType, class SparsityPatternType>
+  void make_cell_patches(SparsityPatternType     &block_list,
                          const DoFHandlerType    &dof_handler,
                          const unsigned int       level,
                          const std::vector<bool> &selected_dofs = std::vector<bool>(),

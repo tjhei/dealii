@@ -34,9 +34,11 @@
 #include <deal.II/fe/fe.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_tools.h>
+#include <deal.II/hp/dof_handler.h>
 #include <deal.II/hp/fe_collection.h>
-#include <deal.II/hp/q_collection.h>
 #include <deal.II/hp/fe_values.h>
+#include <deal.II/hp/mapping_collection.h>
+#include <deal.II/hp/q_collection.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/distributed/tria.h>
 #include <deal.II/distributed/shared_tria.h>
@@ -1143,10 +1145,22 @@ namespace DoFTools
     std::vector< dealii::types::subdomain_id > subdomain_association (dof_handler.n_dofs ());
     dealii::DoFTools::get_subdomain_association (dof_handler, subdomain_association);
 
-    const unsigned int n_subdomains = 1 + (*std::max_element (subdomain_association.begin (),
-                                                              subdomain_association.end ()   ));
+    const unsigned int n_subdomains
+      = (dynamic_cast<const parallel::Triangulation<DoFHandlerType::dimension,DoFHandlerType::space_dimension> *>
+         (&dof_handler.get_triangulation()) == 0
+         ?
+         1
+         :
+         Utilities::MPI::n_mpi_processes
+         (dynamic_cast<const parallel::Triangulation<DoFHandlerType::dimension,DoFHandlerType::space_dimension> *>
+          (&dof_handler.get_triangulation())->get_communicator()));
+    Assert (n_subdomains >
+            *std::max_element (subdomain_association.begin (),
+                               subdomain_association.end ()),
+            ExcInternalError());
 
-    std::vector<dealii::IndexSet> index_sets (n_subdomains,dealii::IndexSet(dof_handler.n_dofs()));
+    std::vector<dealii::IndexSet> index_sets (n_subdomains,
+                                              dealii::IndexSet(dof_handler.n_dofs()));
 
     // loop over subdomain_association and populate IndexSet when a
     // change in subdomain ID is found

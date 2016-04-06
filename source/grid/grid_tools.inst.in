@@ -133,6 +133,14 @@ for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension :  SPACE_DIMENSIONS
       void scale<deal_II_dimension> (const double,
                                      Triangulation<deal_II_dimension, deal_II_space_dimension> &);
 
+#if deal_II_space_dimension==3
+    template
+      void
+      rotate<deal_II_dimension> (const double,
+                                 const unsigned int ,
+                                 Triangulation<deal_II_dimension, deal_II_space_dimension> &);
+#endif
+
     template
       void distort_random<deal_II_dimension> (const double,
                                      Triangulation<deal_II_dimension, deal_II_space_dimension> &,
@@ -196,7 +204,7 @@ for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension :  SPACE_DIMENSIONS
     get_all_vertices_at_boundary (const Triangulation<deal_II_dimension,deal_II_space_dimension> &tria);
 
     template
-    std::vector<std::set<typename Triangulation<deal_II_dimension,deal_II_space_dimension>::active_cell_iterator> >
+    std::vector<std::set<Triangulation<deal_II_dimension,deal_II_space_dimension>::active_cell_iterator> >
     vertex_to_cell_map(const Triangulation<deal_II_dimension,deal_II_space_dimension> &triangulation);
 
 #if deal_II_dimension == deal_II_space_dimension
@@ -230,7 +238,7 @@ for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension :  SPACE_DIMENSIONS
     namespace GridTools \{
 
       template
-      std::map< types::global_dof_index,std::vector<typename Container<deal_II_dimension,deal_II_space_dimension>::active_cell_iterator> >
+      std::map< types::global_dof_index,std::vector<Container<deal_II_dimension,deal_II_space_dimension>::active_cell_iterator> >
       get_dof_to_support_patch_map<Container<deal_II_dimension,deal_II_space_dimension> >
       (Container<deal_II_dimension,deal_II_space_dimension> &dof_handler);
       
@@ -370,5 +378,47 @@ for (deal_II_dimension : DIMENSIONS ; deal_II_space_dimension : SPACE_DIMENSIONS
       (Triangulation<deal_II_dimension, deal_II_space_dimension> &, const bool);
 
 \}
+#endif
+}
+
+
+for (deal_II_dimension : DIMENSIONS)
+{
+  template
+  std::pair<unsigned int, double>
+  GridTools::
+  get_longest_direction<deal_II_dimension,deal_II_dimension>
+  (typename Triangulation<deal_II_dimension>::active_cell_iterator);
+
+  template
+  void 
+  GridTools::
+  remove_hanging_nodes<deal_II_dimension,deal_II_dimension>
+  (Triangulation<deal_II_dimension> &tria, bool, unsigned int);
+                        
+  template
+  void
+  GridTools::
+  remove_anisotropy<deal_II_dimension,deal_II_dimension>
+  (Triangulation<deal_II_dimension> &, double, unsigned int);
+
+#if deal_II_dimension < 3
+  template
+  std::pair<unsigned int, double>
+  GridTools::
+  get_longest_direction<deal_II_dimension,deal_II_dimension+1>
+  (typename  Triangulation<deal_II_dimension,deal_II_dimension+1>::active_cell_iterator);
+
+  template
+  void 
+  GridTools::
+  remove_hanging_nodes<deal_II_dimension,deal_II_dimension+1>
+  (Triangulation<deal_II_dimension,deal_II_dimension+1> &tria, bool, unsigned int);
+
+  template
+  void
+  GridTools::
+  remove_anisotropy<deal_II_dimension,deal_II_dimension+1>
+  (Triangulation<deal_II_dimension,deal_II_dimension+1> &, double, unsigned int);
 #endif
 }

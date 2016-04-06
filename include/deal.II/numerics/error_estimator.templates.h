@@ -13,6 +13,7 @@
 //
 // ---------------------------------------------------------------------
 
+#include <deal.II/base/numbers.h>
 #include <deal.II/base/thread_management.h>
 #include <deal.II/base/quadrature.h>
 #include <deal.II/base/quadrature_lib.h>
@@ -476,7 +477,7 @@ namespace internal
         for (unsigned int component=0; component<n_components; ++component)
           if (parallel_data.component_mask[component] == true)
             for (unsigned int p=0; p<n_q_points; ++p)
-              face_integral[n] += Utilities::fixed_power<2>(parallel_data.phi[n][p][component]) *
+              face_integral[n] += numbers::NumberTraits<number>::abs_square(parallel_data.phi[n][p][component]) *
                                   parallel_data.JxW_values[p];
 
       return face_integral;
@@ -495,6 +496,10 @@ namespace internal
       switch (strategy)
         {
         case KellyErrorEstimator<DoFHandlerType::dimension,DoFHandlerType::space_dimension>::cell_diameter_over_24 :
+        {
+          return 1.0;
+        }
+        case KellyErrorEstimator<DoFHandlerType::dimension,DoFHandlerType::space_dimension>::cell_diameter :
         {
           return 1.0;
         }
@@ -525,6 +530,10 @@ namespace internal
       switch (strategy)
         {
         case KellyErrorEstimator<DoFHandlerType::dimension,DoFHandlerType::space_dimension>::cell_diameter_over_24 :
+        {
+          return 1.0;
+        }
+        case KellyErrorEstimator<DoFHandlerType::dimension,DoFHandlerType::space_dimension>::cell_diameter :
         {
           return 1.0;
         }
@@ -560,6 +569,10 @@ namespace internal
         {
           return 1.0;
         }
+        case KellyErrorEstimator<DoFHandlerType::dimension,DoFHandlerType::space_dimension>::cell_diameter :
+        {
+          return 1.0;
+        }
         case KellyErrorEstimator<DoFHandlerType::dimension,DoFHandlerType::space_dimension>::face_diameter_over_twice_max_degree :
         {
           const double cell_degree = fe_face_values.get_fe_collection()[cell->active_fe_index()].degree;
@@ -589,6 +602,10 @@ namespace internal
         case KellyErrorEstimator<DoFHandlerType::dimension,DoFHandlerType::space_dimension>::cell_diameter_over_24 :
         {
           return cell->diameter()/24;
+        }
+        case KellyErrorEstimator<DoFHandlerType::dimension,DoFHandlerType::space_dimension>::cell_diameter :
+        {
+          return cell->diameter();
         }
         case KellyErrorEstimator<DoFHandlerType::dimension,DoFHandlerType::space_dimension>::face_diameter_over_twice_max_degree :
         {

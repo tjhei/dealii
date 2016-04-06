@@ -27,9 +27,6 @@
 
 DEAL_II_NAMESPACE_OPEN
 
-template<typename MatrixType, typename inverse_type>
-class PreconditionBlockJacobi;
-
 /*! @addtogroup Preconditioners
  *@{
  */
@@ -501,6 +498,7 @@ public:
   /**
    * import functions from private base class
    */
+  using typename PreconditionBlock<MatrixType,inverse_type>::AdditionalData;
   using PreconditionBlock<MatrixType, inverse_type>::initialize;
   using PreconditionBlock<MatrixType, inverse_type>::clear;
   using PreconditionBlock<MatrixType, inverse_type>::empty;
