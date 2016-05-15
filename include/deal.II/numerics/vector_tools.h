@@ -238,8 +238,10 @@ class ConstraintMatrix;
  *
  * This data, one number per active cell, can be used to generate graphical
  * output by directly passing it to the DataOut class through the
- * DataOut::add_data_vector function. Alternatively, it can be interpolated to
- * the nodal points of a finite element field using the
+ * DataOut::add_data_vector function. Alternatively, the global error can be
+ * computed using VectorTools::compute_global_error(). Finally, the output per
+ * cell from VectorTools::integrate_difference() can be interpolated to the
+ * nodal points of a finite element field using the
  * DoFTools::distribute_cell_to_dof_vector function.
  *
  * Presently, there is the possibility to compute the following values from
@@ -1831,7 +1833,7 @@ namespace VectorTools
   //@{
 
   /**
-   * Compute the error of the finite element solution.  Integrate the
+   * Compute the cellwise error of the finite element solution.  Integrate the
    * difference between a reference function which is given as a continuous
    * function object, and a finite element function. The result of this
    * function is the vector @p difference that contains one value per active
@@ -1844,6 +1846,10 @@ namespace VectorTools
    *
    * It is assumed that the number of components of the function @p
    * exact_solution matches that of the finite element used by @p dof.
+   *
+   * To compute a global error norm of a finite element solution, use
+   * VectorTools::compute_global_error() with the output vector computed with
+   * this function.
    *
    * @param[in] mapping The mapping that is used when integrating the
    * difference $u-u_h$.
@@ -1886,8 +1892,9 @@ namespace VectorTools
    * function, a null pointer, is interpreted as "no weighting function",
    * i.e., weight=1 in the whole domain for all vector components uniformly.
    * @param[in] exponent This value denotes the $p$ used in computing
-   * $L^p$-norms and $W^{1,p}$-norms. The value is ignores if a @p norm other
-   * than NormType::Lp_norm or NormType::W1p_norm is chosen.
+   * $L^p$-norms and $W^{1,p}$-norms. The value is ignored if a @p norm other
+   * than NormType::Lp_norm, NormType::W1p_norm, or NormType::W1p_seminorm
+   * is chosen.
    *
    *
    * See the general documentation of this namespace for more information.
@@ -1904,38 +1911,8 @@ namespace VectorTools
    * The vector computed will, in the case of a distributed triangulation,
    * contain zeros for cells that are not locally owned. As a consequence, in
    * order to compute the <i>global</i> $L_2$ error (for example), the errors
-   * from different processors need to be combined, but this is simple because
-   * every processor only computes contributions for those cells of the global
-   * triangulation it locally owns (and these sets are, by definition,
-   * mutually disjoint). Consequently, the following piece of code computes
-   * the global $L_2$ error across multiple processors sharing a
-   * parallel::distribute::Triangulation:
-   * @code
-   *    Vector<double> local_errors (tria.n_active_cells());
-   *    VectorTools::integrate_difference (mapping, dof,
-   *                                       solution, exact_solution,
-   *                                       local_errors,
-   *                                       QGauss<dim>(fe.degree+2),
-   *                                       VectorTools::L2_norm);
-   *    const double total_local_error = local_errors.l2_norm();
-   *    const double total_global_error
-   *      = std::sqrt (Utilities::MPI::sum (total_local_error * total_local_error, MPI_COMM_WORLD));
-   * @endcode
-   * The squaring and taking the square root is necessary in order to compute
-   * the sum of squares of norms over all all cells in the definition of the
-   * $L_2$ norm:
-   * @f{align*}{
-   * \textrm{error} = \sqrt{\sum_K \|u-u_h\|_{L_2(K)}^2}
-   * @f}
-   * Obviously, if you are interested in computing the $L_1$ norm of the
-   * error, the correct form of the last two lines would have been
-   * @code
-   *    const double total_local_error = local_errors.l1_norm();
-   *    const double total_global_error
-   *      = Utilities::MPI::sum (total_local_error, MPI_COMM_WORLD);
-   * @endcode
-   * instead, and similar considerations hold when computing the $L_\infty$
-   * norm of the error.
+   * from different processors need to be combined, see
+   * VectorTools::compute_global_error().
    *
    * Instantiations for this template are provided for some vector types (see
    * the general documentation of the namespace), but only for InVectors as in
@@ -1994,6 +1971,37 @@ namespace VectorTools
                              const NormType                     &norm,
                              const Function<spacedim,double>           *weight = 0,
                              const double exponent = 2.);
+
+  /**
+   * Takes a Vector @p cellwise_error of errors on each cell with
+   * <tt>tria.n_active_cells()</tt> entries and returns the global
+   * error as given by @p norm.
+   *
+   * The @p cellwise_error vector is typically an output produced by
+   * VectorTools::integrate_difference() and you normally want to supply the
+   * same value for @p norm as you used in VectorTools::integrate_difference().
+   *
+   * If the given Triangulation is a parallel::Triangulation, entries
+   * in @p cellwise_error that do not correspond to locally owned cells are
+   * assumed to be 0.0 and a parallel reduction using MPI is done to compute
+   * the global error.
+   *
+   * @param tria The Triangulation with active cells corresponding with the
+   * entries in @p cellwise_error.
+   * @param cellwise_error Vector of errors on each active cell.
+   * @param norm The type of norm to compute.
+   * @param exponent The exponent $p$ to use for $L^p$-norms and
+   * $W^{1,p}$-norms. The value is ignored if a @p norm other
+   * than NormType::Lp_norm, NormType::W1p_norm, or NormType::W1p_seminorm
+   * is chosen.
+   *
+   * @note Instantiated for type Vector<double> and Vector<float>.
+   */
+  template <int dim, int spacedim, class InVector>
+  double compute_global_error(const Triangulation<dim,spacedim> &tria,
+                              const InVector &cellwise_error,
+                              const NormType &norm,
+                              const double exponent = 2.);
 
   /**
    * Point error evaluation. Find the first cell containing the given point

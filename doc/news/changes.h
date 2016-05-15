@@ -120,6 +120,13 @@ inconvenience this causes.
 <h3>General</h3>
 
 <ol>
+ <li> New: Add VectorTools::error_norm_from_cell_errors that computes global
+ errors from cellwise errors obtained by VectorTools::integrate_difference()
+ and do MPI collectives if necessary.
+ <br>
+ (Timo Heister, 2016/05/15)
+ </li>
+
  <li> New: Add functions to transform Cartesian coordinates to spherical and back:
  GeometricUtilities::Coordinates::to_spherical and
  GeometricUtilities::Coordinates::from_spherical.
