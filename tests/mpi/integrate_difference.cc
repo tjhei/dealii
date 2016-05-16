@@ -87,8 +87,7 @@ void test()
                                      results,
                                      QGauss<dim>(3),
                                      VectorTools::L2_norm);
-  double local = results.l2_norm() * results.l2_norm();
-  double global = VectorTools::error_norm_from_cell_errors(tr, results, VectorTools::L2_norm);
+  double global = VectorTools::compute_global_error(tr, results, VectorTools::L2_norm);
 
   if (Utilities::MPI::this_mpi_process (MPI_COMM_WORLD) == 0)
     deallog << "difference = " << global
