@@ -120,7 +120,7 @@ inconvenience this causes.
 <h3>General</h3>
 
 <ol>
- <li> New: Add VectorTools::error_norm_from_cell_errors that computes global
+ <li> New: Add VectorTools::compute_global_error that computes global
  errors from cellwise errors obtained by VectorTools::integrate_difference()
  and do MPI collectives if necessary.
  <br>
