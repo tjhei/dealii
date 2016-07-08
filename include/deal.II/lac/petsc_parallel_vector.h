@@ -178,6 +178,13 @@ namespace PETScWrappers
        * Default constructor. Initialize the vector as empty.
        */
       Vector ();
+      /**
+       * Construct it from an existing PETSc Vector of type Vec. Note: this does
+       * not copy the contents and just keeps a pointer. You need to make sure
+       * the vector is not used twice at the same time or destroyed while in
+       * use. This class does not destroy the PETSc object. Handle with care!
+       */
+      explicit Vector (const Vec &v);
 
       /**
        * Constructor. Set dimension to @p n and initialize all elements with
@@ -451,6 +458,12 @@ namespace PETScWrappers
       *this = v;
     }
 
+    inline
+    Vector::Vector (const Vec &v)
+      :
+      VectorBase(v),
+      communicator(PetscObjectComm((PetscObject)v))
+    {}
 
 
     inline
