@@ -78,7 +78,7 @@ namespace LA
 #include <iostream>
 
 
-const double eps = 1e-4;
+const double eps = 1e-2;
 
 namespace Step40
 {
@@ -94,13 +94,13 @@ namespace Step40
     void run ();
     void residual_function (LA::MPI::Vector &x,
                             LA::MPI::Vector &f);
-    void update_jacobian_function (LA::MPI::Vector &x);
+      void update_jacobian_function (LA::MPI::SparseMatrix &mat, LA::MPI::Vector &x);
 
   private:
     void setup_system ();
     void assemble_residual (LA::MPI::Vector &residual,
                             const LA::MPI::Vector &solution);
-    void assemble_system ();
+    void assemble_system (LA::MPI::SparseMatrix &mat);
     void solve ();
     void refine_grid ();
     void output_results (const unsigned int cycle) const;
@@ -146,7 +146,7 @@ namespace Step40
   {
     const double x = p[0];
     const double y = p[1];
-    return 1;
+    //return 1*x*(1-x)*y*(1-y);
     return -(1.0*sin(x)*pow(sin(y), 2.0)*cos(x) - 1.0*sin(x)*cos(x)*pow(cos(y), 2.0))*pow(pow(pow(sin(x), 2.0)*pow(sin(y), 2.0) + pow(cos(x), 2.0)*pow(cos(y), 2.0), 1.0) + 0.0001, -0.5)*cos(x)*cos(y) + (1.0*pow(sin(x), 2.0)*sin(y)*cos(y) - 1.0*sin(y)*pow(cos(x), 2.0)*cos(y))*pow(pow(pow(sin(x), 2.0)*pow(sin(y), 2.0) + pow(cos(x), 2.0)*pow(cos(y), 2.0), 1.0) + 0.0001, -0.5)*sin(x)*sin(y) + 2*sqrt(pow(pow(sin(x), 2.0)*pow(sin(y), 2.0) + pow(cos(x), 2.0)*pow(cos(y), 2.0), 1.0) + 0.0001)*sin(x)*cos(y);
   }
 
@@ -395,9 +395,9 @@ namespace Step40
 
 
   template <int dim>
-  void LaplaceProblem<dim>::assemble_system ()
+  void LaplaceProblem<dim>::assemble_system (LA::MPI::SparseMatrix &mat)
   {
-    system_matrix = 0;
+    mat = 0;
     system_rhs = 0;
     TimerOutput::Scope t(computing_timer, "assembly");
 
@@ -457,7 +457,7 @@ namespace Step40
           constraints.distribute_local_to_global (cell_matrix,
                                                   cell_rhs,
                                                   local_dof_indices,
-                                                  system_matrix,
+                                                  mat,
                                                   system_rhs);
         }
 
@@ -466,7 +466,7 @@ namespace Step40
     // processors is needed. This could be done by invoking the function
     // compress(). See @ref GlossCompress  "Compressing distributed objects"
     // for more information on what is compress() designed to do.
-    system_matrix.compress (VectorOperation::add);
+    mat.compress (VectorOperation::add);
     system_rhs.compress (VectorOperation::add);
   }
 
@@ -482,11 +482,11 @@ namespace Step40
   }
 
   template<int dim>
-  void LaplaceProblem<dim>::update_jacobian_function (LA::MPI::Vector &x)
+  void LaplaceProblem<dim>::update_jacobian_function (LA::MPI::SparseMatrix &mat, LA::MPI::Vector &x)
   {
-    pcout << "Jacobian..." << x.l2_norm() << std::endl;
+    pcout << "Jacobian... ||x||=" << x.l2_norm() << std::endl;
     locally_relevant_solution = x;
-    assemble_system ();
+    assemble_system (mat);
   }
 
   template<int dim>
@@ -522,7 +522,8 @@ namespace Step40
 
     LA::MPI::Vector v_x(x);
     LaplaceProblem<dim> *ptr = static_cast<LaplaceProblem<dim>*>(ctx);
-    ptr->update_jacobian_function(v_x);
+    LA::MPI::SparseMatrix mat((Mat)B);
+    ptr->update_jacobian_function(mat, v_x);
 
     return 0;
   }
@@ -562,6 +563,8 @@ namespace Step40
     //  SNESSetType
 //        SNESSetUp
 
+    assemble_system(system_matrix);
+    
 
     //x=1;
 
@@ -570,7 +573,7 @@ namespace Step40
 
     SNESSetFromOptions(snes);
 
-    SNESSolve(snes, PETSC_NULL, (Vec)x);
+    SNESSolve(snes, (Vec)system_rhs, (Vec)x);
     int its;
     SNESGetIterationNumber(snes,&its);
 
