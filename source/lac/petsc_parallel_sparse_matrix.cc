@@ -41,6 +41,11 @@ namespace PETScWrappers
       AssertThrow (ierr == 0, ExcPETScError(ierr));
     }
 
+    SparseMatrix::SparseMatrix (Mat mat)
+    {
+      PetscObjectGetComm((PetscObject)mat, &communicator);
+      matrix = mat;
+    }
 
     SparseMatrix::~SparseMatrix ()
     {

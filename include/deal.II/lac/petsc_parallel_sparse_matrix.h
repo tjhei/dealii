@@ -148,6 +148,7 @@ namespace PETScWrappers
        */
       SparseMatrix ();
 
+      explicit SparseMatrix (Mat mat);
       /**
        * Destructor to free the PETSc object.
        */
