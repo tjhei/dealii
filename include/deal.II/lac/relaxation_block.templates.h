@@ -19,6 +19,7 @@
 #include <deal.II/lac/relaxation_block.h>
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/vector_memory.h>
+#include <deal.II/lac/trilinos_vector.h>
 
 DEAL_II_NAMESPACE_OPEN
 
@@ -33,7 +34,8 @@ RelaxationBlock<MatrixType,inverse_type>::AdditionalData::AdditionalData
   invert_diagonal(invert_diagonal),
   same_diagonal(same_diagonal),
   inversion(PreconditionBlockBase<inverse_type>::gauss_jordan),
-  threshold(0.)
+  threshold(0.),
+  temp_trilinos_ghost_vector (NULL)
 {}
 
 
@@ -151,6 +153,39 @@ RelaxationBlock<MatrixType,inverse_type>::invert_diagblocks ()
   this->inverses_computed(true);
 }
 
+namespace internal
+{
+  /**
+   * default implementation for serial vectors. Here we don't need to make a
+   * copy into a ghosted vector, so just return a reference to @p prev.
+   */
+  template <class VECTOR, class VEC1>
+  const VECTOR &
+  prepare_ghost_vector(
+    const VECTOR &prev,
+    const VEC1 * /*other*/)
+  {
+    return prev;
+  }
+
+  /**
+   * Specialization for Trilinos. Use the ghosted vector.
+   */
+  template <>
+  const TrilinosWrappers::MPI::Vector &
+  prepare_ghost_vector(
+    const TrilinosWrappers::MPI::Vector &prev,
+    const TrilinosWrappers::MPI::Vector *other)
+  {
+    Assert(other!=NULL,
+           ExcMessage("You need to provide a ghosted vector in RelaxationBlock::AdditionalData::temp_trilinos_ghost_vector."));
+    Assert(other->size()==prev.size(), ExcInternalError());
+
+    // import ghost values:
+    *const_cast<TrilinosWrappers::MPI::Vector *>(other) = prev;
+    return *other;
+  }
+} // end namespace internal
 
 template <typename MatrixType, typename inverse_type>
 template <class VECTOR>
@@ -162,6 +197,8 @@ RelaxationBlock<MatrixType,inverse_type>::do_step (VECTOR       &dst,
                                                    const bool             backward) const
 {
   Assert (additional_data->invert_diagonal, ExcNotImplemented());
+
+  const VECTOR &ghosted_prev = internal::prepare_ghost_vector(prev, additional_data->temp_trilinos_ghost_vector);
 
   const MatrixType &M=*this->A;
   Vector<typename VECTOR::value_type> b_cell, x_cell;
@@ -197,7 +234,7 @@ RelaxationBlock<MatrixType,inverse_type>::do_step (VECTOR       &dst,
               b_cell(row_cell) = src(row->column());
               for (typename MatrixType::const_iterator entry = M.begin(row->column());
                    entry != M.end(row->column()); ++entry)
-                b_cell(row_cell) -= entry->value() * prev(entry->column());
+                b_cell(row_cell) -= entry->value() * ghosted_prev(entry->column());
             }
           // Apply inverse diagonal
           this->inverse_vmult(block, x_cell, b_cell);

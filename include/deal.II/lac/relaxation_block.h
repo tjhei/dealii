@@ -151,6 +151,16 @@ public:
      * Return the memory allocated in this object.
      */
     std::size_t memory_consumption() const;
+
+    /**
+     * Temporary ghost vector that is used in the Relaxation method when
+     * performing parallel MPI computations.
+     */
+#ifdef DEAL_II_WITH_TRILINOS
+    TrilinosWrappers::MPI::Vector *temp_trilinos_ghost_vector;
+#else
+    void *temp_trilinos_ghost_vector;
+#endif
   };
 
   /**
