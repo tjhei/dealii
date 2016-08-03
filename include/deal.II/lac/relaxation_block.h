@@ -147,6 +147,7 @@ public:
      * </ol>
      */
     std::vector<std::vector<unsigned int> > order;
+
     /**
      * Return the memory allocated in this object.
      */
@@ -154,7 +155,9 @@ public:
 
     /**
      * Temporary ghost vector that is used in the Relaxation method when
-     * performing parallel MPI computations.
+     * performing parallel MPI computations. The user is required to have this
+     * point to an initialized vector that contains at least the locally
+     * active level DoFs.
      */
 #ifdef DEAL_II_WITH_TRILINOS
     TrilinosWrappers::MPI::Vector *temp_trilinos_ghost_vector;
