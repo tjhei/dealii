@@ -159,11 +159,11 @@ namespace internal
    * default implementation for serial vectors. Here we don't need to make a
    * copy into a ghosted vector, so just return a reference to @p prev.
    */
-  template <class VECTOR, class VEC1>
-  const VECTOR &
+  template <class VectorType, class VectorType2>
+  const VectorType &
   prepare_ghost_vector(
-    const VECTOR &prev,
-    const VEC1 * /*other*/)
+    const VectorType &prev,
+    VectorType2 * /*other*/)
   {
     return prev;
   }
@@ -257,13 +257,13 @@ RelaxationBlock<MatrixType,inverse_type>::do_step (VECTOR       &dst,
 //----------------------------------------------------------------------//
 
 template <typename MatrixType, typename inverse_type>
-template <class VECTOR>
+template <class VectorType>
 void RelaxationBlockJacobi<MatrixType,inverse_type>::step
-(VECTOR       &dst,
- const VECTOR &src) const
+(VectorType       &dst,
+ const VectorType &src) const
 {
-  GrowingVectorMemory<VECTOR > mem;
-  typename VectorMemory<VECTOR >::Pointer aux = mem;
+  GrowingVectorMemory<VectorType> mem;
+  typename VectorMemory<VectorType>::Pointer aux = mem;
   aux->reinit(dst, false);
   *aux = dst;
   this->do_step(dst, *aux, src, false);
@@ -271,13 +271,13 @@ void RelaxationBlockJacobi<MatrixType,inverse_type>::step
 
 
 template <typename MatrixType, typename inverse_type>
-template <class VECTOR>
+template <class VectorType>
 void RelaxationBlockJacobi<MatrixType,inverse_type>::Tstep
-(VECTOR       &dst,
- const VECTOR &src) const
+(VectorType       &dst,
+ const VectorType &src) const
 {
-  GrowingVectorMemory<VECTOR > mem;
-  typename VectorMemory<VECTOR >::Pointer aux = mem;
+  GrowingVectorMemory<VectorType> mem;
+  typename VectorMemory<VectorType>::Pointer aux = mem;
   aux->reinit(dst, false);
   *aux = dst;
   this->do_step(dst, *aux, src, true);
@@ -287,20 +287,20 @@ void RelaxationBlockJacobi<MatrixType,inverse_type>::Tstep
 //----------------------------------------------------------------------//
 
 template <typename MatrixType, typename inverse_type>
-template <class VECTOR>
+template <class VectorType>
 void RelaxationBlockSOR<MatrixType,inverse_type>::step
-(VECTOR &dst,
- const VECTOR &src) const
+(VectorType &dst,
+ const VectorType &src) const
 {
   this->do_step(dst, dst, src, false);
 }
 
 
 template <typename MatrixType, typename inverse_type>
-template <class VECTOR>
+template <class VectorType>
 void RelaxationBlockSOR<MatrixType,inverse_type>::Tstep
-(VECTOR       &dst,
- const VECTOR &src) const
+(VectorType       &dst,
+ const VectorType &src) const
 {
   this->do_step(dst, dst, src, true);
 }
@@ -309,10 +309,10 @@ void RelaxationBlockSOR<MatrixType,inverse_type>::Tstep
 //----------------------------------------------------------------------//
 
 template <typename MatrixType, typename inverse_type>
-template <class VECTOR>
+template <class VectorType>
 void RelaxationBlockSSOR<MatrixType,inverse_type>::step
-(VECTOR       &dst,
- const VECTOR &src) const
+(VectorType       &dst,
+ const VectorType &src) const
 {
   this->do_step(dst, dst, src, false);
   this->do_step(dst, dst, src, true);
@@ -320,10 +320,10 @@ void RelaxationBlockSSOR<MatrixType,inverse_type>::step
 
 
 template <typename MatrixType, typename inverse_type>
-template <class VECTOR>
+template <class VectorType>
 void RelaxationBlockSSOR<MatrixType,inverse_type>::Tstep
-(VECTOR       &dst,
- const VECTOR &src) const
+(VectorType       &dst,
+ const VectorType &src) const
 {
   this->do_step(dst, dst, src, true);
   this->do_step(dst, dst, src, false);

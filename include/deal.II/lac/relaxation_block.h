@@ -223,11 +223,11 @@ protected:
    * vectors). For the Jacobi step, the calling function must copy @p dst to
    * @p pref after this.
    */
-  template <class VECTOR>
+  template <class VectorType>
   void do_step (
-    VECTOR       &dst,
-    const VECTOR &prev,
-    const VECTOR &src,
+    VectorType       &dst,
+    const VectorType &prev,
+    const VectorType &src,
     const bool backward) const;
   /**
    * Pointer to the matrix. Make sure that the matrix exists as long as this
@@ -313,14 +313,14 @@ public:
   /**
    * Perform one step of the Jacobi iteration.
    */
-  template <class VECTOR>
-  void step (VECTOR &dst, const VECTOR &rhs) const;
+  template <class VectorType>
+  void step (VectorType &dst, const VectorType &rhs) const;
 
   /**
    * Perform one step of the Jacobi iteration.
    */
-  template <class VECTOR>
-  void Tstep (VECTOR &dst, const VECTOR &rhs) const;
+  template <class VectorType>
+  void Tstep (VectorType &dst, const VectorType &rhs) const;
 
   /**
    * Return the memory allocated in this object.
@@ -398,14 +398,14 @@ public:
   /**
    * Perform one step of the SOR iteration.
    */
-  template <class VECTOR>
-  void step (VECTOR &dst, const VECTOR &rhs) const;
+  template <class VectorType>
+  void step (VectorType &dst, const VectorType &rhs) const;
 
   /**
    * Perform one step of the transposed SOR iteration.
    */
-  template <class VECTOR>
-  void Tstep (VECTOR &dst, const VECTOR &rhs) const;
+  template <class VectorType>
+  void Tstep (VectorType &dst, const VectorType &rhs) const;
 };
 
 
@@ -474,14 +474,14 @@ public:
   /**
    * Perform one step of the SSOR iteration.
    */
-  template <class VECTOR>
-  void step (VECTOR &dst, const VECTOR &rhs) const;
+  template <class VectorType>
+  void step (VectorType &dst, const VectorType &rhs) const;
 
   /**
    * Perform one step of the transposed SSOR iteration.
    */
-  template <class VECTOR>
-  void Tstep (VECTOR &dst, const VECTOR &rhs) const;
+  template <class VectorType>
+  void Tstep (VectorType &dst, const VectorType &rhs) const;
 };
 
 
