@@ -1723,7 +1723,7 @@ namespace DoFTools
                          const DoFHandler<dim,spacedim> &dof_handler,
                          const unsigned int       level,
                          const std::vector<bool> &selected_dofs = std::vector<bool>(),
-                         types::global_dof_index  offset        = 0);
+                         const types::global_dof_index  offset        = 0);
 
   /**
    * Create an incidence matrix that for every vertex on a given level of a
