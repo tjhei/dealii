@@ -160,9 +160,9 @@ public:
      * active level DoFs.
      */
 #ifdef DEAL_II_WITH_TRILINOS
-    TrilinosWrappers::MPI::Vector *temp_trilinos_ghost_vector;
+    mutable TrilinosWrappers::MPI::Vector *temp_trilinos_ghost_vector;
 #else
-    void *temp_trilinos_ghost_vector;
+    mutable void *temp_trilinos_ghost_vector;
 #endif
   };
 
