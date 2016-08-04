@@ -14,7 +14,7 @@
 // ---------------------------------------------------------------------
 
 /*
- * Author: Guido Kanschat, Texas A&M University, 2009
+ * Test RelaxationBlockJacobi in parallel
  */
 
 #include "../tests.h"
