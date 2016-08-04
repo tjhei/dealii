@@ -175,14 +175,14 @@ namespace internal
   const TrilinosWrappers::MPI::Vector &
   prepare_ghost_vector(
     const TrilinosWrappers::MPI::Vector &prev,
-    const TrilinosWrappers::MPI::Vector *other)
+    TrilinosWrappers::MPI::Vector *other)
   {
     Assert(other!=NULL,
            ExcMessage("You need to provide a ghosted vector in RelaxationBlock::AdditionalData::temp_trilinos_ghost_vector."));
     Assert(other->size()==prev.size(), ExcInternalError());
 
     // import ghost values:
-    *const_cast<TrilinosWrappers::MPI::Vector *>(other) = prev;
+    *other = prev;
     return *other;
   }
 } // end namespace internal
