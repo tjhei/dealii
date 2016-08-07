@@ -43,6 +43,9 @@ DEAL_II_NAMESPACE_OPEN
  * implementation relies on a straight forward implementation of the Gauss-
  * Seidel process.
  *
+ * Parallel computations using Trilinos require you to specify and initialized
+ * ghost vector in AdditionalData::temp_trilinos_ghost_vector.
+ *
  * @ingroup Preconditioners
  * @author Guido Kanschat
  * @date 2010
@@ -82,7 +85,14 @@ public:
      */
     AdditionalData (const double relaxation = 1.,
                     const bool invert_diagonal = true,
-                    const bool same_diagonal = false);
+                    const bool same_diagonal = false,
+                    const typename PreconditionBlockBase<inverse_type>::Inversion inversion
+                    = PreconditionBlockBase<inverse_type>::gauss_jordan,
+                    const double threshold = 0.,
+#ifdef DEAL_II_WITH_TRILINOS
+                    TrilinosWrappers::MPI::Vector *temp_trilinos_ghost_vector = NULL
+#endif
+                   );
 
     /**
      * The mapping from indices to blocks. Each row of this pattern enumerates
@@ -112,6 +122,7 @@ public:
      * particular if their sizes differ.
      */
     bool same_diagonal;
+
     /**
      * Choose the inversion method for the blocks.
      */
@@ -149,11 +160,6 @@ public:
     std::vector<std::vector<unsigned int> > order;
 
     /**
-     * Return the memory allocated in this object.
-     */
-    std::size_t memory_consumption() const;
-
-    /**
      * Temporary ghost vector that is used in the Relaxation method when
      * performing parallel MPI computations. The user is required to have this
      * point to an initialized vector that contains at least the locally
@@ -164,6 +170,11 @@ public:
 #else
     mutable void *temp_trilinos_ghost_vector;
 #endif
+
+    /**
+     * Return the memory allocated in this object.
+     */
+    std::size_t memory_consumption() const;
   };
 
   /**

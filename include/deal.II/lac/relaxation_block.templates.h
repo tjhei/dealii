@@ -28,14 +28,24 @@ inline
 RelaxationBlock<MatrixType,inverse_type>::AdditionalData::AdditionalData
 (const double relaxation,
  const bool   invert_diagonal,
- const bool   same_diagonal)
+ const bool   same_diagonal,
+ const typename PreconditionBlockBase<inverse_type>::Inversion inversion,
+ const double threshold,
+#ifdef DEAL_II_WITH_TRILINOS
+ TrilinosWrappers::MPI::Vector *temp_trilinos_ghost_vector
+#endif
+)
   :
   relaxation(relaxation),
   invert_diagonal(invert_diagonal),
   same_diagonal(same_diagonal),
-  inversion(PreconditionBlockBase<inverse_type>::gauss_jordan),
-  threshold(0.),
+  inversion(inversion),
+  threshold(threshold),
+#ifdef DEAL_II_WITH_TRILINOS
+  temp_trilinos_ghost_vector (temp_trilinos_ghost_vector)
+#else
   temp_trilinos_ghost_vector (NULL)
+#endif
 {}
 
 
@@ -156,7 +166,7 @@ RelaxationBlock<MatrixType,inverse_type>::invert_diagblocks ()
 namespace internal
 {
   /**
-   * default implementation for serial vectors. Here we don't need to make a
+   * Default implementation for serial vectors. Here we don't need to make a
    * copy into a ghosted vector, so just return a reference to @p prev.
    */
   template <class VectorType, class VectorType2>
