@@ -565,7 +565,7 @@ namespace Step39
     MGCoarseGridLACIteration<SolverCG<TrilinosWrappers::MPI::Vector>,TrilinosWrappers::MPI::Vector>
     coarse_grid_solver(coarse_solver, coarse_matrix, identity);
 
-    typedef RelaxationBlockJacobi<TrilinosWrappers::SparseMatrix, double>
+    typedef RelaxationBlockJacobi<TrilinosWrappers::SparseMatrix, TrilinosWrappers::MPI::Vector, double>
     Smoother;
 
     MGLevelObject<typename Smoother::AdditionalData> smoother_data;
@@ -588,7 +588,7 @@ namespace Step39
         ghost->reinit(dof_handler.locally_owned_mg_dofs(l),
                       relevant_dofs,
                       MPI_COMM_WORLD);
-        smoother_data[l].temp_trilinos_ghost_vector = ghost;
+        smoother_data[l].temp_ghost_vector = ghost;
       }
 
     mg_smoother.initialize(mg_matrix, smoother_data);
