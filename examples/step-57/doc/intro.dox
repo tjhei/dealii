@@ -1,0 +1,244 @@
+
+<i>This program was contributed by Liang Zhao and Timo Heister.</i>
+
+<a name="Intro"></a> 
+<h1>Introduction</h1>
+
+<h3> Navier Stokes Equations </h3>
+
+In this tutorial, we show how to solve Navier Stokes equations(NSE) by Newton's method. Here we consider the viscous flows to be steady and incompressible. If a domain $\Omega \in \mathbb{R}^{d}$, $d=2,3$, containing piecewise smooth boundary $\partial \Omega$, and a force field $\textbf{f}$ are given, we seek for a velocity field $\textbf{u}$ and a pressure field $\textbf{p}$ satisfying
+
+@f{eqnarray*}
+- \nu \Delta\textbf{u} + (\textbf{u} \cdot \nabla)\textbf{u} + \nabla p &=& \textbf{f}\\
+
+- \nabla \cdot \textbf{u} &=& 0
+@f}
+
+Different from Stokes equations, NSE is a nonlinear system because of the convection term $(\textbf{u} \cdot \nabla)\textbf{u}$. The first step to compute its numerical solution is linearization of NSE and this will be done through Newton's method.
+
+<h3> Linearization of Navier Stokes Equations </h3>
+
+Moving the right hand side terms to the left, we rewrite NSE as
+
+@f{eqnarray*}
+F(\mathbf{u}, p) = \left(
+                \begin{array}{c}
+                  - \nu \Delta\mathbf{u} + (\mathbf{u} \cdot \nabla)\mathbf{u} + \nabla p - \mathbf{f} \\
+                  - \nabla \cdot \mathbf{u} \\
+                \end{array}
+              \right).
+@f}
+
+$F(\textbf{u}, p)$ is a nonlinear function whose root is the same as the solution to NSE. Assuming the convergence condition is satisfied and denoting $\textbf{x} = (\textbf{u}, p)$, Newton's iteration on a vector field can be defined as
+
+@f{eqnarray*}
+\textbf{x}^{k+1} = \textbf{x}^{k} - (\nabla F(\textbf{x}^{k}))^{-1} F(\textbf{x}^{k}),
+@f}
+where $\textbf{x}^{k+1}$ is what we are computing at current step and $\textbf{x}^{k}$ represents the solution from last step, and $\nabla F(\textbf{x}^{k})$ is the Jacobian matrix evaluated at $\textbf{x}^{k}$.
+
+From the Newton's iteration formula, we can observe that the new solution is obtained by adding an update term to the old one. Instead of evaluating the Jacobian matrix and taking its inverse, we consider the update term as a whole, that is
+
+@f{eqnarray*}
+\delta \textbf{x}^{k} = - (\nabla F(\textbf{x}^{k}))^{-1} F(\textbf{x}^{k}).
+@f}
+
+Next, we solve the system
+@f{eqnarray*}
+\nabla F(\textbf{x}^{k}) \delta \textbf{x}^{k} = -F(\textbf{x}^{k})
+@f}
+for the update term $\delta \textbf{x}^{k}$. On the left of the previous equation, $\nabla F(\textbf{x}^{k})$ represents the directional gradient of $F(\textbf{x})$ along $\delta \textbf{x}^{k}$. By definition, the directional gradient shows as
+
+@f{eqnarray*}
+  & &\nabla F(\mathbf{u}^{k}, p^{k}) (\delta \mathbf{u}^{k}, \delta p^{k}) \\
+  \\
+  &=& \lim_{\epsilon \to 0} \frac{1}{\epsilon} (F(\mathbf{u}^{k}+\epsilon \delta \mathbf{u}^{k}, p^{k}+\epsilon\nabla\delta p^{k}) - (F(\mathbf{u}^{k}, p^{k}))\\
+  \\
+  &=& \lim_{\epsilon \to 0} \frac{1}{\epsilon} \left(
+                \begin{array}{c}
+                  - \epsilon\nu\Delta\delta \mathbf{u}^{k} + \epsilon\mathbf{u}^{k}\cdot\nabla\delta\mathbf{u}^{k}+\epsilon\delta\mathbf{u}^{k}\cdot\nabla\mathbf{u}^{k}+\epsilon^{2}\delta\mathbf{u}^{k}\cdot\nabla\delta\mathbf{u}^{k}+\epsilon \nabla\delta p^{k}\\
+                  - \epsilon \Delta \cdot\delta \mathbf{u}^{k}\\
+                \end{array}
+              \right)\\
+              \\
+  &=& \left(
+                \begin{array}{c}
+                  - \nu\Delta\delta \mathbf{u}^{k} + \mathbf{u}^{k}\cdot\nabla\delta\mathbf{u}^{k}+\delta\mathbf{u}^{k}\cdot\nabla\mathbf{u}^{k}+ \nabla\delta p^{k}\\
+                  - \Delta \cdot\delta \mathbf{u}^{k}\\
+                \end{array}
+              \right).
+@f}
+Then we have a linearized system
+
+@f{eqnarray*}
+- \nu\Delta\delta\mathbf{u}^{k} + \mathbf{u}^{k}\cdot\nabla\delta\mathbf{u}^{k}+\delta\mathbf{u}^{k}\cdot\nabla\mathbf{u}^{k}+ \nabla\delta p^{k} = \mathbf{g}, \\
+- \Delta \cdot\delta \mathbf{u}^{k} = 0,
+@f}
+where $\textbf{g} =\textbf{f}+\nu \Delta\textbf{u}^k -(\textbf{u}^k \cdot \nabla)\textbf{u}^k -\nabla p^k$, $\textbf{f}$ is the right hand side of NSE, $\textbf{u}^k$ and $p^k$ are the solutions from previous Newton's iteration. In this linear system, the only unknowns are the update terms: $\delta \textbf{u}^{k}$ and $\delta p^{k}$, then the strategy we use in step-22 can be used to solve it. After multiplied by sharp functions and integrating by parts, similarly, the system results in solving a linear system formed as $Ax = b$.
+
+Now, Newton's iteration for solving NSE shows as
+
+<ol>
+  <li> Initialization: Initial guess $u_0$ and $p_0$, tolerance $\tau$;
+  <li> Seek for update term: solve for $\delta\textbf{u}^{k}$ and $\delta p^k$;
+  <li> Update the approximation: $\textbf{u}^{k+1} = \textbf{u}^{k} + \delta\textbf{u}^{k}$ and $p^{k+1} = p^{k} + \delta p^{k}$;
+  <li> Check residual norm: $E^{k+1} = \|F(\mathbf{u}^{k+1}, p^{k+1})\|$. 
+       If $E^{k+1} \leq \tau$, STOP. 
+       If $E^{k+1} > \tau$, back to step 2. 
+</ol>
+
+<h3> Initial Guess in Newton's Scheme </h3>
+
+Newton's iteration is available only if the initial guess is close enough to the exact solution so the first step in Newton's iteration is to determine the initial guess. 
+
+Here we assume the fluid is steady. On the condition of viscous fluid, such as honey and mantle, the viscosity coefficient $\nu$ is relatively large(like one), the linear term is dominant. In this situation we can start with the corresponding Stokes equations and use its solution as the initial guess in Newton's iteration. If $/nu$ is small, which means the fluid is running fast such that inertia forces turns to be significent, the convection term $(\textbf{u} \cdot \nabla)\textbf{u}$ is dominant. Now the solution to its corresponding Stokes problem is far away from what we are seeking for. Therefore, we create a "staircase" to lead us a way from Stokes equations to Navier Stokes equastons.
+
+Accept a fact that the solutions to two Navier Stokes problems are closed if the difference between their viscosity coefficients is small. We start with Stokes problem whose $\nu$ is as small as possible and solution is good enough to be the initial guess for corresponding NSE. And then we decrease $\nu$ by $\epsilon$ and make sure $\epsilon$ is small enough such that the solution to NSE with $\nu$ can be an initial guess for NSE with $\nu - \epsilon$.
+That is we use the solution to 
+
+@f{eqnarray*}
+- \nu^{*} \Delta\textbf{u} + \nabla p &=& \textbf{f}\\
+
+- \nabla \cdot \textbf{u} &=& 0
+@f}
+
+as the initial guess in Newton's iteration for solving
+
+@f{eqnarray*}
+- \nu^{*} \Delta\textbf{u} + (\textbf{u} \cdot \nabla)\textbf{u} + \nabla p &=& \textbf{f},\\
+
+- \nabla \cdot \textbf{u} &=& 0.
+@f}
+And then the solution to previous NSE behaves as the initial guess for 
+@f{eqnarray*}
+- (\nu^{*}-\epsilon) \Delta\textbf{u} + (\textbf{u} \cdot \nabla)\textbf{u} + \nabla p &=& \textbf{f}\\
+
+- \nabla \cdot \textbf{u} &=& 0.
+@f}
+
+Denoting the initial viscosity to be $\nu^{*}$ and repeating this process, we build a series of auxiliary NSE with viscosity from $\nu^{*}$ to $\nu$ with step size $\epsilon$, that is let $\nu^* \rightarrow \nu$. The solution to the NSE on last stair is the initial guess for the NSE we want to solve. 
+
+The algorithm of searching initial guess is listed as following
+
+
+- Step 1. Determine $\nu^{*}$ and solve Stokes equations with viscosity $\nu{*}$, and set its solution to be the initial guess for NSE with viscosity $\nu^{*}$;
+- Step 2. Solve NSE with viscosity $\nu^{*}$ and set its solution to be initial guess for next auxiliary NSE;
+- Step 3. For small enough $\epsilon$, solve NSE with viscosity $\nu^{*}=\nu{*}-\epsilon$ by Newton's iteration;
+- Step 4. If $\nu^{*} - \nu$ is small enough, set current solution to be the initial guess for original NSE; else set its solution to be the initial guess for next auxiliary NSE and back to step 3. 
+
+
+
+<h3>The Solver and Preconditioner </h3>
+
+At each step of Newton's iteration, the problem results in solving a saddle point systems of the form
+@f{eqnarray*}
+    \left(
+      \begin{array}{cc}
+        A & B^{T} \\
+        B & 0 \\
+      \end{array}
+    \right)
+    \left(
+      \begin{array}{c}
+        U \\
+        P \\
+      \end{array}
+    \right)
+    =
+    \left(
+      \begin{array}{c}
+        F \\
+        0 \\
+      \end{array}
+    \right).
+@f}
+
+Instead of solving the above system, we in practice focus on the equivalent system
+@f{eqnarray*}
+    \left(
+      \begin{array}{cc}
+        A + \gamma B^TW^{-1}B & B^{T} \\
+        B & 0 \\
+      \end{array}
+    \right)
+    \left(
+      \begin{array}{c}
+        U \\
+        P \\
+      \end{array}
+    \right)
+    =
+    \left(
+      \begin{array}{c}
+        F \\
+        0 \\
+      \end{array}
+    \right).
+@f}
+
+Denoting the system matrix of the new system by $G$ and right hand side by $b$, we solve it with right preconditioner $P$ as $GP^{-1}y = b$, where 
+
+@f{eqnarray*}
+P^{-1} = \left(\begin{array}{cc} \tilde{A} & B^T \\ 
+                                 0 & \tilde{S} \end{array}\right)^{-1},
+@f}
+where $\tilde{A} = A + \gamma B^TW^{-1}B$ and $\tilde{S}$ is the corresponding Schur complement $\tilde{S} = B^T \tilde{A}^{-1} B$. As discussed in step-22, we let $W = M_p$ where $M_p$ is the pressure mass matrix, then $\tilde{S}^{-1}$ can be approximated by 
+@f{eqnarray*}
+\tilde{S}^{-1} = -(\nu+\gamma)M_p.
+@f}
+
+We decompose $P^{-1}$ as
+
+@f{eqnarray*} 
+P^{-1} =
+\left(\begin{array}{cc} \tilde{A}^{-1} & 0 \\ 0 & I \end{array}\right)
+\left(\begin{array}{cc} I & B^T \\ 0 & -I \end{array}\right)
+\left(\begin{array}{cc} I & 0 \\ 0 & \tilde{S}^{-1} \end{array}\right).
+@f}
+
+Here two inexact solver will be needed for $\tilde{A}^{-1}$ and $\tilde{S}^{-1}$(An Augmented Lagrangian-Based Approach to the Ossen Problem, M.Benzi and M.Olshanskii). Since the pressure mass matrix is diagonal, the solver for $\tilde{S}^{-1}$ is not diffcult and CG with ILU as preconditioner is utilized as this solver. We use the direct solver UMFPACK for $\tilde{A}^{-1}$. The remaining is sparse mastrix-vector product with $B^T$. Further more, the augmented lagrangian term will be assembled through Grad-Div stabilization: $(\nabla \cdot \phi _{j}, \nabla \cdot \phi _{i}) \approx (B^T M_p^{-1}B)_{ij}$.(Efficient augmented Lagrangian-type preconditioning for the Oseen problem using Grad-Div stabilization, Timo Heister and Gerd Rapin) 
+
+
+<h3> Test Case </h3>
+
+Here we use Lid driven cavity flow as our test case. Since we do not have reference solution for this test problem, the 2-norm of residual, $\|b-Gx\|_2$ will be used to check convergence. The domain of Navier Stokes equations is defined on the unit square and the right hand side $f=0$. The boundary condition is 
+@f{eqnarray*}
+(u(x, y), v(x,y)) &=& (1,0) if y=0 and 0<x<1, \\
+(u(x, y), v(x,y)) &=& (0,0) else. \\
+@f}
+
+The error consists of the nonlinear error(from Newton's iteration) and the discrete error(depending on mesh size). This means the nonlinear error goes small with Newton's iteration processing but the error from discretization can be decreased if a mesh is fixed. And the size of the linear system we are finally solving depends on the mesh size, that is the finer is the mesh, the larger is the system matrix. When $/nu$ is small, the "stiarcase" will be very long. Also, we run Newton's iteration on each stair which leads plenty of linear system to solve. Therefore, we must restrict the mesh on which we search for initial guess to be moderate. Here we search for the initial guess on a mesh of $8 \times 8$. Once the initial guess is obtained, we refine the mesh adaptively and transfer the solution to the new mesh as an initial guess, and then run Newton's iteration on the new mesh. We repeat this approach for 4 times. In this way, we minish both of the nonlinear error and the discrete error.
+
+Inside the loop, we involve three solvers: one for $\tilde{A}^{-1}$, one for $M_p^{-1}$ and one for $Gx=b$. We can see that none of these three solvers compute the solution directly. In fact, the first two solvers are involved in the preconditioner and the third one gives us the Newton's update term. Inexact computation for preconditioner probably causes the preconditioned system is not as good as we expect, but the solution will not be changed if the linear system is solved by a Krylov subspace iterative method, like FGMRES. Similarly, an inexact Newton's update term may fail to lead quadratic convergence, but we can guarantee the update term to improve present solution by applying line search. Therefore, both of the two solver can be inexact, and this implies the whole approach can be cheap if we set the tolerance to be moderately high. In test, the tolerance of CG is 1e-5 and we set the tolerance of relative residual, that is $\frac{\|b-Gx\|_2}{\|b\|_2}$, to be 1e-2. In spite of high tolerance, we finally get the residual of 1e-14. 
+
+Because of the high tolerance in solving for Newton's update term, we have to modify the weight of the update term to make sure the new solution no worse than previous one. Given an update vector $\delta \textbf{x}^{k}$, we modify it weight(take its half) till the new solution gives a smaller residual than the previous one. The algorithm shows as below.
+
+<ol>
+  <li> Set initial weight to be one: $\alpha = 1$;
+  <li> Update solution by $\textbf{x}^{k+1} = \textbf{x}^{k} + \alpha \delta \textbf{x}^{k}$;
+  <li> Check residual: if $\|b-G\textbf{x}^{k+1}\|_2 < \|b-G\textbf{x}^{k}\|_2$, new solution is obtained and stop; else $\alpha = 0.5*\alpha$ and back to step 2.
+</ol>
+
+All cavity reference values are from High-Re solution for incompreesible flow using the Navier-Stokes Equations and a Multigrid Method, U.Ghia, K.N.Ghia, and C.T.Shin.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

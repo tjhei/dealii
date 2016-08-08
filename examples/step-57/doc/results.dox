@@ -1,0 +1,293 @@
+<h1>Results</h1>
+
+Now we use the method we discussed above to solve Navier Stokes equations with viscosity 1/400 and 1/10000. 
+
+<table align="center" border="1">
+  
+  <tr>
+    <th>&nbsp;</th>
+    <th colspan="2">Mesh0</th>
+    <th colspan="2">Mesh1</th>
+    <th colspan="2">Mesh2</th>
+    <th colspan="2">Mesh3</th>
+    <th colspan="2">Mesh4</th>
+  </tr>
+
+  <tr>
+    <th>Newton's iter </th>
+    <th>Residual      </th>
+    <th>FGMRES        </th>
+    <th>Residual      </th>
+    <th>FGMRES        </th>
+    <th>Residual      </th>
+    <th>FGMRES        </th>
+    <th>Residual      </th>
+    <th>FGMRES        </th>
+    <th>Residual      </th>
+    <th>FGMRES        </th>
+  </tr>
+
+  <tr>
+    <th>1         </th>
+    <th>3.711e-3  </th>
+    <th>5         </th>
+    <th>6.419e-3  </th>
+    <th>3         </th>
+    <th>2.433e-3  </th>
+    <th>3         </th>
+    <th>1.057e-3  </th>
+    <th>3         </th>
+    <th>4.949e-4  </th>
+    <th>3         </th>
+  </tr>
+
+  <tr>
+    <th>2         </th>
+    <th>7.085e-4  </th>
+    <th>5         </th>
+    <th>9.946e-4  </th>
+    <th>5         </th>
+    <th>1.140e-4  </th>
+    <th>5        </th>
+    <th>1.354e-5  </th>
+    <th>6         </th>
+    <th>1.417e-6  </th>
+    <th>6         </th>
+  </tr>
+
+  <tr>
+    <th>3         </th>
+    <th>1.998e-5  </th>
+    <th>5         </th>
+    <th>4.501e-5  </th>
+    <th>3         </th>
+    <th>2.902e-8  </th>
+    <th>3         </th>
+    <th>4.399e-10 </th>
+    <th>3         </th>
+    <th>6.406e-11 </th>
+    <th>3         </th>
+  </tr>
+
+  <tr>
+    <th>4         </th>
+    <th>2.317e-9  </th>
+    <th>6         </th>
+    <th>1.689e-7  </th>
+    <th>5         </th>
+    <th>1.905e-13 </th>
+    <th>8         </th>
+    <th>1.867e-14 </th>
+    <th>8         </th>
+    <th>1.007e-14 </th>
+    <th>8         </th>
+  </tr>
+
+  <tr>
+    <th>5         </th>
+    <th>1.258e-13 </th>
+    <th>7         </th>
+    <th>1.452e-11 </th>
+    <th>6         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+  </tr>
+
+  <tr>
+    <th>6         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>1.587e-15 </th>
+    <th>8         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+  </tr>
+</table>
+
+
+<table align="center" border="1">
+  
+  <tr>
+    <th>&nbsp;</th>
+    <th colspan="2">Mesh0</th>
+    <th colspan="2">Mesh1</th>
+    <th colspan="2">Mesh2</th>
+    <th colspan="2">Mesh3</th>
+    <th colspan="2">Mesh4</th>
+  </tr>
+
+  <tr>
+    <th>Newton's iter </th>
+    <th>Residual      </th>
+    <th>FGMRES        </th>
+    <th>Residual      </th>
+    <th>FGMRES        </th>
+    <th>Residual      </th>
+    <th>FGMRES        </th>
+    <th>Residual      </th>
+    <th>FGMRES        </th>
+    <th>Residual      </th>
+    <th>FGMRES        </th>
+  </tr>
+
+  <tr>
+    <th>1          </th>
+    <th>1.2445e-3  </th>
+    <th>6          </th>
+    <th>3.9559e-3  </th>
+    <th>4          </th>
+    <th>4.8617e-3  </th>
+    <th>3          </th>
+    <th>4.8675e-3  </th>
+    <th>3          </th>
+    <th>2.8146e-4  </th>
+    <th>3          </th>
+  </tr>
+
+  <tr>
+    <th>2         </th>
+    <th>2.4948e-13</th>
+    <th>8         </th>
+    <th>2.9216e-3 </th>
+    <th>6         </th>
+    <th>1.7416e-3 </th>
+    <th>6         </th>
+    <th>1.5143e-3 </th>
+    <th>7         </th>
+    <th>7.6307e-4 </th>
+    <th>7         </th>
+  </tr>
+
+  <tr>
+    <th>3         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>2.9112e-3(0.03125) </th>
+    <th>7         </th>
+    <th>6.1170e-4 </th>
+    <th>6         </th>
+    <th>5.5466e-4 </th>
+    <th>6         </th>
+    <th>2.7549e-4 </th>
+    <th>7         </th>
+  </tr>
+
+  <tr>
+    <th>4         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>1.7512e-3 </th>
+    <th>6         </th>
+    <th>8.5979e-5 </th>
+    <th>6         </th>
+    <th>1.6631e-4 </th>
+    <th>6         </th>
+    <th>1.6168e-4 </th>
+    <th>7         </th>
+  </tr>
+
+  <tr>
+    <th>5         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>1.2568e-3 </th>
+    <th>7         </th>
+    <th>1.0373e-6 </th>
+    <th>6         </th>
+    <th>2.0103e-5 </th>
+    <th>6         </th>
+    <th>7.8666e-5 </th>
+    <th>7         </th>
+  </tr>
+
+  <tr>
+    <th>6         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>7.5972e-4 </th>
+    <th>6         </th>
+    <th>9.6737e-10</th>
+    <th>7         </th>
+    <th>2.0669e-6 </th>
+    <th>7         </th>
+    <th>5.3016e-5(0.5) </th>
+    <th>7         </th>
+  </tr>
+
+  <tr>
+    <th>7         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>9.9494e-6 </th>
+    <th>5         </th>
+    <th>4.1740e-15</th>
+    <th>9         </th>
+    <th>2.0210e-8 </th>
+    <th>7         </th>
+    <th>1.8271e-5 </th>
+    <th>5         </th>
+  </tr>
+
+  <tr>
+    <th>8         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>3.3137e-8 </th>
+    <th>7         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>3.0285e-12</th>
+    <th>8         </th>
+    <th>8.9337e-7 </th>
+    <th>7         </th>
+  </tr>
+
+  <tr>
+    <th>9         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>3.4340e-13</th>
+    <th>8         </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>4.4059e-15</th>
+    <th>10        </th>
+    <th>2.8624e-9 </th>
+    <th>8         </th>
+  </tr>
+
+  <tr>
+    <th>10        </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>6.9035e-14</th>
+    <th>9         </th>
+  </tr>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+<img src="step-56_Re5000_Newton_converge.svg" alt="">
+
