@@ -201,21 +201,25 @@ Here two inexact solver will be needed for $\tilde{A}^{-1}$ and $\tilde{S}^{-1}$
 <h3> Test Case </h3>
 
 Here we use Lid driven cavity flow as our test case. Since we do not have reference solution for this test problem, the 2-norm of residual, $\|b-Gx\|_2$ will be used to check convergence. The domain of Navier Stokes equations is defined on the unit square and the right hand side $f=0$. The boundary condition is 
+
 @f{eqnarray*}
-(u(x, y), v(x,y)) &=& (1,0) if y=0 and 0<x<1, \\
-(u(x, y), v(x,y)) &=& (0,0) else. \\
+(u(x, y), v(x,y)) &=& (1,0)   
+  \qquad\qquad \textrm{if}\ z=0, x<0, \\
+
+  (u(x, y), v(x,y)) &=& (0,0)
+  \qquad\qquad \textrm{else}.
 @f}
 
-The error consists of the nonlinear error(from Newton's iteration) and the discrete error(depending on mesh size). This means the nonlinear error goes small with Newton's iteration processing but the error from discretization can be decreased if a mesh is fixed. And the size of the linear system we are finally solving depends on the mesh size, that is the finer is the mesh, the larger is the system matrix. When $/nu$ is small, the "stiarcase" will be very long. Also, we run Newton's iteration on each stair which leads plenty of linear system to solve. Therefore, we must restrict the mesh on which we search for initial guess to be moderate. Here we search for the initial guess on a mesh of $8 \times 8$. Once the initial guess is obtained, we refine the mesh adaptively and transfer the solution to the new mesh as an initial guess, and then run Newton's iteration on the new mesh. We repeat this approach for 4 times. In this way, we minish both of the nonlinear error and the discrete error.
+The error consists of the nonlinear error(from Newton's iteration) and the discrete error(depending on mesh size). This means the nonlinear error goes small with Newton's iteration processing but the error from discretization can be decreased if a mesh is fixed. And the size of the linear system we are finally solving depends on the mesh size, that is the finer is the mesh, the larger is the system matrix. When $/nu$ is small, the "stiarcase" will be very long. Also, we run Newton's iteration on each stair which leads plenty of linear system to solve. Therefore, we must restrict the mesh on which we search for initial guess to be moderate. Here we search for the initial guess on a globally refined mesh(8 \times 8 for Re=400 and 32 \times 32 for Re=10000). Once the initial guess is obtained, we refine the mesh adaptively and transfer the solution to the new mesh as an initial guess, and then run Newton's iteration on the new mesh. We repeat this approach for 4 times. In this way, we minish both of the nonlinear error and the discrete error.
 
-Inside the loop, we involve three solvers: one for $\tilde{A}^{-1}$, one for $M_p^{-1}$ and one for $Gx=b$. We can see that none of these three solvers compute the solution directly. In fact, the first two solvers are involved in the preconditioner and the third one gives us the Newton's update term. Inexact computation for preconditioner probably causes the preconditioned system is not as good as we expect, but the solution will not be changed if the linear system is solved by a Krylov subspace iterative method, like FGMRES. Similarly, an inexact Newton's update term may fail to lead quadratic convergence, but we can guarantee the update term to improve present solution by applying line search. Therefore, both of the two solver can be inexact, and this implies the whole approach can be cheap if we set the tolerance to be moderately high. In test, the tolerance of CG is 1e-5 and we set the tolerance of relative residual, that is $\frac{\|b-Gx\|_2}{\|b\|_2}$, to be 1e-2. In spite of high tolerance, we finally get the residual of 1e-14. 
+Inside the loop, we involve three solvers: one for $\tilde{A}^{-1}$, one for $M_p^{-1}$ and one for $Gx=b$. We can see that none of these three solvers compute the solution directly. In fact, the first two solvers are involved in the preconditioner and the third one gives us the Newton's update term. Inexact computation for preconditioner probably causes the preconditioned system is not as good as we expect, but the solution will not be changed if the linear system is solved by a Krylov subspace iterative method, like FGMRES. Therefore, all solvers can be inexact, and this implies the whole approach can be cheap if we set the tolerance to be moderately high. In test, the tolerance of CG is 1e-6 and we set the tolerance of relative residual, that is $\frac{\|b-Gx\|_2}{\|b\|_2}$, to be 1e-4. In spite of high tolerance, we finally get the residual of 1e-14. 
 
-Because of the high tolerance in solving for Newton's update term, we have to modify the weight of the update term to make sure the new solution no worse than previous one. Given an update vector $\delta \textbf{x}^{k}$, we modify it weight(take its half) till the new solution gives a smaller residual than the previous one. The algorithm shows as below.
+We modify the weight of the update term to make sure the new solution is no worse than the previous one. Given an update vector $\delta \textbf{x}^{k}$, we modify its weight(take its half) till the new solution gives a smaller residual. The algorithm is shown as below.
 
 <ol>
   <li> Set initial weight to be one: $\alpha = 1$;
   <li> Update solution by $\textbf{x}^{k+1} = \textbf{x}^{k} + \alpha \delta \textbf{x}^{k}$;
-  <li> Check residual: if $\|b-G\textbf{x}^{k+1}\|_2 < \|b-G\textbf{x}^{k}\|_2$, new solution is obtained and stop; else $\alpha = 0.5*\alpha$ and back to step 2.
+  <li> Check residual: if $\|b-G\textbf{x}^{k+1}\| < \|b-G\textbf{x}^{k}\|$, new solution is obtained and stop; else $\alpha = 0.5*\alpha$ and back to step 2.
 </ol>
 
 All cavity reference values are from High-Re solution for incompreesible flow using the Navier-Stokes Equations and a Multigrid Method, U.Ghia, K.N.Ghia, and C.T.Shin.

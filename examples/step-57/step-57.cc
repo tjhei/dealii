@@ -156,6 +156,8 @@ namespace Step15
   double BoundaryValues<dim>::value(const Point<dim> &p,
                                    const unsigned int component) const
   {
+    Assert (component < this->n_components,
+			ExcIndexRange (component, 0, this->n_components));
     if (component == 0)
       {
         if (p[1]>1.0-1e-5)
