@@ -58,11 +58,10 @@
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
 
-// We need the solution transfer header file to transfer solutions between meshes
+// To transfer solutions between meshes, this file is included.
 #include <deal.II/numerics/solution_transfer.h>
 
-// Then we need to include the header file for the sparse direct solver
-// UMFPACK:
+// This file includes UMFPACK: the direct solver.
 #include <deal.II/lac/sparse_direct.h>
 
 // And the one for ILU preconditioner
@@ -74,18 +73,19 @@
 #include <sstream>
 
 // As in all programs, the namespace dealii is included
-namespace Step15
+namespace Step57
 {
   using namespace dealii;
 
   // @sect3{The <code>StokesProblem</code> class template}
 
-  // As explained in introduction, what we solve at each step is the Newton update term, instead of the solution, so
-  // we define two variables for the solution: the present solution and the update term. In this program, we do not
-  // know the exact analytical solution, thus we can just check its convergence through the norm of residual, which has
-  // beed discussed in introduction. A sparse matrix for the mass matrix of pressure is created to define the operator of
+  // As explained in introduction, what we obtain at each step is the Newton's update term instead of the real solution, so
+  // we define two variables: the present solution and the update term. By Newton's iteration, the new solution can be written
+  // as $x_{new} = x_{old} + x_{update}$
+  // In this program, we do not know the exact solution, thus we check its convergence through
+  // the norm of residual. A sparse matrix for the mass matrix of pressure is created for the operator of
   // a block Schur complement preconditioner. We use one ConstraintMatrix for implementing Dirichlet boundary conditions at
-  // the initial step and another for the Newton update term.
+  // the initial step and a zero ConstraintMatrix for the Newton's update term.
 
   template <int dim>
   class Navier_Stokes_Newton
@@ -130,13 +130,14 @@ namespace Step15
   };
 
   // @sect3{Boundary values and right hand side}
-  // In this problem we set the velocity along x axis to be one on the upper surface of the cavity and all others to be zeros,
+  // In this problem we set the velocity along the upper surface of the cavity to be one on and ones on the other three
+  // boundaries to be zero,
   // and the right hand side function is a ZeroFunction. The dimension of the boundary function is dim+1 that implies the
-  // pressure is included. In practice, the boundary values are applied through ConstraintMatrix which is obtained by using
-  // VectorTools::interpolate_boundary_values, so the components of boundary values functions should be according with the
-  // finite element space. Therefore we have to define the boundary values of pressure even though we actually do not need
-  // it. While creating the ConstraintMatrix, we just use a ComponentMask to discard the component in boundary values which
-  // corresponds to pressure.
+  // pressure is included. In practice, the boundary values are applied to our solution through ConstraintMatrix which is
+  // obtained by using
+  // VectorTools::interpolate_boundary_values. The components of boundary value functions should be according with the dimension
+  // of finite element space. Therefore we have to define the boundary values of pressure even though we actually do not need
+  // it. While creating the ConstraintMatrix, we use a ComponentMask to discard the pressure component in boundary values.
 
   // The following function represents the boundary values:
 
@@ -154,10 +155,10 @@ namespace Step15
 
   template <int dim>
   double BoundaryValues<dim>::value(const Point<dim> &p,
-                                    const unsigned int component) const
+                                   const unsigned int component) const
   {
-    Assert (component < this->n_components,
-            ExcIndexRange (component, 0, this->n_components));
+	Assert (component < this->n_components,
+			ExcIndexRange (component, 0, this->n_components));
     if (component == 0)
       {
         if (p[1]>1.0-1e-5)
@@ -171,39 +172,12 @@ namespace Step15
 
   template <int dim>
   void BoundaryValues<dim>::vector_value (const Point<dim> &p,
-                                          Vector<double>   &values) const
+                                         Vector<double>   &values) const
   {
     for (unsigned int c = 0; c < this->n_components; ++c)
       values(c) = BoundaryValues<dim>::value (p, c);
   }
 
-  // The right hand side function is defines in a similar way:
-
-  template <int dim>
-  class RightHandSide : public Function<dim>
-  {
-  public:
-    RightHandSide () : Function<dim>(dim+1) {}
-    virtual double value(const Point<dim> &p,
-                         const unsigned int component) const;
-    virtual void   vector_value(const Point <dim>    &p,
-                                Vector<double> &values) const;
-  };
-
-  template <int dim>
-  double RightHandSide<dim>::value(const Point<dim> &p,
-                                   const unsigned int component) const
-  {
-    return 0.0;
-  }
-
-  template <int dim>
-  void RightHandSide<dim>::vector_value(const Point <dim>    &p,
-                                        Vector<double> &values) const
-  {
-    for (unsigned int c = 0; c < this->n_components; ++c)
-      values(c) = RightHandSide<dim>::value (p, c);
-  }
 
   // @sect3{BlockSchurPreconditioner for Navier Stokes equations}
   // In this part we define the block Schur complement preconditioner. AS discussed in introduction,
@@ -225,68 +199,68 @@ namespace Step15
   class BlockSchurPreconditioner : public Subscriptor
   {
   public:
-    BlockSchurPreconditioner (double                                     gamma,
-                              double                                     viscosity,
-                              const BlockSparseMatrix<double>            &S,
-                              const SparseMatrix<double>                 &P,
-                              const PreconditionerMp                     &Mppreconditioner
-                             );
+	  BlockSchurPreconditioner (double                                     gamma,
+			  	  	  	  	  	double                                     viscosity,
+			  	  	  	  	  	const BlockSparseMatrix<double>            &S,
+	                            const SparseMatrix<double>                 &P,
+	                            const PreconditionerMp                     &Mppreconditioner
+							    );
 
-    void vmult (BlockVector<double>       &dst,
-                const BlockVector<double> &src) const;
+	     void vmult (BlockVector<double>       &dst,
+	                 const BlockVector<double> &src) const;
 
   private:
-    const double gamma;
-    const double viscosity;
-    const BlockSparseMatrix<double> &stokes_matrix;
-    const SparseMatrix<double>      &pressure_mass_matrix;
-    const PreconditionerMp          &mp_preconditioner;
+	     const double gamma;
+	     const double viscosity;
+	     const BlockSparseMatrix<double> &stokes_matrix;
+	     const SparseMatrix<double>      &pressure_mass_matrix;
+	     const PreconditionerMp          &mp_preconditioner;
   };
 
   template <class PreconditionerMp>
   BlockSchurPreconditioner<PreconditionerMp>::
   BlockSchurPreconditioner (double                           gamma,
-                            double                           viscosity,
-                            const BlockSparseMatrix<double>  &S,
+		  	  	  	  	  	double                           viscosity,
+		  	  	  	  	  	const BlockSparseMatrix<double>  &S,
                             const SparseMatrix<double>       &P,
                             const PreconditionerMp           &Mppreconditioner)
     :
-    gamma                (gamma),
-    viscosity            (viscosity),
+	gamma                (gamma),
+	viscosity            (viscosity),
     stokes_matrix        (S),
     pressure_mass_matrix (P),
     mp_preconditioner    (Mppreconditioner)
   {}
 
   template <class PreconditionerMp>
-  void
-  BlockSchurPreconditioner<PreconditionerMp>::
-  vmult (BlockVector<double>       &dst,
-         const BlockVector<double> &src) const
-  {
-    Vector<double> utmp(src.block(0));
+   void
+   BlockSchurPreconditioner<PreconditionerMp>::
+   vmult (BlockVector<double>       &dst,
+          const BlockVector<double> &src) const
+   {
+     Vector<double> utmp(src.block(0));
 
-    {
-      SolverControl solver_control(1000, 1e-10 * src.block(1).l2_norm());
-      SolverCG<>    cg (solver_control);
+     {
+       SolverControl solver_control(1000, 1e-6 * src.block(1).l2_norm());
+       SolverCG<>    cg (solver_control);
 
-      dst.block(1) = 0.0;
-      cg.solve(pressure_mass_matrix,
-               dst.block(1), src.block(1),
-               mp_preconditioner);
-      dst.block(1) *= -1.0/(viscosity+gamma);
-    }
+       dst.block(1) = 0.0;
+       cg.solve(pressure_mass_matrix,
+                dst.block(1), src.block(1),
+                mp_preconditioner);
+       dst.block(1) *= -1.0/(viscosity+gamma);
+     }
 
-    {
-      stokes_matrix.block(0,1).vmult(utmp, dst.block(1));
-      utmp*=-1.0;
-      utmp+=src.block(0);
-    }
+     {
+       stokes_matrix.block(0,1).vmult(utmp, dst.block(1));
+       utmp*=-1.0;
+       utmp+=src.block(0);
+     }
 
-    SparseDirectUMFPACK  A_direct;
-    A_direct.initialize(stokes_matrix.block(0,0));
-    A_direct.vmult (dst.block(0), utmp);
-  }
+     SparseDirectUMFPACK  A_direct;
+     A_direct.initialize(stokes_matrix.block(0,0));
+     A_direct.vmult (dst.block(0), utmp);
+   }
 
   // @sect3{Navier_Stokes_Newton class implementation}
   // @sect4{Navier_Stokes_Newton::Navier_Stokes_Newton}
@@ -298,8 +272,8 @@ namespace Step15
   Navier_Stokes_Newton<dim>::Navier_Stokes_Newton(const unsigned int degree)
     :
 
-    viscosity(1.0/3200.0),
-    gamma(1.0),
+    viscosity(1.0/10000.0),
+	gamma(1.0),
     degree(degree),
     triangulation(Triangulation<dim>::maximum_smoothing),
     fe(FE_Q<dim>(degree+1), dim,
@@ -360,12 +334,12 @@ namespace Step15
                                                zero_constraints,
                                                fe.component_mask(velocities));
     }
-    zero_constraints.close();
+     zero_constraints.close();
 
-    // Finally, block matrices and block vectors are set up. In Newton's scheme, the solution is computed through
-    // x_new = x_old + update_term. Correspondingly two block vectors are created: we use present_solution to store
-    // the solution from last step and compute the newton_update to obtain a new solution. Then
-    // present_solution is replaced by the new one. The residual is used in linear search and we will discuss it in details later.
+  // Finally, block matrices and block vectors are set up. In Newton's scheme, the solution is computed through
+  // x_new = x_old + update_term. Correspondingly two block vectors are created: we use present_solution to store
+  // the solution from last step and compute the newton_update to obtain a new solution. Then
+  // present_solution is replaced by the new one. The residual is used in linear search and we will discuss it in details later.
 
     std::vector<types::global_dof_index> dofs_per_block (2);
     DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
@@ -439,7 +413,6 @@ namespace Step15
     FullMatrix<double>   local_matrix (dofs_per_cell, dofs_per_cell);
     Vector<double>       local_rhs    (dofs_per_cell);
 
-    const RightHandSide<dim>  right_hand_side;
     std::vector<Vector<double>>   rhs_values(n_q_points, Vector<double>(dim+1));
 
     std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
@@ -467,8 +440,6 @@ namespace Step15
         fe_values.reinit(cell);
         local_matrix = 0;
         local_rhs    = 0;
-
-        right_hand_side.vector_value_list(fe_values.get_quadrature_points(), rhs_values);
 
         fe_values[velocities].get_function_values(present_solution,
                                                   present_velocity_values);
@@ -506,7 +477,7 @@ namespace Step15
                                              + grad_phi_u[j]*present_velocity_values[q]*phi_u[i] //(U_old*grad_d_U, V_u)
                                              - div_phi_u[i]*phi_p[j]                             //-(d_P, div_V_u)
                                              - phi_p[i]*div_phi_u[j]                             //-(div_d_U, V_p)
-                                             + gamma*div_phi_u[j]*div_phi_u[i]                   //grad-div (div_u_j, div_u_i)
+											 + gamma*div_phi_u[j]*div_phi_u[i]                   //grad-div (div_u_j, div_u_i)
                                              + phi_p[i]*phi_p[j] )                               //Mp-mass matrix of pressure
                                           * fe_values.JxW(q);
 
@@ -522,7 +493,7 @@ namespace Step15
                                   // -(U_old*gradU_old, V_u)
                                   +present_pressure_values[q]*div_phi_u[i] // +(P_old, div_V_u)
                                   +present_velocity_divergence[q]*phi_p[i]   // +(div_U_oid, V_p)
-                                  -gamma*present_velocity_divergence[q]*div_phi_u[i]
+								  -gamma*present_velocity_divergence[q]*div_phi_u[i]
                                 )*fe_values.JxW(q);
 
               }
@@ -549,9 +520,9 @@ namespace Step15
           }
       }
 
-    pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
-    pressure_mass_matrix.copy_from(system_matrix.block(1,1));
-    system_matrix.block(1,1) = 0;
+      pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
+      pressure_mass_matrix.copy_from(system_matrix.block(1,1));
+      system_matrix.block(1,1) = 0;
 
   }
 
@@ -562,62 +533,43 @@ namespace Step15
   // applied in order to make sure boundary condition satisfied. In the following steps, we will actually solve for the Newton's
   // update term so zero constraint is distributed to the coefficient vector.
   //
-  // We can observe that the tolerance is very large: 1e-2. Therefore, the computation is cheap at each step and we can
-  // guarantee its convergence by giving a good initial guess. Details have been discussed in introduction.
+
   template <int dim>
   void Navier_Stokes_Newton<dim>::solve (bool initial_step)
   {
-    if (false)
-      {
+     SolverControl solver_control (system_matrix.m(),1e-4*system_rhs.l2_norm(), true);
 
-        SparseDirectUMFPACK  A_direct;
-        A_direct.initialize(system_matrix);
+     SolverFGMRES<BlockVector<double> >::AdditionalData gmres_data;
 
-        // After the decomposition, we can use <code>A_direct</code> like a matrix
-        // representing the inverse of our system matrix, so to compute the
-        // solution we just have to multiply with the right hand side vector:
+     SolverFGMRES<BlockVector<double> > gmres(solver_control,gmres_data);
 
-        A_direct.vmult (newton_update, system_rhs);
-        if (initial_step)
-          nonzero_constraints.distribute (newton_update);
-        else
-          zero_constraints.distribute (newton_update);
-        return;
-      }
+     SparseILU<double> pmass_preconditioner;
+     pmass_preconditioner.initialize (pressure_mass_matrix,
+                                      SparseILU<double>::AdditionalData());
 
-    SolverControl solver_control (system_matrix.m(),1e-2*system_rhs.l2_norm(), true);
+     const BlockSchurPreconditioner<SparseILU<double>>
+         preconditioner (gamma,
+        		         viscosity,
+        		 	 	 system_matrix,
+                         pressure_mass_matrix,
+                         pmass_preconditioner);
 
-    SolverFGMRES<BlockVector<double> >::AdditionalData gmres_data;
+     gmres.solve (system_matrix,
+                  newton_update,
+                  system_rhs,
+                  preconditioner);
 
-    SolverFGMRES<BlockVector<double> > gmres(solver_control,gmres_data);
+     std::cout << " ****FGMRES steps: " << solver_control.last_step() << std::endl;
 
-    SparseILU<double> pmass_preconditioner;
-    pmass_preconditioner.initialize (pressure_mass_matrix,
-                                     SparseILU<double>::AdditionalData());
+     if(initial_step)
+     {
+    	 nonzero_constraints.distribute(newton_update);
+     }
 
-    const BlockSchurPreconditioner<SparseILU<double>>
-                                                   preconditioner (gamma,
-                                                       viscosity,
-                                                       system_matrix,
-                                                       pressure_mass_matrix,
-                                                       pmass_preconditioner);
-
-    gmres.solve (system_matrix,
-                 newton_update,
-                 system_rhs,
-                 preconditioner);
-
-    std::cout << " ****FGMRES steps: " << solver_control.last_step() << std::endl;
-
-    if (initial_step)
-      {
-        nonzero_constraints.distribute(newton_update);
-      }
-
-    else
-      {
-        zero_constraints.distribute(newton_update);
-      }
+     else
+     {
+    	 zero_constraints.distribute(newton_update);
+     }
 
   }
 
@@ -653,7 +605,6 @@ namespace Step15
 
     Vector<double>       local_res    (dofs_per_cell);
 
-    const RightHandSide<dim>      right_hand_side;
     std::vector<Vector<double>>   rhs_values(n_q_points, Vector<double>(dim+1));
 
     std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
@@ -676,8 +627,6 @@ namespace Step15
       {
         fe_values.reinit(cell);
         local_res    = 0;
-
-        right_hand_side.vector_value_list(fe_values.get_quadrature_points(), rhs_values);
 
         fe_values[velocities].get_function_values(evaluation_point,
                                                   present_velocity_values);
@@ -714,7 +663,7 @@ namespace Step15
                                   // -(U_old*gradU_old, V_u)
                                   +present_pressure_values[q]*div_phi_u[i] // +(P_old, div_V_u)
                                   +present_velocity_divergence[q]*phi_p[i]   // +(div_U_oid, V_p)
-                                  -gamma*present_velocity_divergence[q]*div_phi_u[i]
+								  -gamma*present_velocity_divergence[q]*div_phi_u[i]
                                 )*fe_values.JxW(q);
 
               }
@@ -735,7 +684,7 @@ namespace Step15
   template <int dim>
   void Navier_Stokes_Newton<dim>::set_viscosity(double nu)
   {
-    viscosity = nu;
+	  viscosity = nu;
   }
 
   // @sect4{Navier_Stokes_Newton::refine_mesh}
@@ -746,51 +695,51 @@ namespace Step15
   void Navier_Stokes_Newton<dim>::refine_mesh()
   {
 
-    Vector<float> estimated_error_per_cell (triangulation.n_active_cells());
-    FEValuesExtractors::Vector velocity(0);
-    KellyErrorEstimator<dim>::estimate (dof_handler,
-                                        QGauss<dim-1>(degree+1),
-                                        typename FunctionMap<dim>::type(),
-                                        present_solution,
-                                        estimated_error_per_cell,
-                                        fe.component_mask(velocity));
+		Vector<float> estimated_error_per_cell (triangulation.n_active_cells());
+		FEValuesExtractors::Vector velocity(0);
+		KellyErrorEstimator<dim>::estimate (dof_handler,
+		                                    QGauss<dim-1>(degree+1),
+		                                    typename FunctionMap<dim>::type(),
+		                                    present_solution,
+		                                    estimated_error_per_cell,
+		                                    fe.component_mask(velocity));
 
-    GridRefinement::refine_and_coarsen_fixed_number (triangulation,
-                                                     estimated_error_per_cell,
-                                                     0.3, 0.0);
+		GridRefinement::refine_and_coarsen_fixed_number (triangulation,
+		                                                 estimated_error_per_cell,
+		                                                 0.3, 0.0);
 
 
-    triangulation.prepare_coarsening_and_refinement();
-    SolutionTransfer<dim, BlockVector<double>> solution_transfer(dof_handler);
-    solution_transfer.prepare_for_coarsening_and_refinement(present_solution);
-    triangulation.execute_coarsening_and_refinement ();
+		  triangulation.prepare_coarsening_and_refinement();
+		  SolutionTransfer<dim, BlockVector<double>> solution_transfer(dof_handler);
+		  solution_transfer.prepare_for_coarsening_and_refinement(present_solution);
+		  triangulation.execute_coarsening_and_refinement ();
 
-    //  Create a temporary vector "tmp", whose size is according with the solution in refined mesh,
-    //  to receive the solution transfered from last mesh.
+          //  Create a temporary vector "tmp", whose size is according with the solution in refined mesh,
+          //  to receive the solution transfered from last mesh.
 
-    dof_handler.distribute_dofs (fe);
-    DoFRenumbering::Cuthill_McKee (dof_handler);
-    std::vector<unsigned int> block_component(dim+1, 0);
-    block_component[dim] = 1;
-    DoFRenumbering::component_wise (dof_handler, block_component);
-    std::vector<types::global_dof_index> dofs_per_block (2);
-    DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
-    const unsigned int n_u = dofs_per_block[0],
-                       n_p = dofs_per_block[1];
+		  dof_handler.distribute_dofs (fe);
+		  DoFRenumbering::Cuthill_McKee (dof_handler);
+		  std::vector<unsigned int> block_component(dim+1, 0);
+		  block_component[dim] = 1;
+		  DoFRenumbering::component_wise (dof_handler, block_component);
+		  std::vector<types::global_dof_index> dofs_per_block (2);
+		  DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
+		  const unsigned int n_u = dofs_per_block[0],
+				             n_p = dofs_per_block[1];
 
-    BlockVector<double> tmp;
-    tmp.reinit (2);
-    tmp.block(0).reinit (n_u);
-    tmp.block(1).reinit (n_p);
-    tmp.collect_sizes ();
+		  BlockVector<double> tmp;
+		  tmp.reinit (2);
+		  tmp.block(0).reinit (n_u);
+		  tmp.block(1).reinit (n_p);
+		  tmp.collect_sizes ();
 
-    //  Transfer solution from coarse to fine mesh and apply boundary value constraints
-    //  to the new transfered solution. Then set it to be the initial guess on the
-    //  fine mesh.
-    solution_transfer.interpolate(present_solution, tmp);
-    setup_system();
-    nonzero_constraints.distribute(tmp);
-    present_solution = tmp;
+          //  Transfer solution from coarse to fine mesh and apply boundary value constraints
+          //  to the new transfered solution. Then set it to be the initial guess on the
+          //  fine mesh.
+		  solution_transfer.interpolate(present_solution, tmp);
+		  setup_system();
+		  nonzero_constraints.distribute(tmp);
+		  present_solution = tmp;
   }
 
   // @sect4{Navier_Stokes_Newton::search_initial_guess}
@@ -803,69 +752,69 @@ namespace Step15
   template <int dim>
   void Navier_Stokes_Newton<dim>::search_initial_guess(double step_size)
   {
-    const double target_Re = 1.0/viscosity;
+	  const double target_Re = 1.0/viscosity;
 
-    double stair_Re  = 1000.0;
-    double diffe_Re  = target_Re-stair_Re;
-    bool first_step  = true;
+	  double stair_Re  = 1000.0;
+	  double diffe_Re  = target_Re-stair_Re;
+	  bool first_step  = true;
 
-    while (diffe_Re >= step_size)
-      {
-        set_viscosity(1/stair_Re);
-        std::cout << "*****************************************" << std::endl;
-        std::cout << " Searching for initial guess with Re = " << stair_Re << std::endl;
-        std::cout << "*****************************************" << std::endl;
+	  while (diffe_Re >= step_size)
+	  {
+		  set_viscosity(1/stair_Re);
+		  std::cout << "*****************************************" << std::endl;
+		  std::cout << " Searching for initial guess with Re = " << stair_Re << std::endl;
+		  std::cout << "*****************************************" << std::endl;
 
-        double current_res = 1.0;
-        double last_res = 1.0;
-        unsigned int outer_iteration = 0;
+		  double current_res = 1.0;
+		  double last_res = 1.0;
+		  unsigned int outer_iteration = 0;
 
-        while ((first_step || (current_res > 1e-12)) && outer_iteration < 10)
-          {
-            std::cout << " ** Viscosity = " << viscosity << std::endl;
-            ++outer_iteration;
+	      while ((first_step || (current_res > 1e-12)) && outer_iteration < 50)
+	     {
+	    	std::cout << " ** Viscosity = " << viscosity << std::endl;
+	    	++outer_iteration;
 
-            if (first_step)
+	    	if (first_step)
+	    	{
+	    	  setup_system();
+	    	  assemble_NavierStokes_system(first_step);
+	    	  solve(first_step);
+	    	  present_solution.add(1, newton_update);
+	    	  nonzero_constraints.distribute(present_solution);
+	    	  current_res = compute_residual(0);
+	    	  first_step = false;
+	    	  std::cout << "******************************" << std::endl;
+	    	  std::cout << " The residual of initial guess is " << current_res << std::endl;
+	          std::cout << " Initialization complete!  " << std::endl;
+	        }
+
+	       else
+	       {
+	    	  assemble_NavierStokes_system(first_step);
+	          last_res = system_rhs.l2_norm();
+	          solve(first_step);
+	          double alpha = 1.0;
+	          for (alpha = 1.0; alpha > 1e-5; alpha *= 0.5)
+	          {
+	            current_res = compute_residual(alpha);
+	            std::cout << " alpha = " << std::setw(6) << alpha << std::setw(0)
+	                      << " res = " << current_res << std::endl;
+	            if (current_res < last_res)
+	              break;
+	           }
+
               {
-                setup_system();
-                assemble_NavierStokes_system(first_step);
-                solve(first_step);
-                present_solution.add(1, newton_update);
-                nonzero_constraints.distribute(present_solution);
-                current_res = compute_residual(0);
-                first_step = false;
-                std::cout << "******************************" << std::endl;
-                std::cout << " The residual of initial guess is " << current_res << std::endl;
-                std::cout << " Initialization complete!  " << std::endl;
-              }
-
-            else
-              {
-                assemble_NavierStokes_system(first_step);
-                last_res = system_rhs.l2_norm();
-                solve(first_step);
-                double alpha = 1.0;
-                for (alpha = 1.0; alpha > 1e-5; alpha *= 0.5)
-                  {
-                    current_res = compute_residual(alpha);
-                    std::cout << " alpha = " << std::setw(6) << alpha << std::setw(0)
-                              << " res = " << current_res << std::endl;
-                    if (current_res < last_res)
-                      break;
-                  }
-
-                {
-                  last_res = current_res;
-                  present_solution.add(alpha, newton_update);
-                  nonzero_constraints.distribute(present_solution);
-                  std::cout << " ----The " << outer_iteration << "th iteration. ---- " << std::endl;
-                  std::cout << " ----Residual: " << current_res << std::endl;
-                }
-              }
-          }
-        stair_Re += step_size;
-        diffe_Re -= step_size;
-      }
+	            last_res = current_res;
+	            present_solution.add(alpha, newton_update);
+	            nonzero_constraints.distribute(present_solution);
+	            std::cout << " ----The " << outer_iteration << "th iteration. ---- " << std::endl;
+	            std::cout << " ----Residual: " << current_res << std::endl;
+	          }
+	        }
+	      }
+	      stair_Re += step_size;
+	      diffe_Re -= step_size;
+	  }
 
   }
 
@@ -906,28 +855,28 @@ namespace Step15
   template <int dim>
   void Navier_Stokes_Newton<dim>::process_solution()
   {
-    std::ofstream f("line.txt");
-    f << "# y u_x u_y" << std::endl;
+	  std::ofstream f("line.txt");
+      f << "# y u_x u_y" << std::endl;
 
-    Point<dim> p;
-    p(0)= 0.5;
-    p(1)= 0.5;
+      Point<dim> p;
+      p(0)= 0.5;
+      p(1)= 0.5;
 
-    f << std::scientific;
+      f << std::scientific;
 
-    for (unsigned int i=0; i<=100; ++i)
-      {
+      for (unsigned int i=0; i<=100; ++i)
+        {
 
-        p(dim-1) = i/100.0;
+          p(dim-1) = i/100.0;
 
-        Vector<double> tmp_vector(dim+1);
-        VectorTools::point_value(dof_handler, present_solution, p, tmp_vector);
-        f << p(dim-1);
+          Vector<double> tmp_vector(dim+1);
+          VectorTools::point_value(dof_handler, present_solution, p, tmp_vector);
+          f << p(dim-1);
 
-        for (int j=0; j<dim; j++)
-          f << " " << tmp_vector(j);
-        f << std::endl;
-      }
+          for (int j=0; j<dim; j++)
+            f << " " << tmp_vector(j);
+            f << std::endl;
+        }
   }
 
 
@@ -943,140 +892,147 @@ namespace Step15
   {
 
     GridGenerator::hyper_cube(triangulation);
-    triangulation.refine_global(3);
+    triangulation.refine_global(5);
 
     const double Reynold =  1.0/viscosity;
 
     // When the viscosity is larger than 1/1000, the solution to Stokes equations is good enough as an initial guess. If so,
     // we do not need to search for the initial guess via staircase. Newton's iteration can be started directly.
     if (Reynold <= 1000)
-      {
-        double current_res = 1;
-        double last_res = 1;
-        bool   first_step = true;
+    {
+    double current_res = 1;
+    double last_res = 1;
+    bool   first_step = true;
+    unsigned int max_outer_iter = 50;
 
-        // The starting mesh is $8 \times 8$, then we do 5 steps of adaptive refinement. After each refinement, the solution from
-        // previous mesh will be transfered to the new one. On each mesh, Newton's iteration runs at most 15 times or the residual
-        // is smaller than tolerance.
+    // The starting mesh is $8 \times 8$, then we do 5 steps of adaptive refinement. After each refinement, the solution from
+    // previous mesh will be transfered to the new one. On each mesh, Newton's iteration runs at most 15 times or the residual
+    // is smaller than tolerance.
 
-        for (unsigned int refinement = 0; refinement < 5; ++refinement)
+    for (unsigned int refinement = 0; refinement < 1; ++refinement)
+    {
+    	unsigned int outer_iteration = 0;
+    	std::cout << "*****************************************" << std::endl;
+    	std::cout << "************  refinement = " << refinement << " ************ " << std::endl;
+    	std::cout << "viscosity= " << viscosity << std::endl;
+    	std::cout << "*****************************************" << std::endl;
+
+    	while ((first_step || (current_res > 1e-12)) && outer_iteration < max_outer_iter)
+    	{
+    		++outer_iteration;
+    		if (first_step)
+    		{
+    		  setup_system();
+    		  assemble_NavierStokes_system(first_step);
+    		  solve(first_step);
+    		  present_solution.add(1, newton_update);
+    		  nonzero_constraints.distribute(present_solution);
+    	      process_solution();
+    		  current_res = compute_residual(0);
+    		  first_step = false;
+    		  std::cout << "******************************" << std::endl;
+    		  std::cout << " The residual of initial guess is " << current_res << std::endl;
+    	      std::cout << " Initialization complete!  " << std::endl;
+       	    }
+
+    	  else
           {
-            unsigned int outer_iteration = 0;
-            std::cout << "*****************************************" << std::endl;
-            std::cout << "************  refinement = " << refinement << " ************ " << std::endl;
-            std::cout << "viscosity= " << viscosity << std::endl;
-            std::cout << "*****************************************" << std::endl;
+    		assemble_NavierStokes_system(first_step);
+            last_res = system_rhs.l2_norm();
+            solve(first_step);
+            double alpha = 1.0;
+            // Because of the rough computation of update term, the Newton's iteration, $x_{new} = x_{old} + x_{update}$,
+            // probably fails to show us an improved solution at present step. Hence the weight of update term is moderated
+            // to let the present solution be better. Starting with 1, we take its half if the current residual is not
+            // better than the previous one until an appropriate weight is found. In this case, the Newton's iteration
+            // acts as $x_{new} = x_{old} + \alpha x_{update}$, where $\alpha$ is less than 1.
 
-            while ((first_step || (current_res > 1e-12)) && outer_iteration < 15)
+            for (alpha = 1.0; alpha > 1e-5; alpha *= 0.5)
               {
-                ++outer_iteration;
-                if (first_step)
-                  {
-                    setup_system();
-                    assemble_NavierStokes_system(first_step);
-                    solve(first_step);
-                    present_solution.add(1, newton_update);
-                    nonzero_constraints.distribute(present_solution);
-                    process_solution();
-                    current_res = compute_residual(0);
-                    first_step = false;
-                    std::cout << "******************************" << std::endl;
-                    std::cout << " The residual of initial guess is " << current_res << std::endl;
-                    std::cout << " Initialization complete!  " << std::endl;
-                  }
-
-                else
-                  {
-                    assemble_NavierStokes_system(first_step);
-                    last_res = system_rhs.l2_norm();
-                    solve(first_step);
-                    double alpha = 1.0;
-                    // Because of the rough computation of update term, the Newton's iteration, $x_{new} = x_{old} + x_{update}$,
-                    // probably fails to show us an improved solution at present step. Hence the weight of update term is moderated
-                    // to let the present solution be better. Starting with 1, we take its half if the current residual is not
-                    // better than the previous one until an appropriate weight is found. In this case, the Newton's iteration
-                    // acts as $x_{new} = x_{old} + \alpha x_{update}$, where $\alpha$ is less than 1.
-
-                    for (alpha = 1.0; alpha > 1e-5; alpha *= 0.5)
-                      {
-                        current_res = compute_residual(alpha);
-                        std::cout << " alpha = " << std::setw(6) << alpha << std::setw(0)
-                                  << " res = " << current_res << std::endl;
-                        if (current_res < last_res)
-                          break;
-                      }
-
-                    {
-                      last_res = current_res;
-                      present_solution.add(alpha, newton_update);
-                      nonzero_constraints.distribute(present_solution);
-                      process_solution();
-                      std::cout << " ----The " << outer_iteration << "th iteration. ---- " << std::endl;
-                      std::cout << " ----Residual: " << current_res << std::endl;
-                    }
-
-                  }
-                output_results (15*refinement+outer_iteration);
+                current_res = compute_residual(alpha);
+                std::cout << " alpha = " << std::setw(6) << alpha << std::setw(0)
+                          << " res = " << current_res << std::endl;
+                if (current_res < last_res)
+                  break;
               }
-            refine_mesh();
-            current_res =1;
+
+            {
+              last_res = current_res;
+              present_solution.add(alpha, newton_update);
+              nonzero_constraints.distribute(present_solution);
+              process_solution();
+              std::cout << " ----The " << outer_iteration << "th iteration. ---- " << std::endl;
+              std::cout << " ----Residual: " << current_res << std::endl;
+            }
+
           }
+    	output_results (50*refinement+outer_iteration);
       }
+    	refine_mesh();
+    	current_res =1;
+     }
+    }
 
     // If the viscosity is smaller than 1/1000, we have to first search for an initial guess via "staircase". What we
     // should notice is the search is always on the initial mesh, that is the $8 \times 8$ mesh in this program.
     // After the searching part, we just do the same as we did when viscosity is larger than 1/1000: run Newton's iteration,
     // refine the mesh, transfer solutions, and again.
     else
-      {
-        std::cout << "       Searching for initial guess ... " << std::endl;
-        search_initial_guess(100.0);
+    {
+    	std::cout << "       Searching for initial guess ... " << std::endl;
+    	search_initial_guess(2000.0);
 
-        std::cout << "       Computing solution with target viscosity ..." <<std::endl;
-        std::cout << " Reynold = " << Reynold << std::endl;
-        set_viscosity(1.0/Reynold);
+    	std::cout << "       Computing solution with target viscosity ..." <<std::endl;
+    	std::cout << "       Reynold = " << Reynold << std::endl;
+    	set_viscosity(1.0/Reynold);
 
-        double current_res = 1;
-        double last_res = 1;
+   	    double current_res = 1;
+   	    double last_res = 1;
+   	    unsigned int max_outer_iter = 50;
 
-        for (unsigned int refinement = 0; refinement < 5; ++refinement)
-          {
-            unsigned int outer_iteration = 0;
-            std::cout << "*****************************************" << std::endl;
-            std::cout << "************  refinement = " << refinement << " ************ " << std::endl;
-            std::cout << "*****************************************" << std::endl;
+   	    for (unsigned int refinement = 0; refinement < 5; ++refinement)
+   	    {
+   	    	unsigned int outer_iteration = 0;
+   	    	std::cout << "*****************************************" << std::endl;
+   	    	std::cout << "************  refinement = " << refinement << " ************ " << std::endl;
+   	    	std::cout << "*****************************************" << std::endl;
 
-            while (current_res > 1e-12 && outer_iteration < 10)
-              {
-                ++outer_iteration;
-                assemble_NavierStokes_system(false);
+//   	    	if(refinement == 4)
+//   	    	{
+//   	    		max_outer_iter = 10;
+//   	    	}
+
+   	    	while (current_res > 1e-12 && outer_iteration < max_outer_iter)
+   	    	{
+    	    	++outer_iteration;
+        		assemble_NavierStokes_system(false);
                 last_res = system_rhs.l2_norm();
                 solve(false);
-                double alpha = 1.0;
+    	        double alpha = 1.0;
                 for (alpha = 1.0; alpha > 1e-5; alpha *= 0.5)
-                  {
-                    current_res = compute_residual(alpha);
-                    std::cout << " alpha = " << std::setw(6) << alpha << std::setw(0)
-                              << " res = " << current_res << std::endl;
-                    if (current_res < last_res)
-                      break;
-                  }
+    	        {
+   	                current_res = compute_residual(alpha);
+   	                std::cout << " alpha = " << std::setw(6) << alpha << std::setw(0)
+   	                          << " res = " << current_res << std::endl;
+   	                if (current_res < last_res)
+   	                  break;
+   	            }
 
-                {
-                  last_res = current_res;
-                  present_solution.add(alpha, newton_update);
-                  nonzero_constraints.distribute(present_solution);
-                  process_solution();
-                  std::cout << " ----The " << outer_iteration << "th iteration. ---- " << std::endl;
-                  std::cout << " ----Residual: " << current_res << std::endl;
-                }
+   	            {
+   	              last_res = current_res;
+   	              present_solution.add(alpha, newton_update);
+   	              nonzero_constraints.distribute(present_solution);
+   	              process_solution();
+   	              std::cout << " ----The " << outer_iteration << "th iteration. ---- " << std::endl;
+   	              std::cout << " ----Residual: " << current_res << std::endl;
+   	            }
 
-                output_results (10*refinement+outer_iteration);
-              }
-            refine_mesh();
-            current_res =1;
-          }
-      }
+   	           output_results (50*refinement+outer_iteration);
+   	      }
+   	      refine_mesh();
+   	      current_res =1;
+    }
+   }
 
   }
 
@@ -1085,7 +1041,7 @@ namespace Step15
 int main()
 {
   using namespace dealii;
-  using namespace Step15;
+  using namespace Step57;
 
   deallog.depth_console(0);
 
