@@ -109,9 +109,6 @@ namespace Step57
                           bool result);
     void set_viscosity(double nu);
     void search_initial_guess(double step_size);
-    double compute_residual(const double alpha);
-
-
 
     double viscosity;
     double gamma;
@@ -624,105 +621,6 @@ namespace Step57
   // the solution we obtained at each step is at least better than last one. In other words, the residual is no larger than
   // previous one. In this function, alpha is the weight of Newton's update term.
 
-  template <int dim>
-  double Navier_Stokes_Newton<dim>::compute_residual(const double alpha)
-  {
-    residual = 0;
-
-    BlockVector<double> evaluation_point;
-    evaluation_point = present_solution;
-    evaluation_point.add(alpha, newton_update);
-
-    QGauss<dim>   quadrature_formula(degree+2);
-
-    FEValues<dim> fe_values (fe,
-                             quadrature_formula,
-                             update_values |
-                             update_quadrature_points |
-                             update_JxW_values |
-                             update_gradients );
-
-    const unsigned int   dofs_per_cell = fe.dofs_per_cell;
-    const unsigned int   n_q_points    = quadrature_formula.size();
-
-    const FEValuesExtractors::Vector velocities (0);
-    const FEValuesExtractors::Scalar pressure (dim);
-
-    Vector<double>       local_res    (dofs_per_cell);
-
-    std::vector<Vector<double>>   rhs_values(n_q_points, Vector<double>(dim+1));
-
-    std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
-
-    std::vector<Tensor<1, dim>>   present_velocity_values    (n_q_points);
-    std::vector<Tensor<2, dim>>   present_velocity_gradients (n_q_points);
-    std::vector<double>           present_velocity_divergence(n_q_points);
-    std::vector<double>           present_pressure_values    (n_q_points);
-
-    std::vector<double>           div_phi_u                 (dofs_per_cell);
-    std::vector<Tensor<1, dim>>   phi_u                     (dofs_per_cell);
-    std::vector<Tensor<2, dim>>   grad_phi_u                (dofs_per_cell);
-    std::vector<double>           phi_p                     (dofs_per_cell);
-
-    typename DoFHandler<dim>::active_cell_iterator
-    cell = dof_handler.begin_active(),
-    endc = dof_handler.end();
-
-    for (; cell!=endc; ++cell)
-      {
-        fe_values.reinit(cell);
-        local_res    = 0;
-
-        fe_values[velocities].get_function_values(evaluation_point,
-                                                  present_velocity_values);
-
-        fe_values[velocities].get_function_gradients(evaluation_point,
-                                                     present_velocity_gradients);
-
-        fe_values[velocities].get_function_divergences(evaluation_point,
-                                                       present_velocity_divergence);
-
-        fe_values[pressure].get_function_values(evaluation_point,
-                                                present_pressure_values);
-
-
-        for (unsigned int q=0; q<n_q_points; ++q)
-          {
-            for (unsigned int k=0; k<dofs_per_cell; ++k)
-              {
-                div_phi_u[k]  =  fe_values[velocities].divergence (k, q);
-                grad_phi_u[k] =  fe_values[velocities].gradient(k, q);
-                phi_u[k]      =  fe_values[velocities].value(k, q);
-                phi_p[k]      =  fe_values[pressure]  .value(k, q);
-              }
-
-            for (unsigned int i=0; i<dofs_per_cell; ++i)
-              {
-                //  f-(-laplace_U + U*grad_U + grad_p)
-                //   -div_U
-                const unsigned int component_i = fe.system_to_component_index(i).first;
-                local_res(i) += (
-                                  fe_values.shape_value(i, q)*rhs_values[q](component_i)     // (f, V)
-                                  -viscosity*scalar_product(present_velocity_gradients[q],grad_phi_u[i]) // -(gradU_old, gradV_u)
-                                  -present_velocity_gradients[q]*present_velocity_values[q]*phi_u[i]
-                                  // -(U_old*gradU_old, V_u)
-                                  +present_pressure_values[q]*div_phi_u[i]   // +(P_old, div_V_u)
-                                  +present_velocity_divergence[q]*phi_p[i]   // +(div_U_oid, V_p)
-                                  -gamma*present_velocity_divergence[q]*div_phi_u[i]
-                                )*fe_values.JxW(q);
-
-              }
-          }
-
-        cell-> get_dof_indices (local_dof_indices);
-
-        nonzero_constraints.distribute_local_to_global(local_res,
-                                                       local_dof_indices,
-                                                       residual);
-      }
-    nonzero_constraints.set_zero(residual);
-    return residual.l2_norm();
-  }
 
   // @sect4{Navier_Stokes_Newton::set_viscosity}
   // This function sets the viscosity to be nu.
