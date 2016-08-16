@@ -96,18 +96,18 @@ namespace Step57
     void run();
 
   private:
-    void setup_system();
+    void setup_system(bool setup_dof, bool initialize_system);
     void assemble_NavierStokes_system(bool initial_step,
-                                      bool left,
-                                      bool right,
-                                      double alpha);
+                                      bool assemble_matrix,
+                                      bool assemble_rhs);
     void solve(bool initial_step);
     void refine_mesh();
     void process_solution();
     void output_results (const unsigned int refinement_cycle) const;
     void newton_iteration(const double tolerance,
-                          unsigned int max_iteration,
-                          unsigned int max_meshes,
+                          const unsigned int max_iteration,
+                          const unsigned int n_refinements,
+                          const double line_search_rate,
                           bool initial,
                           bool result);
     void set_viscosity(double nu);
@@ -116,6 +116,8 @@ namespace Step57
     double viscosity;
     double gamma;
     const unsigned int           degree;
+    int dof_u;
+    int dof_p;
 
 
     Triangulation<dim>           triangulation;
@@ -130,9 +132,9 @@ namespace Step57
     SparseMatrix<double>         pressure_mass_matrix;
 
     BlockVector<double>          present_solution;
-    BlockVector<double>          newton_update;
+    BlockVector<double>          newtodof_update;
     BlockVector<double>          system_rhs;
-    BlockVector<double>          evaluation_point;
+    BlockVector<double>          evaluatiodof_point;
 
   };
 
@@ -297,90 +299,98 @@ namespace Step57
   }
 
   // @sect4{Navier_Stokes_Newton::setup_system}
-  // All structures are set up in this part.
+  // All structures are set up in this part. If "setup_dof" is true, this function sets up the DoF of current mesh and generate
+  // corresponding constraints. If "initialize_system" is true, the associated linear system is initialized. These two parts
+  // will be executed together at the first iteration on the initial mesh, and separately in refinement.
 
   template <int dim>
-  void Navier_Stokes_Newton<dim>::setup_system()
+  void Navier_Stokes_Newton<dim>::setup_system(bool setup_dof, bool initialize_system)
   {
-    system_matrix.clear();
-    pressure_mass_matrix.clear();
+    if (setup_dof)
+      {
+        system_matrix.clear();
+        pressure_mass_matrix.clear();
 
-    // The first step is to associate DoFs with a given mesh. Here it is completed as in step-22
-    dof_handler.distribute_dofs (fe);
-    DoFRenumbering::Cuthill_McKee (dof_handler);
+        // The first step is to associate DoFs with a given mesh. Here it is completed as in step-22
+        dof_handler.distribute_dofs (fe);
+        DoFRenumbering::Cuthill_McKee (dof_handler);
 
-    // In Navier Stokes velocity and pressure are both what we want to solve so a block structure of size dim+1 is created:
-    // dim for velocity and 1 for pressure.
-    std::vector<unsigned int> block_component(dim+1, 0);
-    block_component[dim] = 1;
-    DoFRenumbering::component_wise (dof_handler, block_component);
+        // In Navier Stokes velocity and pressure are both what we want to solve so a block structure of size dim+1 is created:
+        // dim for velocity and 1 for pressure.
+        std::vector<unsigned int> block_component(dim+1, 0);
+        block_component[dim] = 1;
+        DoFRenumbering::component_wise (dof_handler, block_component);
 
-    // In Newton's scheme, we first apply the boundary condition on the solution obtained from the initial step.
-    // To make sure boundary condition satisfied, zero boundary condition is used for the Newton's update term.
-    // Therefore we set up two constraints for the two situations.
-    FEValuesExtractors::Vector velocities(0);
-    {
-      nonzero_constraints.clear();
+        // In Newton's scheme, we first apply the boundary condition on the solution obtained from the initial step.
+        // To make sure boundary condition satisfied, zero boundary condition is used for the Newton's update term.
+        // Therefore we set up two constraints for the two situations.
+        FEValuesExtractors::Vector velocities(0);
+        {
+          nonzero_constraints.clear();
 
-      DoFTools::make_hanging_node_constraints(dof_handler, nonzero_constraints);
-      VectorTools::interpolate_boundary_values(dof_handler,
-                                               0,
-                                               BoundaryValues<dim>(),
-                                               nonzero_constraints,
-                                               fe.component_mask(velocities));
-    }
-    nonzero_constraints.close();
+          DoFTools::make_hanging_node_constraints(dof_handler, nonzero_constraints);
+          VectorTools::interpolate_boundary_values(dof_handler,
+                                                   0,
+                                                   BoundaryValues<dim>(),
+                                                   nonzero_constraints,
+                                                   fe.component_mask(velocities));
+        }
+        nonzero_constraints.close();
 
-    {
-      zero_constraints.clear();
+        {
+          zero_constraints.clear();
 
-      DoFTools::make_hanging_node_constraints(dof_handler, zero_constraints);
-      VectorTools::interpolate_boundary_values(dof_handler,
-                                               0,
-                                               ZeroFunction<dim>(dim+1),
-                                               zero_constraints,
-                                               fe.component_mask(velocities));
-    }
-    zero_constraints.close();
+          DoFTools::make_hanging_node_constraints(dof_handler, zero_constraints);
+          VectorTools::interpolate_boundary_values(dof_handler,
+                                                   0,
+                                                   ZeroFunction<dim>(dim+1),
+                                                   zero_constraints,
+                                                   fe.component_mask(velocities));
+        }
+        zero_constraints.close();
 
-    // Finally, block matrices and block vectors are set up. In Newton's scheme, the solution is computed through
-    // x_new = x_old + update_term. Correspondingly two block vectors are created: we use present_solution to store
-    // the solution from last step and compute the newton_update to obtain a new solution.
+        // Finally, block matrices and block vectors are set up. In Newton's scheme, the solution is computed through
+        // x_new = x_old + update_term. Correspondingly two block vectors are created: we use present_solution to store
+        // the solution from last step and compute the newtodof_update to obtain a new solution.
 
-    std::vector<types::global_dof_index> dofs_per_block (2);
-    DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
-    const unsigned int n_u = dofs_per_block[0],
-                       n_p = dofs_per_block[1];
+        std::vector<types::global_dof_index> dofs_per_block (2);
+        DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
+        dof_u = dofs_per_block[0],
+        dof_p = dofs_per_block[1];
+      }
 
-    {
-      BlockDynamicSparsityPattern dsp (2,2);
-      dsp.block(0,0).reinit (n_u, n_u);
-      dsp.block(1,0).reinit (n_p, n_u);
-      dsp.block(0,1).reinit (n_u, n_p);
-      dsp.block(1,1).reinit (n_p, n_p);
-      dsp.collect_sizes();
+    if (initialize_system)
+      {
+        {
+          BlockDynamicSparsityPattern dsp (2,2);
+          dsp.block(0,0).reinit (dof_u, dof_u);
+          dsp.block(1,0).reinit (dof_p, dof_u);
+          dsp.block(0,1).reinit (dof_u, dof_p);
+          dsp.block(1,1).reinit (dof_p, dof_p);
+          dsp.collect_sizes();
 
-      DoFTools::make_sparsity_pattern (dof_handler, dsp, nonzero_constraints);
-      sparsity_pattern.copy_from (dsp);
-    }
+          DoFTools::make_sparsity_pattern (dof_handler, dsp, nonzero_constraints);
+          sparsity_pattern.copy_from (dsp);
+        }
 
-    system_matrix.reinit (sparsity_pattern);
+        system_matrix.reinit (sparsity_pattern);
 
 
-    present_solution.reinit (2);
-    present_solution.block(0).reinit (n_u);
-    present_solution.block(1).reinit (n_p);
-    present_solution.collect_sizes ();
+        present_solution.reinit (2);
+        present_solution.block(0).reinit (dof_u);
+        present_solution.block(1).reinit (dof_p);
+        present_solution.collect_sizes ();
 
-    newton_update.reinit (2);
-    newton_update.block(0).reinit (n_u);
-    newton_update.block(1).reinit (n_p);
-    newton_update.collect_sizes ();
+        newtodof_update.reinit (2);
+        newtodof_update.block(0).reinit (dof_u);
+        newtodof_update.block(1).reinit (dof_p);
+        newtodof_update.collect_sizes ();
 
-    system_rhs.reinit (2);
-    system_rhs.block(0).reinit (n_u);
-    system_rhs.block(1).reinit (n_p);
-    system_rhs.collect_sizes ();
+        system_rhs.reinit (2);
+        system_rhs.block(0).reinit (dof_u);
+        system_rhs.block(1).reinit (dof_p);
+        system_rhs.collect_sizes ();
+      }
   }
 
 
@@ -392,20 +402,20 @@ namespace Step57
   // Newton's update term.
 
   template <int dim>
-  void Navier_Stokes_Newton<dim>::assemble_NavierStokes_system(bool initial_step, bool left, bool right, double alpha)
+  void Navier_Stokes_Newton<dim>::assemble_NavierStokes_system(bool initial_step,
+      bool assemble_matrix,
+      bool assemble_rhs)
   {
-    if (left)
+    if (assemble_matrix)
       {
         system_matrix    = 0;
       }
 
-    if (right)
+    if (assemble_rhs)
       {
         system_rhs       = 0;
       }
 
-    evaluation_point = present_solution;
-    evaluation_point.add(alpha, newton_update);
 
 
     QGauss<dim>   quadrature_formula(degree+2);
@@ -425,8 +435,6 @@ namespace Step57
 
     FullMatrix<double>   local_matrix (dofs_per_cell, dofs_per_cell);
     Vector<double>       local_rhs    (dofs_per_cell);
-
-    std::vector<Vector<double>>   rhs_values(n_q_points, Vector<double>(dim+1));
 
     std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
 
@@ -456,16 +464,16 @@ namespace Step57
         local_rhs    = 0;
 
 
-        fe_values[velocities].get_function_values(evaluation_point,
+        fe_values[velocities].get_function_values(evaluatiodof_point,
                                                   present_velocity_values);
 
-        fe_values[velocities].get_function_gradients(evaluation_point,
+        fe_values[velocities].get_function_gradients(evaluatiodof_point,
                                                      present_velocity_gradients);
 
-        fe_values[velocities].get_function_divergences(evaluation_point,
+        fe_values[velocities].get_function_divergences(evaluatiodof_point,
                                                        present_velocity_divergence);
 
-        fe_values[pressure].get_function_values(evaluation_point,
+        fe_values[pressure].get_function_values(evaluatiodof_point,
                                                 present_pressure_values);
 
         // Then we do the same as in step-22 to assemble the matrix with nonlinear term linearized by present solutions.
@@ -486,7 +494,7 @@ namespace Step57
 
             for (unsigned int i=0; i<dofs_per_cell; ++i)
               {
-                if (left)
+                if (assemble_matrix)
                   {
                     for (unsigned int j=0; j<dofs_per_cell; ++j)
                       {
@@ -502,7 +510,7 @@ namespace Step57
                       }
                   }
 
-                if (right)
+                if (assemble_rhs)
                   {
                     local_rhs(i) += (
                                       -viscosity*scalar_product(present_velocity_gradients[q],grad_phi_u[i]) // -(gradU_old, gradV_u)
@@ -521,14 +529,14 @@ namespace Step57
 
         if (initial_step)
           {
-            if (left)
+            if (assemble_matrix)
               {
                 nonzero_constraints.distribute_local_to_global(local_matrix,
                                                                local_dof_indices,
                                                                system_matrix);
               }
 
-            if (right)
+            if (assemble_rhs)
               {
                 nonzero_constraints.distribute_local_to_global(local_rhs,
                                                                local_dof_indices,
@@ -538,14 +546,14 @@ namespace Step57
 
         else
           {
-            if (left)
+            if (assemble_matrix)
               {
                 zero_constraints.distribute_local_to_global(local_matrix,
                                                             local_dof_indices,
                                                             system_matrix);
               }
 
-            if (right)
+            if (assemble_rhs)
               {
                 zero_constraints.distribute_local_to_global(local_rhs,
                                                             local_dof_indices,
@@ -555,7 +563,7 @@ namespace Step57
 
       }
 
-    if (left)
+    if (assemble_matrix)
       {
         pressure_mass_matrix.reinit(sparsity_pattern.block(1,1));
         pressure_mass_matrix.copy_from(system_matrix.block(1,1));
@@ -592,7 +600,7 @@ namespace Step57
                                                        pmass_preconditioner);
 
     gmres.solve (system_matrix,
-                 newton_update,
+                 newtodof_update,
                  system_rhs,
                  preconditioner);
 
@@ -600,12 +608,12 @@ namespace Step57
 
     if (initial_step)
       {
-        nonzero_constraints.distribute(newton_update);
+        nonzero_constraints.distribute(newtodof_update);
       }
 
     else
       {
-        zero_constraints.distribute(newton_update);
+        zero_constraints.distribute(newtodof_update);
       }
 
   }
@@ -637,7 +645,8 @@ namespace Step57
   template <int dim>
   void Navier_Stokes_Newton<dim>::newton_iteration(const double tolerance,
                                                    const unsigned int max_iteration,
-                                                   const unsigned int max_meshes,
+                                                   const unsigned int n_refinements,
+                                                   const double line_search_rate,
                                                    bool  initial,
                                                    bool  result)
   {
@@ -645,10 +654,11 @@ namespace Step57
     double last_res;
     bool   first_step = initial;
 
-    for (unsigned int refinement = 0; refinement < max_meshes; ++refinement)
+    for (unsigned int refinement = 0; refinement < n_refinements+1; ++refinement)
       {
         unsigned int outer_iteration = 0;
         last_res = 1.0;
+        current_res = 1.0;
         std::cout << "*****************************************" << std::endl;
         std::cout << "************  refinement = " << refinement << " ************ " << std::endl;
         std::cout << "viscosity= " << viscosity << std::endl;
@@ -658,13 +668,15 @@ namespace Step57
           {
             if (first_step)
               {
-                setup_system();
-                assemble_NavierStokes_system(first_step, true, true, 0.0);
+                setup_system(true, true);
+                evaluatiodof_point = present_solution;
+                assemble_NavierStokes_system(first_step, true, true);
                 solve(first_step);
-                present_solution = newton_update;
+                present_solution = newtodof_update;
                 nonzero_constraints.distribute(present_solution);
                 first_step = false;
-                assemble_NavierStokes_system(first_step, false, true, 0.0);
+                evaluatiodof_point = present_solution;
+                assemble_NavierStokes_system(first_step, false, true);
                 current_res = system_rhs.l2_norm();
                 std::cout << "******************************" << std::endl;
                 std::cout << " The residual of initial guess is " << current_res << std::endl;
@@ -674,20 +686,23 @@ namespace Step57
 
             else
               {
+                evaluatiodof_point = present_solution;
                 if (outer_iteration == 0)
                   {
-                    assemble_NavierStokes_system(first_step, true, true, 0.0);
+                    assemble_NavierStokes_system(first_step, true, true);
                   }
                 else
                   {
-                    assemble_NavierStokes_system(first_step, true, false, 0.0);
+                    assemble_NavierStokes_system(first_step, true, false);
                   }
                 solve(first_step);
 
                 double alpha;
-                for (alpha = 1.0; alpha > 1e-5; alpha *= 0.5)
+                for (alpha = 1.0; alpha > 1e-5; alpha *= line_search_rate)
                   {
-                    assemble_NavierStokes_system(first_step, false, true, alpha);
+                    evaluatiodof_point = present_solution;
+                    evaluatiodof_point.add(alpha, newtodof_update);
+                    assemble_NavierStokes_system(first_step, false, true);
                     current_res = system_rhs.l2_norm();
                     std::cout << " alpha = " << std::setw(6) << alpha << std::setw(0)
                               << " res = " << current_res << std::endl;
@@ -696,7 +711,7 @@ namespace Step57
                   }
 
                 {
-                  present_solution = evaluation_point;
+                  present_solution = evaluatiodof_point;
                   nonzero_constraints.distribute(present_solution);
                   process_solution();
                   std::cout << " ----The " << outer_iteration << "th iteration. ---- " << std::endl;
@@ -713,10 +728,9 @@ namespace Step57
               }
           }
 
-        if (refinement+1 < max_meshes)
+        if (refinement < n_refinements)
           {
             refine_mesh();
-            current_res =1.0;
             std::cout << "*****************************************" << std::endl
                       << "        Do refinement ------   " << std::endl;
           }
@@ -753,30 +767,23 @@ namespace Step57
     solution_transfer.prepare_for_coarsening_and_refinement(present_solution);
     triangulation.execute_coarsening_and_refinement ();
 
-    //  Create a temporary vector "tmp", whose size is according with the solution in refined mesh,
-    //  to receive the solution transfered from last mesh.
+    //  First DoF is set up and constraints are generated. The we create a temporary vector "tmp",
+    //  whose size is according with the solution in refined mesh,
+    //  to temporarily store the solution transfered from last mesh.
 
-    dof_handler.distribute_dofs (fe);
-    DoFRenumbering::Cuthill_McKee (dof_handler);
-    std::vector<unsigned int> block_component(dim+1, 0);
-    block_component[dim] = 1;
-    DoFRenumbering::component_wise (dof_handler, block_component);
-    std::vector<types::global_dof_index> dofs_per_block (2);
-    DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
-    const unsigned int n_u = dofs_per_block[0],
-                       n_p = dofs_per_block[1];
+    setup_system(true, false);
 
     BlockVector<double> tmp;
     tmp.reinit (2);
-    tmp.block(0).reinit (n_u);
-    tmp.block(1).reinit (n_p);
+    tmp.block(0).reinit (dof_u);
+    tmp.block(1).reinit (dof_p);
     tmp.collect_sizes ();
 
     //  Transfer solution from coarse to fine mesh and apply boundary value constraints
     //  to the new transfered solution. Then set it to be the initial guess on the
-    //  fine mesh.
+    //  fine mesh. Then corresponding linear system is initialized.
     solution_transfer.interpolate(present_solution, tmp);
-    setup_system();
+    setup_system(false, true);
     nonzero_constraints.distribute(tmp);
     present_solution = tmp;
   }
@@ -800,17 +807,12 @@ namespace Step57
 
     for (double Re=1000.0; Re < target_Re; Re = std::min(Re+step_size, target_Re))
       {
-        if (Re == target_Re)
-          {
-            break;
-          }
-
         set_viscosity(1/Re);
         std::cout << "*****************************************" << std::endl;
         std::cout << " Searching for initial guess with Re = " << Re << std::endl;
         std::cout << "*****************************************" << std::endl;
 
-        newton_iteration(1e-12, 50, 1, initial, false);
+        newton_iteration(1e-12, 50, 0, 0.5, initial, false);
         initial = false;
       }
   }
@@ -897,7 +899,7 @@ namespace Step57
     // we do not need to search for the initial guess via staircase. Newton's iteration can be started directly.
     if (Reynold <= 1000)
       {
-        newton_iteration(1e-12, 50, 5, true, true);
+        newton_iteration(1e-12, 50, 4, 0.5, true, true);
       }
 
     // If the viscosity is smaller than 1/1000, we have to first search for an initial guess via "staircase". What we
@@ -920,7 +922,7 @@ namespace Step57
         std::cout << "       Computing solution with target viscosity ..." <<std::endl;
         std::cout << "       Reynold = " << Reynold << std::endl;
         set_viscosity(1.0/Reynold);
-        newton_iteration(1e-12, 50, 5, false, true);
+        newton_iteration(1e-12, 50, 4, 0.5, false, true);
       }
 
   }
