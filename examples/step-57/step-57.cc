@@ -257,7 +257,7 @@ namespace Step57
       cg.solve(pressure_mass_matrix,
                dst.block(1), src.block(1),
                mp_preconditioner);
-      dst.block(1) *= -1.0/(viscosity+gamma);
+      dst.block(1) *= -(viscosity+gamma);
     }
 
     {

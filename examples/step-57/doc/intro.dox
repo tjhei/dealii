@@ -241,7 +241,7 @@ discussed in step-22, we let $W = M_p$ where $M_p$ is the pressure
 mass matrix, then $\tilde{S}^{-1}$ can be approximated by
 
 @f{eqnarray*}
-\tilde{S}^{-1} = -(\nu+\gamma)M_p.
+\tilde{S}^{-1} = -(\nu+\gamma)M_p^{-1}.
 @f}
 
 We decompose $P^{-1}$ as
@@ -249,7 +249,7 @@ We decompose $P^{-1}$ as
 @f{eqnarray*} 
 P^{-1} =
 \left(\begin{array}{cc} \tilde{A}^{-1} & 0 \\ 0 & I \end{array}\right)
-\left(\begin{array}{cc} I & B^T \\ 0 & -I \end{array}\right)
+\left(\begin{array}{cc} I & -B^T \\ 0 & I \end{array}\right)
 \left(\begin{array}{cc} I & 0 \\ 0 & \tilde{S}^{-1} \end{array}\right).
 @f}
 
