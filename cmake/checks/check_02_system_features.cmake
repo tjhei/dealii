@@ -136,11 +136,18 @@ IF(CMAKE_SYSTEM_NAME MATCHES "Windows")
     ENABLE_IF_LINKS(DEAL_II_LINKER_FLAGS "-Wl,--enable-auto-import")
     ENABLE_IF_LINKS(DEAL_II_LINKER_FLAGS "-Wl,--allow-multiple-definition")
   ELSE()
+
+
+  IF ("${CMAKE_VERSION}" VERSION_GREATER "3.6")
+    SET(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+  ELSE()
+
     # Otherwise disable shared libraries:
     MESSAGE(WARNING "\n"
       "BUILD_SHARED_LIBS forced to OFF\n\n"
       )
     SET(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+  ENDIF()
   ENDIF()
 
 ENDIF()
