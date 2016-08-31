@@ -16,7 +16,6 @@ satisfying
 
 @f{eqnarray*}
 - \nu \Delta\textbf{u} + (\textbf{u} \cdot \nabla)\textbf{u} + \nabla p &=& \textbf{f}\\
-
 - \nabla \cdot \textbf{u} &=& 0
 @f}
 
@@ -96,7 +95,7 @@ Then we have a linearized system
 
 @f{eqnarray*}
 - \nu\Delta\delta\mathbf{u}^{k} + \mathbf{u}^{k}\cdot\nabla\delta\mathbf{u}^{k}+\delta\mathbf{u}^{k}\cdot\nabla\mathbf{u}^{k}+ \nabla\delta p^{k} = \mathbf{g}, \\
-- \nabla \cdot\delta \mathbf{u}^{k} = \nabla\codt\mathbf{u}^{k},
+- \nabla \cdot\delta \mathbf{u}^{k} = \nabla\cdot\mathbf{u}^{k},
 @f}
 
 where $\textbf{g} =\textbf{f}+\nu \Delta\textbf{u}^k -(\textbf{u}^k
@@ -132,7 +131,7 @@ However, it convective term $(\mathbf{u}\cdot\nabla)\mathbf{u}$
 gets to be donimant if viscosity is small, like 1/10000 in test case 2. 
 In this situation, we have to set up a series of auxiliary NSE with
 viscosity aprroaching to the one in the target NSE. Correspondingly, we set a sequence
-$\{\nu_{i}\}$ with $\nu_{n}\= \nu$, and accept that the solutions to two 
+$\{\nu_{i}\}$ with $\nu_{n}= \nu$, and accept that the solutions to two 
 NSE with viscosity $\nu_{i}$ and $\nu_{i+1}$ are closed if $|\nu_{i} - \nu_{i+1}|$ is small. 
 Then we use the solution to the NSE with viscosity $\nu_{i}$ as the initial guess of the NSE
 with $\nu_{i+1}$. It is like a staircase from Stokes equations to the
