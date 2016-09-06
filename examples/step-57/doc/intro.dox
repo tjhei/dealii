@@ -25,9 +25,7 @@ nonlinear system because of the convective term $(\textbf{u} \cdot
 \nabla)\textbf{u}$. The first step to compute its numerical solution
 is linearization of NSE and this will be done using Newton's method. A
 time-dependent problem is discussed in step-35, which linearize NSE
-using time nodes. Therefore, NSE can be linearized by treating the
-convective term semi-explicitly.
-
+using the solution from last time step. 
 <h3> Linearization of Navier Stokes Equations </h3>
 
 Moving the right hand side terms to the left, we rewrite the NSE as
@@ -103,9 +101,7 @@ Then we have a linearized system
 where $\textbf{g} =\textbf{f}+\nu \Delta\textbf{u}^k -(\textbf{u}^k
 \cdot \nabla)\textbf{u}^k -\nabla p^k$, $\textbf{f}$ is the right hand
 side of NSE, $\textbf{u}^k$ and $p^k$ are the solutions from the
-previous iteration. Since the velocity is divergence free, we set the
-pressure right hand side, that is $\nabla\cdot\mathbf{u}^{k}$, to be
-zero in practice. In this linear system, the only unknowns are the
+previous iteration. In this linear system, the only unknowns are the
 update terms: $\delta \textbf{u}^{k}$ and $\delta p^{k}$, then the
 strategy we use in step-22 can be used to solve it. The weak form is
 derived like it is done in step-22.
@@ -131,16 +127,17 @@ initial guess to be the solution to the Stokes equation with viscosity
 $\nu$. However, it convective term $(\mathbf{u}\cdot\nabla)\mathbf{u}$
 gets to be donimant if viscosity is small, like 1/10000 in test case
 2. In this situation, we have to set up a series of auxiliary NSE with
-viscosity aprroaching to the one in the target NSE. We set a sequence
-$\{\nu_{i}\}$ with $\nu_{n}\= \nu$. The solution to
-the NSE with $\nu_{i}$ as viscosity is the initial guess of the NSE
+viscosity aprroaching to the one in the target NSE. Correspondingly, we set a sequence
+$\{\nu_{i}\}$ with $\nu_{n}\= \nu$, and accept that the solutions to two 
+NSE with viscosity $\nu_{i}$ and $\nu_{i+1}$ are closed if $|\nu_{i} - \nu_{i+1}|$ is small. 
+Then we use the solution to the NSE with viscosity $\nu_{i}$ as the initial guess of the NSE
 with $\nu_{i+1}$. It is like a staircase from Stokes equations to the
 NSE we want to solve. 
 
-That is we first solve
+That is we first solve a Stokes problem
+
 @f{eqnarray*}
 - \nu_{1} \Delta\textbf{u} + \nabla p &=& \textbf{f}\\
-
 - \nabla \cdot \textbf{u} &=& 0
 @f}
 
@@ -148,19 +145,26 @@ to get the initial guess for
 
 @f{eqnarray*}
 - \nu_{1} \Delta\textbf{u} + (\textbf{u} \cdot \nabla)\textbf{u} + \nabla p &=& \textbf{f},\\
-
 - \nabla \cdot \textbf{u} &=& 0.
 @f}
+
+Here $\nu_{1}$ is relatively large so that the solution to Stokes problem with viscosity $\nu_{1}$
+can be used as an initial guess for NSE in Newton's iteraton. 
+
 And then the solution to
+
 @f{eqnarray*}
 - \nu_{i} \Delta\textbf{u} + (\textbf{u} \cdot \nabla)\textbf{u} + \nabla p &=& \textbf{f}\\
 - \nabla \cdot \textbf{u} &=& 0.
 @f}
+
 acts as the initial guess for
+
 @f{eqnarray*}
 - \nu_{i+1} \Delta\textbf{u} + (\textbf{u} \cdot \nabla)\textbf{u} + \nabla p &=& \textbf{f}\\
-- \nabla \cdot \textbf{u} &=& 0.
+- \nabla \cdot \textbf{u} &=& 0
 @f}
+with $|\nu_{i+1} - \nu_{i}|$ small enough. 
 
 We repeat this process till getting the solution to the NSE with viscosity
 $\nu_{n-1}$, then the initial guess for the target NSE is obtained.
