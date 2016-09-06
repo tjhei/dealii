@@ -67,19 +67,17 @@
 // And the one for ILU preconditioner
 #include <deal.II/lac/sparse_ilu.h>
 
-// C++
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
-// As in all programs, the namespace dealii is included
 namespace Step57
 {
   using namespace dealii;
 
   // @sect3{The <code>StokesProblem</code> class template}
 
-  // As explained in introduction, what we obtain at each step is the Newton's update term, so
+  // As explained in the introduction, what we obtain at each step is the Newton's update term, so
   // we define two variables: the present solution and the update term. By Newton's iteration, the new solution can be written
   // as $x_{new} = x_{old} + x_{update}$. Additionally, the evaluation point is for temporarily holding the updated solution
   // in line search. A sparse matrix for the mass matrix of pressure is created for the operator of
@@ -188,7 +186,7 @@ namespace Step57
 
 
   // @sect3{BlockSchurPreconditioner for Navier Stokes equations}
-  // The block Schur complement preconditioner is defined in this part. As discussed in introduction,
+  // The block Schur complement preconditioner is defined in this part. As discussed in the introduction,
   // the preconditioner in Krylov iterative methods is implemented as a matrix-vector product operator.
   // In practice, the Schur complement preconditioner is decomposed as a product of three matrices(as presented
   // in the first section). The $tilde{A}^{-1}$ in the first factor involves a solver for the linear system
@@ -274,14 +272,14 @@ namespace Step57
   // @sect4{Navier_Stokes_Newton::Navier_Stokes_Newton}
   // The constructor of this class looks very similar to the one in step-22. The only difference is the
   // viscosity and the AL coefficient gamma. In test case, if the viscosity is relatively large (1/400), the initial guess
-  // can be obtained by solving a corresponding Stokes problem. However, auxiliary NSE is necessary if viscosity is relativel
+  // can be obtained by solving a corresponding Stokes problem. However, auxiliary NSE is necessary if viscosity is relatively
   // small (1/10000).
 
   template <int dim>
   Navier_Stokes_Newton<dim>::Navier_Stokes_Newton(const unsigned int degree)
     :
 
-    viscosity(1.0/400.0),
+    viscosity(1.0/10000.0),
     gamma(1.0),
     degree(degree),
     triangulation(Triangulation<dim>::maximum_smoothing),
@@ -352,6 +350,14 @@ namespace Step57
     DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
     dof_u = dofs_per_block[0];
     dof_p = dofs_per_block[1];
+
+    std::cout << "   Number of active cells: "
+              << triangulation.n_active_cells()
+              << std::endl
+              << "   Number of degrees of freedom: "
+              << dof_handler.n_dofs()
+              << " (" << dof_u << '+' << dof_p << ')'
+              << std::endl;
   }
 
   // @sect4{Navier_Stokes_Newton::initialize_system}
@@ -396,7 +402,7 @@ namespace Step57
   // This function builds the system matrix and right hand side that we actually work on. We can see the function contains
   // four arguments. "initial_step" is set up for applying different constraints(nonzero for the initial step and zero for
   // the others). "left" and "right" are flags to determine whether to assemble system matrix and right hand side vector,
-  // respectively. the last argument "alpha" is used while executing line search: it acts as the tentative weight of
+  // respectively. The last argument "alpha" is used while executing line search: it acts as the tentative weight of
   // Newton's update term.
 
   template <int dim>
@@ -476,7 +482,7 @@ namespace Step57
 
         // Then we do the same as in step-22 to assemble the matrix with nonlinear term linearized by present solutions.
         // An additional term with gamma as coefficient is the Lagrangian Argument(AL), which is assembled via grad-div
-        // stabilization. As we discussed in introduction, the 1,1-block of system matrix should be zero. Since the mass
+        // stabilization. As we discussed in the introduction, the 1,1-block of system matrix should be zero. Since the mass
         // matrix of pressure is used while creating the preconditioner, we assemble it here and then set it to be zero
         // when solving linear system.
 
@@ -776,7 +782,7 @@ namespace Step57
   }
 
   // @sect4{Navier_Stokes_Newton::search_initial_guess}
-  // As we discussed in introduction, if the solution to Stokes equations will not be a good approximation to NSE,
+  // As we discussed in the introduction, if the solution to Stokes equations will not be a good approximation to NSE,
   // we have to use the solution to another NSE whose viscosity is a little larger than the original
   // one as an initial guess. In practice we set up a series of auxiliary NSE working like a staircase:
   // from Stokes to the original Navier Stokes. By experiment, the solution to Stokes is good enough to be the initial guess
