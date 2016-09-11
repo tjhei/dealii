@@ -25,7 +25,8 @@ nonlinear system because of the convective term $(\textbf{u} \cdot
 \nabla)\textbf{u}$. The first step to compute its numerical solution
 is linearization of NSE and this will be done using Newton's method. A
 time-dependent problem is discussed in step-35, which linearize NSE
-using the solution from last time step. 
+using the solution from last time step. Therefore, no nonlinear solve is needed for
+semi-implicit discretization for time-dependent problems
 <h3> Linearization of Navier Stokes Equations </h3>
 
 Moving the right hand side terms to the left, we rewrite the NSE as
@@ -124,9 +125,12 @@ enough to the solution, so it is crucial to find a good starting value.
 
 While the viscosity $\nu$ is large, 1/400 in test case 1, we set the
 initial guess to be the solution to the Stokes equation with viscosity
-$\nu$. However, it convective term $(\mathbf{u}\cdot\nabla)\mathbf{u}$
-gets to be donimant if viscosity is small, like 1/10000 in test case
-2. In this situation, we have to set up a series of auxiliary NSE with
+$\nu$. For what value of $\nu$ is large, this can only be determined via numerical experiment. In this tutorial, we accept that the solution to Stokes problem is a 
+good initial guess if the visociy of NSE is 1/1000, and this is what we do at the first step while finding an initial guess if viscosity is small. 
+
+However, it convective term $(\mathbf{u}\cdot\nabla)\mathbf{u}$
+gets to be donimant if viscosity is small, like 1/10000 in test case 2. 
+In this situation, we have to set up a series of auxiliary NSE with
 viscosity aprroaching to the one in the target NSE. Correspondingly, we set a sequence
 $\{\nu_{i}\}$ with $\nu_{n}\= \nu$, and accept that the solutions to two 
 NSE with viscosity $\nu_{i}$ and $\nu_{i+1}$ are closed if $|\nu_{i} - \nu_{i+1}|$ is small. 
@@ -250,22 +254,19 @@ P^{-1} =
 @f}
 
 Here two inexact solvers will be needed for $\tilde{A}^{-1}$ and
-$\tilde{S}^{-1}$. See "An Augmented Lagrangian-Based Approach to the
-Ossen Problem, M.Benzi and M.Olshanskii". Since the pressure mass
+$\tilde{S}^{-1}$. See [1]. Since the pressure mass
 matrix is symmetric, the solver for $\tilde{S}^{-1}$ is not diffcult
 and we can use CG with ILU as preconditionerr. We use the direct
 solver UMFPACK for $\tilde{A}^{-1}$. The remaining is a sparse
 mastrix-vector product with $B^T$. Further more, the augmented
 lagrangian term will be assembled through Grad-Div stabilization:
 $(\nabla \cdot \phi _{j}, \nabla \cdot \phi _{i}) \approx (B^T
-M_p^{-1}B)_{ij}$. See "Efficient augmented Lagrangian-type preconditioning
-for the Oseen problem using Grad-Div stabilization, Timo Heister and
-Gerd Rapin"
+M_p^{-1}B)_{ij}$. See [2].
 
 
 <h3> Test Case </h3>
 
-Here we use Lid driven cavity flow as our test case. Since we do not
+Here we use Lid driven cavity flow as our test case, see[3] for details. Since we do not
 have reference solution for this test problem, the 2-norm of residual,
 $\|b-Gx\|_2$ will be used to check convergence. The domain of Navier
 Stokes equations is defined on the unit square and the right hand side
@@ -300,10 +301,18 @@ $\frac{\|b-Gx\|_2}{\|b\|_2}$, to be 1e-4. In spite of high
 tolerance, we finally get the residual of 1e-14. Also, we use a simple line
 search algorithm for globalization of the Newton method.
 
-All cavity reference values are from "High-Re solution for
-incompreesible flow using the Navier-Stokes Equations and a Multigrid
-Method, U.Ghia, K.N.Ghia, and C.T.Shin".
+The cavity reference values for RE=400 and RE=10000 are from [4] and [5], respectively.
 
+<h3> Reference </h3>
+<ol>
+
+  <li>  An Augmented Lagrangian-Based Approach to the Ossen Problem, M.Benzi and M.Olshanskii
+  <li>  Efficient augmented Lagrangian-type preconditioning for the Oseen problem using Grad-Div stabilization, Timo Heister and Gerd Rapin
+  <li>  http://www.cfd-online.com/Wiki/Lid-driven_cavity_problem
+  <li>  High-Re solution for incompreesible flow using the Navier-Stokes Equations and a Multigrid Method, U.Ghia, K.N.Ghia, and C.T.Shin
+  <li>  Numerical solutions of 2-D steady incompressible driven cavity flow at high Reynolds numbers, E.Erturk, T.C.Corke and C.Gokcol
+
+</ol>
 
 
 
