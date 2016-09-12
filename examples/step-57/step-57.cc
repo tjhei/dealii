@@ -279,7 +279,7 @@ namespace Step57
   Navier_Stokes_Newton<dim>::Navier_Stokes_Newton(const unsigned int degree)
     :
 
-    viscosity(1.0/10000.0),
+    viscosity(1.0/400.0),
     gamma(1.0),
     degree(degree),
     triangulation(Triangulation<dim>::maximum_smoothing),
@@ -602,7 +602,7 @@ namespace Step57
                                                        system_matrix,
                                                        pressure_mass_matrix,
                                                        pmass_preconditioner);
-
+    newton_update = 0;
     gmres.solve (system_matrix,
                  newton_update,
                  system_rhs,
@@ -833,7 +833,8 @@ namespace Step57
     data_out.build_patches ();
 
     std::ostringstream filename;
-    filename << "solution-"
+    filename << 1/viscosity
+             << "-solution-"
              << Utilities::int_to_string (output_index, 2)
              << ".vtk";
 
@@ -848,7 +849,8 @@ namespace Step57
   void Navier_Stokes_Newton<dim>::process_solution(unsigned int refinement)
   {
     std::ostringstream filename;
-    filename << "line-"
+    filename << 1/viscosity
+             << "-line-"
              << refinement
              << ".txt";
 
