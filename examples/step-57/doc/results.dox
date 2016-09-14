@@ -33,66 +33,94 @@ In the first test case the viscosity is set to be 1/400. As we disccussed in int
 
   <tr>
     <th>1         </th>
-    <th>3.711e-3  </th>
-    <th>5         </th>
-    <th>6.419e-3  </th>
+    <th>7.40396e-3</th>
     <th>3         </th>
-    <th>2.433e-3  </th>
+    <th>1.05562e-3  </th>
     <th>3         </th>
-    <th>1.057e-3  </th>
+    <th>4.94796e-4  </th>
     <th>3         </th>
-    <th>4.949e-4  </th>
-    <th>3         </th>
+    <th>2.5624e-4 </th>
+    <th>2         </th>
+    <th>1.26733e-4  </th>
+    <th>2         </th>
   </tr>
 
   <tr>
     <th>2         </th>
-    <th>7.085e-4  </th>
-    <th>5         </th>
-    <th>9.946e-4  </th>
-    <th>5         </th>
-    <th>1.140e-4  </th>
-    <th>5        </th>
-    <th>1.354e-5  </th>
-    <th>6         </th>
-    <th>1.417e-6  </th>
-    <th>6         </th>
+    <th>3.86766e-3  </th>
+    <th>4         </th>
+    <th>1.3549e-5  </th>
+    <th>3         </th>
+    <th>1.41981e-6  </th>
+    <th>3        </th>
+    <th>1.29108e-6  </th>
+    <th>4         </th>
+    <th>6.14794e-7  </th>
+    <th>4         </th>
   </tr>
 
   <tr>
     <th>3         </th>
-    <th>1.998e-5  </th>
-    <th>5         </th>
-    <th>4.501e-5  </th>
+    <th>1.60421e-3</th>
+    <th>4         </th>
+    <th>1.24836e-9  </th>
     <th>3         </th>
-    <th>2.902e-8  </th>
+    <th>9.11557e-11  </th>
     <th>3         </th>
-    <th>4.399e-10 </th>
+    <th>3.35933e-11 </th>
     <th>3         </th>
-    <th>6.406e-11 </th>
-    <th>3         </th>
+    <th>5.86734e-11 </th>
+    <th>2         </th>
   </tr>
 
   <tr>
     <th>4         </th>
-    <th>2.317e-9  </th>
-    <th>6         </th>
-    <th>1.689e-7  </th>
+    <th>9.26748e-4  </th>
+    <th>4         </th>
+    <th>2.75537e-14  </th>
+    <th>4         </th>
+    <th>1.39986e-14 </th>
     <th>5         </th>
-    <th>1.905e-13 </th>
-    <th>8         </th>
-    <th>1.867e-14 </th>
-    <th>8         </th>
-    <th>1.007e-14 </th>
-    <th>8         </th>
+    <th>2.18864e-14 </th>
+    <th>5         </th>
+    <th>3.38787e-14 </th>
+    <th>5         </th>
   </tr>
 
   <tr>
-    <th>5         </th>
-    <th>1.258e-13 </th>
+    <th>5          </th>
+    <th>1.34601e-5</th>
+    <th>4          </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+  </tr>
+
+  <tr>
+    <th>6         </th>
+    <th>2.5235e-8    </th>
+    <th>5    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+  </tr>
+
+  <tr>
     <th>7         </th>
-    <th>1.452e-11 </th>
-    <th>6         </th>
+    <th>1.38899e-12    </th>
+    <th>4    </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
     <th>&nbsp;    </th>
     <th>&nbsp;    </th>
     <th>&nbsp;    </th>
@@ -102,17 +130,17 @@ In the first test case the viscosity is set to be 1/400. As we disccussed in int
   </tr>
 
   <tr>
-    <th>6         </th>
+    <th>8           </th>
+    <th>4.68224e-15 </th>
+    <th>4           </th>
     <th>&nbsp;    </th>
     <th>&nbsp;    </th>
-    <th>1.587e-15 </th>
-    <th>8         </th>
-    <th>&nbsp;    </th>
-    <th>&nbsp;    </th>
-    <th>&nbsp;    </th>
-    <th>&nbsp;    </th>
-    <th>&nbsp;    </th>
-    <th>&nbsp;    </th>
+    <th>&nbsp;      </th>
+    <th>&nbsp;      </th>
+    <th>&nbsp;      </th>
+    <th>&nbsp;      </th>
+    <th>&nbsp;      </th>
+    <th>&nbsp;      </th>
   </tr>
 </table>
 
@@ -184,13 +212,13 @@ Also we show the residual from each step of Newton's iteration on every mesh. Th
 
   <tr>
     <th>1          </th>
-    <th>4.56686e-05  </th>
+    <th>3.81015e-6  </th>
     <th>7          </th>
-    <th>0.00483666  </th>
+    <th>4.83666e-3  </th>
     <th>3          </th>
-    <th>0.00174361  </th>
+    <th>1.74361e-3  </th>
     <th>3          </th>
-    <th>0.000561148  </th>
+    <th>5.61146e-4  </th>
     <th>2          </th>
     <th>2.06674e-04  </th>
     <th>2         </th>
@@ -198,68 +226,68 @@ Also we show the residual from each step of Newton's iteration on every mesh. Th
 
   <tr>
     <th>2         </th>
-    <th>2.40772e-06</th>
-    <th>7         </th>
-    <th>0.00164747 </th>
-    <th>8         </th>
-    <th>0.000557647 </th>
-    <th>8         </th>
-    <th>0.000135724 </th>
-    <th>8         </th>
-    <th>2.36672e-05 </th>
-    <th>8         </th>
+    <th>1.39551e-8</th>
+    <th>6         </th>
+    <th>1.64745e-3 </th>
+    <th>6         </th>
+    <th>5.57647e-4 </th>
+    <th>6         </th>
+    <th>1.35722e-4 </th>
+    <th>6         </th>
+    <th>2.36666e-5 </th>
+    <th>6         </th>
   </tr>
 
   <tr>
     <th>3         </th>
-    <th>2.42953e-09    </th>
-    <th>7         </th>
-    <th>0.000434195 </th>
+    <th>2.00292e-13    </th>
     <th>6         </th>
-    <th>4.3981e-05 </th>
+    <th>4.34298e-4 </th>
     <th>6         </th>
-    <th>1.78869e-06 </th>
-    <th>7         </th>
-    <th>3.56185e-08 </th>
-    <th>7         </th>
+    <th>4.3981e-5 </th>
+    <th>6         </th>
+    <th>1.78859e-6 </th>
+    <th>6         </th>
+    <th>3.55519e-08 </th>
+    <th>6         </th>
   </tr>
 
   <tr>
     <th>4         </th>
-    <th>3.9881e-14    </th>
-    <th>9         </th>
-    <th>0.00015311 </th>
+    <th>&nbsp;    </th>
+    <th>&nbsp;    </th>
+    <th>1.5311e-4 </th>
     <th>6         </th>
-    <th>7.54086e-08 </th>
-    <th>7         </th>
-    <th>1.86834e-10 </th>
-    <th>8         </th>
-    <th>3.08229e-12</th>
-    <th>8         </th>
+    <th>7.54006e-8 </th>
+    <th>6         </th>
+    <th>2.45452e-10 </th>
+    <th>3         </th>
+    <th>1.64301e-12</th>
+    <th>6        </th>
   </tr>
 
   <tr>
     <th>5         </th>
     <th>&nbsp;    </th>
     <th>&nbsp;    </th>
-    <th>2.50725e-05 </th>
+    <th>2.50725e-5 </th>
+    <th>5         </th>
+    <th>8.43023e-12 </th>
+    <th>6         </th>
+    <th>2.14919e-14 </th>
     <th>7         </th>
-    <th>7.74134e-12 </th>
+    <th>3.23876e-14 </th>
     <th>8         </th>
-    <th>2.05605e-14 </th>
-    <th>10         </th>
-    <th>3.21184e-14 </th>
-    <th>10         </th>
   </tr>
 
   <tr>
     <th>6         </th>
     <th>&nbsp;    </th>
     <th>&nbsp;    </th>
-    <th>2.45216e-06 </th>
+    <th>2.45113e-6</th>
+    <th>6         </th>
+    <th>1.24722e-14</th>
     <th>7         </th>
-    <th>1.24717e-14</th>
-    <th>10         </th>
     <th>&nbsp; </th>
     <th>&nbsp;        </th>
     <th>&nbsp;    </th>
@@ -270,8 +298,8 @@ Also we show the residual from each step of Newton's iteration on every mesh. Th
     <th>7         </th>
     <th>&nbsp;    </th>
     <th>&nbsp;    </th>
-    <th>3.18997e-08 </th>
-    <th>7         </th>
+    <th>3.18648e-8 </th>
+    <th>6         </th>
     <th>&nbsp;</th>
     <th>&nbsp;         </th>
     <th>&nbsp; </th>
@@ -284,8 +312,8 @@ Also we show the residual from each step of Newton's iteration on every mesh. Th
     <th>8         </th>
     <th>&nbsp;    </th>
     <th>&nbsp;    </th>
-    <th>3.21737e-12 </th>
-    <th>8         </th>
+    <th>3.35688e-12 </th>
+    <th>6         </th>
     <th>&nbsp;    </th>
     <th>&nbsp;    </th>
     <th>&nbsp;</th>
@@ -298,8 +326,8 @@ Also we show the residual from each step of Newton's iteration on every mesh. Th
     <th>9         </th>
     <th>&nbsp;    </th>
     <th>&nbsp;    </th>
-    <th>7.03225e-15</th>
-    <th>10         </th>
+    <th>7.20278e-15</th>
+    <th>6         </th>
     <th>&nbsp;    </th>
     <th>&nbsp;    </th>
     <th>&nbsp;</th>
@@ -339,7 +367,7 @@ We compare the solution by Newtion's method with reference solution which can be
 The following picture presents the graphical result.
 <img src="step-57_Re10000_Streamline.png" alt="">
 
-Furthermore, we have to notice that the error consists of nonlinear error, which can be minished by Newton's iteration, and discrete error. The discrete error depends on the mesh size. That is why we have to refine the mesh and repeat Newton's iteration on the new one. From above table, we can see that the residual(nonlinear error) is under 1e-12 on each mesh, but the following picture shows us the difference among solutions on every mesh. 
+Furthermore, we should notice that the error consists of the nonlinear error, which can be minished by Newton's iteration, and the discrete error. The discrete error depends on the mesh size. That is why we have to refine the mesh and repeat Newton's iteration on the new one. From above table, we can see that the residual(nonlinear error) is under 1e-12 on each mesh, but the following picture shows us the difference among solutions on every mesh. 
 <img src="step-57_Re10000_solutions_on_meshes.svg" alt="">
 
 
