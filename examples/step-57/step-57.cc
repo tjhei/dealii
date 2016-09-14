@@ -602,7 +602,6 @@ namespace Step57
                                                        system_matrix,
                                                        pressure_mass_matrix,
                                                        pmass_preconditioner);
-    newton_update = 0;
     gmres.solve (system_matrix,
                  newton_update,
                  system_rhs,
