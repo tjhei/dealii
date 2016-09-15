@@ -759,7 +759,7 @@ namespace Step57
     solution_transfer.prepare_for_coarsening_and_refinement(present_solution);
     triangulation.execute_coarsening_and_refinement ();
 
-    //  First DoF is set up and constraints are generated. The we create a temporary vector "tmp",
+    //  First DoF is set up and constraints are generated. Then we create a temporary vector "tmp",
     //  whose size is according with the solution in refined mesh,
     //  to temporarily store the solution transfered from last mesh.
 
