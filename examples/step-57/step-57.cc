@@ -77,20 +77,21 @@ namespace Step57
 
   // @sect3{The <code>StokesProblem</code> class template}
 
-  // As explained in the introduction, what we obtain at each step is the Newton's update term, so
-  // we define two variables: the present solution and the update term. By Newton's iteration, the new solution can be written
-  // as $x_{new} = x_{old} + x_{update}$. Additionally, the evaluation point is for temporarily holding the updated solution
-  // in line search. A sparse matrix for the mass matrix of pressure is created for the operator of
-  // a block Schur complement preconditioner. We use one ConstraintMatrix for Dirichlet boundary conditions at
-  // the initial step and a zero ConstraintMatrix for the Newton's update term. $\gamma$ is the weight of augmented lagrangian
-  // term.
+  // As explained in the introduction, what we obtain at each step is the
+  // Newton's update term, so we define two variables: the present solution
+  // and the update term. By Newton's iteration, the new solution can be written
+  // as $x_{new} = x_{old} + x_{update}$. Additionally, the evaluation point is
+  // for temporarily holding the updated solution in line search. A sparse matrix
+  // for the mass matrix of pressure is created for the operator of a block Schur
+  // complement preconditioner. We use one ConstraintMatrix for Dirichlet boundary
+  // conditions at the initial step and a zero ConstraintMatrix for the Newton's
+  // update term. $\gamma$ is the weight of augmented lagrangian term.
 
   template <int dim>
   class Navier_Stokes_Newton
   {
   public:
     Navier_Stokes_Newton(const unsigned int degree);
-    ~Navier_Stokes_Newton();
     void run();
 
   private:
@@ -99,6 +100,8 @@ namespace Step57
     void assemble_NavierStokes_system(bool initial_step,
                                       bool assemble_matrix,
                                       bool assemble_rhs);
+    void assemble_matrix(bool initial_step);
+    void assemble_rhs(bool initial_step);
     void solve(bool initial_step);
     void refine_mesh();
     void process_solution(unsigned int refinement);
@@ -136,14 +139,17 @@ namespace Step57
   };
 
   // @sect3{Boundary values and right hand side}
-  // In this problem we set the velocity along the upper surface of the cavity to be one and zero on the other three walls,
-  // The right hand side function is zero so we do not need to set the right hand side function in this tutorial.
-  // The dimension of the boundary function is dim+1 that means the
-  // pressure is included. In practice, the boundary values are applied to our solution through ConstraintMatrix which is
-  // obtained by using
-  // VectorTools::interpolate_boundary_values. The components of boundary value functions should be according with the dimension
-  // of finite element space. Therefore we have to define the boundary value of pressure even though we actually do not need
-  // it. While creating the ConstraintMatrix, we use a ComponentMask to discard the pressure component in boundary values.
+  // In this problem we set the velocity along the upper surface of the cavity
+  // to be one and zero on the other three walls, The right hand side function
+  // is zero so we do not need to set the right hand side function in this
+  // tutorial. The dimension of the boundary function is dim+1 that means the
+  //  pressure is included. In practice, the boundary values are applied to our
+  // solution through ConstraintMatrix which is obtained by using
+  // VectorTools::interpolate_boundary_values. The components of boundary value
+  // functions should be according with the dimension of finite element space.
+  // Therefore we have to define the boundary value of pressure even though we
+  // actually do not need it. While creating the ConstraintMatrix, we use a
+  // ComponentMask to discard the pressure component in boundary values.
 
   // The following function represents the boundary values:
 
@@ -186,19 +192,22 @@ namespace Step57
 
 
   // @sect3{BlockSchurPreconditioner for Navier Stokes equations}
-  // The block Schur complement preconditioner is defined in this part. As discussed in the introduction,
-  // the preconditioner in Krylov iterative methods is implemented as a matrix-vector product operator.
-  // In practice, the Schur complement preconditioner is decomposed as a product of three matrices(as presented
-  // in the first section). The $tilde{A}^{-1}$ in the first factor involves a solver for the linear system
-  // $\tilde{A}x=b$. Here we solve this system via a direct solver for simplicity. The computation involved
-  // in the second factor is simple matrix-vector multiplication. The Schur complement $\tilde{S}$
-  // can be well approximated by the mass matrix of pressure and its inverse can be obtained through an inexact
-  // solver. Because of the symmetry of pressure mass matrix we use an iterative method, the CG method, to
+  // The block Schur complement preconditioner is defined in this part. As discussed
+  // in the introduction, the preconditioner in Krylov iterative methods is implemented
+  // as a matrix-vector product operator. In practice, the Schur complement preconditioner
+  // is decomposed as a product of three matrices(as presented in the first section).
+  // The $tilde{A}^{-1}$ in the first factor involves a solver for the linear system
+  // $\tilde{A}x=b$. Here we solve this system via a direct solver for simplicity. The
+  // computation involved in the second factor is simple matrix-vector multiplication.
+  // The Schur complement $\tilde{S}$ can be well approximated by the mass matrix of
+  // pressure and its inverse can be obtained through an inexact solver. Because of the
+  // symmetry of pressure mass matrix we use an iterative method, the CG method, to
   // solve the corresponding linear system.
   //
-  // In summary, the preconditioner is defined by a combination of operators: a direct solver for the first
-  // factor, matrix-vector multiplication for the second factor and a iterative method for the last factor.
-  // gamma is the coefficient of the Augmented Lagrangian term.
+  // In summary, the preconditioner is defined by a combination of operators: a direct
+  // solver for the first factor, matrix-vector multiplication for the second factor
+  // and a iterative method for the last factor. gamma is the coefficient of the Augmented
+  // Lagrangian term.
 
 
   template <class PreconditionerMp>
@@ -270,16 +279,17 @@ namespace Step57
 
   // @sect3{Navier_Stokes_Newton class implementation}
   // @sect4{Navier_Stokes_Newton::Navier_Stokes_Newton}
-  // The constructor of this class looks very similar to the one in step-22. The only difference is the
-  // viscosity and the AL coefficient gamma. In test case, if the viscosity is relatively large (1/400), the initial guess
-  // can be obtained by solving a corresponding Stokes problem. However, auxiliary NSE is necessary if viscosity is relatively
-  // small (1/10000).
+  // The constructor of this class looks very similar to the one in step-22. The only
+  // difference is the viscosity and the AL coefficient gamma. In test case, if the
+  // viscosity is relatively large (1/400), the initial guess can be obtained by solving
+  // a corresponding Stokes problem. However, auxiliary NSE is necessary if viscosity is
+  // relatively small (1/10000).
 
   template <int dim>
   Navier_Stokes_Newton<dim>::Navier_Stokes_Newton(const unsigned int degree)
     :
 
-    viscosity(1.0/400.0),
+    viscosity(1.0/10000.0),
     gamma(1.0),
     degree(degree),
     triangulation(Triangulation<dim>::maximum_smoothing),
@@ -288,15 +298,9 @@ namespace Step57
     dof_handler(triangulation)
   {}
 
-
-  template <int dim>
-  Navier_Stokes_Newton<dim>::~Navier_Stokes_Newton()
-  {
-    dof_handler.clear();
-  }
-
   // @sect4{Navier_Stokes_Newton::setup_dof}
-  // This function provide the information of DoF and initialize the constraints on current mesh.
+  // This function provide the information of DoF and initialize the constraints
+  // on current mesh.
 
   template <int dim>
   void Navier_Stokes_Newton<dim>::setup_dof()
@@ -304,19 +308,21 @@ namespace Step57
     system_matrix.clear();
     pressure_mass_matrix.clear();
 
-    // The first step is to associate DoFs with a given mesh. Here it is completed as in step-22
+    // The first step is to associate DoFs with a given mesh. Here it is completed
+    // as in step-22
     dof_handler.distribute_dofs (fe);
-    DoFRenumbering::Cuthill_McKee (dof_handler);
 
-    // In Navier Stokes velocity and pressure are both what we want to solve so a block structure of size dim+1 is created:
-    // dim for velocity and 1 for pressure.
+    // In Navier Stokes velocity and pressure are both what we want to solve so a
+    // of size dim+1 is created: dim for velocity and 1 for pressure.
+
     std::vector<unsigned int> block_component(dim+1, 0);
     block_component[dim] = 1;
     DoFRenumbering::component_wise (dof_handler, block_component);
 
-    // In Newton's scheme, we first apply the boundary condition on the solution obtained from the initial step.
-    // To make sure boundary condition satisfied, zero boundary condition is used for the Newton's update term.
-    // Therefore we set up two constraints for the two situations.
+    // In Newton's scheme, we first apply the boundary condition on the solution
+    // obtained from the initial step. To make sure boundary condition satisfied,
+    // zero boundary condition is used for the Newton's update term. Therefore we
+    // set up two constraints for the two situations.
     FEValuesExtractors::Vector velocities(0);
     {
       nonzero_constraints.clear();
@@ -342,9 +348,10 @@ namespace Step57
     }
     zero_constraints.close();
 
-    // Finally, block matrices and block vectors are set up. In Newton's scheme, the solution is computed through
-    // x_new = x_old + update_term. Correspondingly two block vectors are created: we use present_solution to store
-    // the solution from last step and compute the newton_update to obtain a new solution.
+    // Finally, block matrices and block vectors are set up. In Newton's scheme,
+    // the solution is computed through x_new = x_old + update_term. Correspondingly
+    // two block vectors are created: we use present_solution to store
+    // the solution from last step and compute the newton_update for a new solution.
 
     std::vector<types::global_dof_index> dofs_per_block (2);
     DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
@@ -361,7 +368,8 @@ namespace Step57
   }
 
   // @sect4{Navier_Stokes_Newton::initialize_system}
-  // On each mesh the structure of linear system is different. This function initialize the linear system structure
+  // On each mesh the structure of linear system is different. This function initialize the
+  // linear system structure
   // before computing on a new mesh.
 
   template <int dim>
@@ -399,11 +407,11 @@ namespace Step57
   }
 
   // @sect4{Navier_Stokes_Newton::assemble_NavierStokes_system}
-  // This function builds the system matrix and right hand side that we actually work on. We can see the function contains
-  // four arguments. "initial_step" is set up for applying different constraints(nonzero for the initial step and zero for
-  // the others). "left" and "right" are flags to determine whether to assemble system matrix and right hand side vector,
-  // respectively. The last argument "alpha" is used while executing line search: it acts as the tentative weight of
-  // Newton's update term.
+  // This function builds the system matrix and right hand side that we actually
+  // work on. We can see the function contains four arguments. "initial_step" is
+  // set up for applying different constraints(nonzero for the initial step and
+  // zero for the others). "left" and "right" are flags to determine whether to
+  // assemble system matrix and right hand side vector, respectively.
 
   template <int dim>
   void Navier_Stokes_Newton<dim>::assemble_NavierStokes_system(bool initial_step,
@@ -442,18 +450,20 @@ namespace Step57
 
     std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
 
-    // For the linearized system, we create temporary storages for present velocity and its divergence and gradient, and
-    // present pressure. In practice, they are all obtained through their sharp functions at quadrature points. This work
-    // can be done by FEValues::get_function_values, FEValues::get_function_gradients and FEValues::get_function_divergences.
+    // For the linearized system, we create temporary storages for present velocity
+    // and its divergence and gradient, and present pressure. In practice, they are
+    // all obtained through their sharp functions at quadrature points. This work
+    // can be done by FEValues::get_function_values, FEValues::get_function_gradients
+    // and FEValues::get_function_divergences.
 
-    std::vector<Tensor<1, dim>>   present_velocity_values    (n_q_points);
-    std::vector<Tensor<2, dim>>   present_velocity_gradients (n_q_points);
+    std::vector<Tensor<1, dim> >  present_velocity_values    (n_q_points);
+    std::vector<Tensor<2, dim> >  present_velocity_gradients (n_q_points);
     std::vector<double>           present_velocity_divergence(n_q_points);
     std::vector<double>           present_pressure_values    (n_q_points);
 
     std::vector<double>           div_phi_u                 (dofs_per_cell);
-    std::vector<Tensor<1, dim>>   phi_u                     (dofs_per_cell);
-    std::vector<Tensor<2, dim>>   grad_phi_u                (dofs_per_cell);
+    std::vector<Tensor<1, dim> >  phi_u                     (dofs_per_cell);
+    std::vector<Tensor<2, dim> >  grad_phi_u                (dofs_per_cell);
     std::vector<double>           phi_p                     (dofs_per_cell);
 
     typename DoFHandler<dim>::active_cell_iterator
@@ -480,11 +490,12 @@ namespace Step57
         fe_values[pressure].get_function_values(evaluation_point,
                                                 present_pressure_values);
 
-        // Then we do the same as in step-22 to assemble the matrix with nonlinear term linearized by present solutions.
-        // An additional term with gamma as coefficient is the Lagrangian Argument(AL), which is assembled via grad-div
-        // stabilization. As we discussed in the introduction, the 1,1-block of system matrix should be zero. Since the mass
-        // matrix of pressure is used while creating the preconditioner, we assemble it here and then set it to be zero
-        // when solving linear system.
+        // Then we do the same as in step-22 to assemble the matrix with nonlinear term
+        // linearized by present solutions. An additional term with gamma as coefficient
+        // is the Lagrangian Argument(AL), which is assembled via grad-div stabilization.
+        // As we discussed in the introduction, the 1,1-block of system matrix should be
+        // zero. Since the mass matrix of pressure is used while creating the preconditioner,
+        // we assemble it here and then set it to be zero when solving linear system.
 
         for (unsigned int q=0; q<n_q_points; ++q)
           {
@@ -531,38 +542,19 @@ namespace Step57
 
         cell-> get_dof_indices (local_dof_indices);
 
-        if (initial_step)
+        const ConstraintMatrix &constraints_used = initial_step ? nonzero_constraints : zero_constraints;
+        if (assemble_matrix)
           {
-            if (assemble_matrix)
-              {
-                nonzero_constraints.distribute_local_to_global(local_matrix,
-                                                               local_dof_indices,
-                                                               system_matrix);
-              }
-
-            if (assemble_rhs)
-              {
-                nonzero_constraints.distribute_local_to_global(local_rhs,
-                                                               local_dof_indices,
-                                                               system_rhs);
-              }
+            constraints_used.distribute_local_to_global(local_matrix,
+                                                        local_dof_indices,
+                                                        system_matrix);
           }
 
-        else
+        if (assemble_rhs)
           {
-            if (assemble_matrix)
-              {
-                zero_constraints.distribute_local_to_global(local_matrix,
-                                                            local_dof_indices,
-                                                            system_matrix);
-              }
-
-            if (assemble_rhs)
-              {
-                zero_constraints.distribute_local_to_global(local_rhs,
-                                                            local_dof_indices,
-                                                            system_rhs);
-              }
+            constraints_used.distribute_local_to_global(local_rhs,
+                                                        local_dof_indices,
+                                                        system_rhs);
           }
 
       }
@@ -576,11 +568,25 @@ namespace Step57
 
   }
 
+  template <int dim>
+  void Navier_Stokes_Newton<dim>::assemble_matrix(bool initial_step)
+  {
+    assemble_NavierStokes_system(initial_step, true, false);
+  }
+
+  template <int dim>
+  void Navier_Stokes_Newton<dim>::assemble_rhs(bool initial_step)
+  {
+    assemble_NavierStokes_system(initial_step, false, true);
+  }
+
   // @sect4{Navier_Stokes_Newton::solve}
-  // In this function, we use FGMRES together with the block preconditioner, which is defined at the beginning of the program,
-  // to solve the linear system. What we obtain at this step is the coefficient vector. If this is the initial step, the
-  // coefficient vector gives us an initial guess of Navier Stokes equations. For the initial step, nonzero constrain is
-  // applied in order to make sure boundary condition satisfied. In the following steps, we will actually solve for the Newton's
+  // In this function, we use FGMRES together with the block preconditioner, which is
+  // defined at the beginning of the program, to solve the linear system. What we
+  // obtain at this step is the coefficient vector. If this is the initial step, the
+  // coefficient vector gives us an initial guess of Navier Stokes equations. For the
+  // initial step, nonzero constrain is applied in order to make sure boundary condition
+  // satisfied. In the following steps, we will actually solve for the Newton's
   // update term so zero constraint is distributed to the coefficient vector.
   //
   template <int dim>
@@ -596,12 +602,12 @@ namespace Step57
     pmass_preconditioner.initialize (pressure_mass_matrix,
                                      SparseILU<double>::AdditionalData());
 
-    const BlockSchurPreconditioner<SparseILU<double>>
-                                                   preconditioner (gamma,
-                                                       viscosity,
-                                                       system_matrix,
-                                                       pressure_mass_matrix,
-                                                       pmass_preconditioner);
+    const BlockSchurPreconditioner<SparseILU<double> >
+    preconditioner (gamma,
+                    viscosity,
+                    system_matrix,
+                    pressure_mass_matrix,
+                    pmass_preconditioner);
     gmres.solve (system_matrix,
                  newton_update,
                  system_rhs,
@@ -609,26 +615,21 @@ namespace Step57
 
     std::cout << " ****FGMRES steps: " << solver_control.last_step() << std::endl;
 
-    if (initial_step)
-      {
-        nonzero_constraints.distribute(newton_update);
-      }
-
-    else
-      {
-        zero_constraints.distribute(newton_update);
-      }
+    const ConstraintMatrix &constraints_used = initial_step ? nonzero_constraints : zero_constraints;
+    constraints_used.distribute(newton_update);
 
   }
 
   // @sect4{Navier_Stokes_Newton<dim>::newton_iteration}
-  // This part discribe Newton's iteration with given tolerance, bound of iteration and bound of meshes
-  // (if the bound of mesh is two, that means the mesh will be refined once). "initial" is the flag to tell us
-  // whether "setup_system" is necessary, and which part, system matrix or right hand side vector, should be assembled.
-  // If we do line search, the right hand side is already assembled while checking residual norm in last iteration.
-  // Therefore, we just assemble the system matrix at current iteration. If the number of meshes is not one, we must
-  // assemble the whole system at the beginning. And this system depends on present solution which is transfered from
-  // the solution on last mesh. The last argument "output_result" is for output.
+  // This part describes Newton's iteration with given tolerance, bound of iteration and
+  // bound of meshes (if the bound of mesh is two, that means the mesh will be refined once).
+  // "initial" is the flag to tell us whether "setup_system" is necessary, and which part,
+  // system matrix or right hand side vector, should be assembled. If we do line search,
+  // the right hand side is already assembled while checking residual norm in last iteration.
+  // Therefore, we just assemble the system matrix at current iteration. If the number of
+  // meshes is not one, we must assemble the whole system at the beginning. And this system
+  // depends on present solution which is transfered from the solution on last mesh. The last
+  // argument "output_result" is for output.
 
   template <int dim>
   void Navier_Stokes_Newton<dim>::newton_iteration(const double tolerance,
@@ -658,13 +659,14 @@ namespace Step57
                 setup_dof();
                 initialize_system();
                 evaluation_point = present_solution;
-                assemble_NavierStokes_system(first_step, true, true);
+                assemble_matrix(first_step);
+                assemble_rhs(first_step);
                 solve(first_step);
                 present_solution = newton_update;
                 nonzero_constraints.distribute(present_solution);
                 first_step = false;
                 evaluation_point = present_solution;
-                assemble_NavierStokes_system(first_step, false, true);
+                assemble_rhs(first_step);
                 current_res = system_rhs.l2_norm();
                 std::cout << "******************************" << std::endl;
                 std::cout << " The residual of initial guess is " << current_res << std::endl;
@@ -677,11 +679,12 @@ namespace Step57
                 evaluation_point = present_solution;
                 if (outer_iteration == 0)
                   {
-                    assemble_NavierStokes_system(first_step, true, true);
+                    assemble_matrix(first_step);
+                    assemble_rhs(first_step);
                   }
                 else
                   {
-                    assemble_NavierStokes_system(first_step, true, false);
+                    assemble_matrix(first_step);
                   }
                 solve(first_step);
 
@@ -690,7 +693,7 @@ namespace Step57
                   {
                     evaluation_point = present_solution;
                     evaluation_point.add(alpha, newton_update);
-                    assemble_NavierStokes_system(first_step, false, true);
+                    assemble_rhs(first_step);
                     current_res = system_rhs.l2_norm();
                     std::cout << " alpha = " << std::setw(6) << alpha << std::setw(0)
                               << " res = " << current_res << std::endl;
@@ -732,8 +735,9 @@ namespace Step57
   }
 
   // @sect4{Navier_Stokes_Newton::refine_mesh}
-  // After finding out a good initial guess on coarse mesh, we hope to decrease the error through refining the mesh.
-  // Here we do the adaptive refinement. The first part is almost the same as in step-15: we tag the cells that need
+  // After finding out a good initial guess on coarse mesh, we hope to decrease the error
+  // through refining the mesh. Here we do the adaptive refinement. The first part is
+  // almost the same as in step-15: we tag the cells that need
   // to be refined and do the refinement.
 
   template <int dim>
@@ -755,12 +759,12 @@ namespace Step57
 
 
     triangulation.prepare_coarsening_and_refinement();
-    SolutionTransfer<dim, BlockVector<double>> solution_transfer(dof_handler);
+    SolutionTransfer<dim, BlockVector<double> > solution_transfer(dof_handler);
     solution_transfer.prepare_for_coarsening_and_refinement(present_solution);
     triangulation.execute_coarsening_and_refinement ();
 
-    //  First DoF is set up and constraints are generated. Then we create a temporary vector "tmp",
-    //  whose size is according with the solution in refined mesh,
+    //  First DoF is set up and constraints are generated. Then we create a temporary
+    // vector "tmp", whose size is according with the solution in refined mesh,
     //  to temporarily store the solution transfered from last mesh.
 
     setup_dof();
@@ -781,14 +785,16 @@ namespace Step57
   }
 
   // @sect4{Navier_Stokes_Newton::search_initial_guess}
-  // As we discussed in the introduction, if the solution to Stokes equations will not be a good approximation to NSE,
-  // we have to use the solution to another NSE whose viscosity is a little larger than the original
-  // one as an initial guess. In practice we set up a series of auxiliary NSE working like a staircase:
-  // from Stokes to the original Navier Stokes. By experiment, the solution to Stokes is good enough to be the initial guess
-  // of NSE with viscosity 1000 so we let the first stair be 1000. To make sure the solution from previous NSE
-  // is cloeser enough to next NSE, the step size must be small enough or we will lose continuation.
-  // The process of searching the initial guess is actually solving series of auxiliary NSE by Newton's iteration. A for loop
-  // completes it as follow.
+  // As we discussed in the introduction, if the solution to Stokes equations will not
+  // be a good approximation to NSE, we have to use the solution to another NSE whose
+  // viscosity is a little larger than the original one as an initial guess. In practice
+  // we set up a series of auxiliary NSE working like a staircase: from Stokes to the
+  // original Navier Stokes. By experiment, the  solution to Stokes is good enough to
+  // be the initial guess of NSE with viscosity 1000 so we let  the first stair be 1000.
+  // To make sure the solution from previous NSE is cloeser enough to next NSE, the step
+  // size must be small enough or we will lose continuation. The process of searching
+  // the initial guess is actually solving series of auxiliary NSE by Newton's iteration.
+  // A for loop completes it as follow.
 
   template <int dim>
   void Navier_Stokes_Newton<dim>::search_initial_guess(double step_size)
@@ -842,8 +848,9 @@ namespace Step57
   }
 
   // @sect4{Navier_Stokes_Newton::process_solution}
-  // In our test case, we do not know the analytic solution to Navier Stokes equations, so another numerical result is
-  // considered to be the "real" solution. This function outputs horizontal velocity alone x=0.5 and y from 0 to 1.
+  // In our test case, we do not know the analytic solution to Navier Stokes equations,
+  // so another numerical result is considered to be the "real" solution. This function
+  // outputs horizontal velocity alone x=0.5 and y from 0 to 1.
   template <int dim>
   void Navier_Stokes_Newton<dim>::process_solution(unsigned int refinement)
   {
@@ -879,10 +886,12 @@ namespace Step57
 
 
   // @sect4{Navier_Stokes_Newton::run}
-  // This is the last step of this program. In this part, we generate the grid and run the other functions respectively.
-  // We first generate a square of size $8 \times 8$ which is relatively coarse mesh, and the initial guess will be
-  // determined on this mesh via the "staircase". If the viscosity is small, such as 1/7500 or 1/10000, the initial guess
-  // is expected to be close to the real solution. In that case, the mesh for initial guess should also be finer and the step
+  // This is the last step of this program. In this part, we generate the grid and run
+  // the other functions respectively. We first generate a square of size $8 \times 8$
+  // which is relatively coarse mesh, and the initial guess will be determined on this
+  // mesh via the "staircase". If the viscosity is small, such as 1/7500 or 1/10000,
+  // the initial guess is expected to be close to the real solution. In that case, the
+  // mesh for initial guess should also be finer and the step
   // size(in Navier_Stokes_Newton::search_initial_guess) should be small.
 
   template <int dim>
@@ -894,17 +903,20 @@ namespace Step57
 
     const double Reynold =  1.0/viscosity;
 
-    // When the viscosity is larger than 1/1000, the solution to Stokes equations is good enough as an initial guess. If so,
-    // we do not need to search for the initial guess via staircase. Newton's iteration can be started directly.
+    // When the viscosity is larger than 1/1000, the solution to Stokes equations is good
+    // enough as an initial guess. If so, we do not need to search for the initial guess
+    // via staircase. Newton's iteration can be started directly.
+
     if (Reynold <= 1000)
       {
         newton_iteration(1e-12, 50, 4, true, true);
       }
 
-    // If the viscosity is smaller than 1/1000, we have to first search for an initial guess via "staircase". What we
-    // should notice is the search is always on the initial mesh, that is the $8 \times 8$ mesh in this program.
-    // After the searching part, we just do the same as we did when viscosity is larger than 1/1000: run Newton's iteration,
-    // refine the mesh, transfer solutions, and again.
+    // If the viscosity is smaller than 1/1000, we have to first search for an initial
+    // guess via "staircase". What we should notice is the search is always on the
+    // initial mesh, that is the $8 \times 8$ mesh in this program. After the searching
+    // part, we just do the same as we did when viscosity is larger than 1/1000: run
+    // Newton's iteration, refine the mesh, transfer solutions, and again.
     else
       {
         std::cout << "       Searching for initial guess ... " << std::endl;

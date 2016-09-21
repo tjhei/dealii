@@ -7,7 +7,7 @@
 <h3> Navier Stokes Equations </h3>
 
 In this tutorial, we show how to solve the incompressible Navier
-Stokes equations(NSE) by Newton's method. Here we consider the viscous
+Stokes equations (NSE) by Newton's method. Here we consider the viscous
 flows to be steady and incompressible. If a domain $\Omega \subset
 \mathbb{R}^{d}$, $d=2,3$, containing piecewise smooth boundary
 $\partial \Omega$, and a force field $\textbf{f}$ are given, we seek
@@ -129,7 +129,7 @@ good initial guess if the visociy of NSE is 1/1000, and this is what we do at th
 
 However, the convective term $(\mathbf{u}\cdot\nabla)\mathbf{u}$
 will be donimant if viscosity is small, like 1/10000 in test case 2. 
-In this situation, we have to set up a series of auxiliary NSE with
+In this situation, we use continuation method to set up a series of auxiliary NSE with
 viscosity aprroaching to the one in the target NSE. Correspondingly, we set a sequence
 $\{\nu_{i}\}$ with $\nu_{n}= \nu$, and accept that the solutions to two 
 NSE with viscosity $\nu_{i}$ and $\nu_{i+1}$ are closed if $|\nu_{i} - \nu_{i+1}|$ is small. 
@@ -278,8 +278,8 @@ $f=0$. The boundary condition is
   \qquad\qquad \textrm{else}.
 @f}
 
-The error consists of the nonlinear error(from Newton's iteration) and
-the discrete error(depending on mesh size). The nonlinear part
+The error consists of the nonlinear error (from Newton's iteration) and
+the discrete error (depending on mesh size). The nonlinear part
 decreases as Newton's iteration implementing and this discrete error
 reduces with mesh refinement. In test case, the solution from the coarse
 mesh is transfered to the refined mesh as an initial guess. Therefore, the
