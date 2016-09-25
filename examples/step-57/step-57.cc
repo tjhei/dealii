@@ -289,7 +289,7 @@ namespace Step57
   Navier_Stokes_Newton<dim>::Navier_Stokes_Newton(const unsigned int degree)
     :
 
-    viscosity(1.0/10000.0),
+    viscosity(1.0/400.0),
     gamma(1.0),
     degree(degree),
     triangulation(Triangulation<dim>::maximum_smoothing),
@@ -677,15 +677,9 @@ namespace Step57
             else
               {
                 evaluation_point = present_solution;
+                assemble_matrix(first_step);
                 if (outer_iteration == 0)
-                  {
-                    assemble_matrix(first_step);
                     assemble_rhs(first_step);
-                  }
-                else
-                  {
-                    assemble_matrix(first_step);
-                  }
                 solve(first_step);
 
                 double alpha;
