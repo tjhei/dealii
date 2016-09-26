@@ -401,3 +401,26 @@ mesh and repeat Newton's iteration on the new one. From above table, we can
 see that the residual(nonlinear error) is under 1e-12 on each mesh, but the
 following picture shows us the difference among solutions on every mesh.  <img
 src="step-57_Re10000_solutions_on_meshes.svg" alt="">
+
+<a name="extensions"></a>
+<h3>Possibilities for extensions</h3>
+
+<h4>Compare to other solvers</h4>
+
+It is easy to compare the currently implemented linear solver to just using
+UMFPACK for the whole linear system. More interesting is the comparison to
+other state of the art preconditioners like PCD. It turns out that the
+preconditioner here is very competitive, as can be seen in the paper [2].
+
+<h4>3D computations</h4>
+
+The code is set up to also run in 3d. Of course the reference values are
+different, see [6] for example. High resolution computations are not doable
+with this example as is, because a direct solver for the velocity block does
+not work well in 3d.
+
+<h4>Parallelization</h4>
+
+Especially in 3D, it is necessary to go to parallel solvers and
+preconditioners. A good starting point would be step-55 using algebraic
+multigrid for the velocity block.
