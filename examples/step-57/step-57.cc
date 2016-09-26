@@ -116,8 +116,8 @@ namespace Step57
     double viscosity;
     double gamma;
     const unsigned int           degree;
-    unsigned int dof_u;
-    unsigned int dof_p;
+
+    std::vector<types::global_dof_index> dofs_per_block;
 
 
     Triangulation<dim>           triangulation;
@@ -354,10 +354,10 @@ namespace Step57
     // two block vectors are created: we use present_solution to store
     // the solution from last step and compute the newton_update for a new solution.
 
-    std::vector<types::global_dof_index> dofs_per_block (2);
+    dofs_per_block.resize (2);
     DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
-    dof_u = dofs_per_block[0];
-    dof_p = dofs_per_block[1];
+    unsigned int dof_u = dofs_per_block[0];
+    unsigned int dof_p = dofs_per_block[1];
 
     std::cout << "   Number of active cells: "
               << triangulation.n_active_cells()
@@ -369,42 +369,23 @@ namespace Step57
   }
 
   // @sect4{Navier_Stokes_Newton::initialize_system}
-  // On each mesh the structure of linear system is different. This function initialize the
-  // linear system structure
-  // before computing on a new mesh.
+  // On each mesh the structure of linear system is different. This function
+  // initialize the linear system structure before computing on a new mesh.
 
   template <int dim>
   void Navier_Stokes_Newton<dim>::initialize_system()
   {
     {
-      BlockDynamicSparsityPattern dsp (2,2);
-      dsp.block(0,0).reinit (dof_u, dof_u);
-      dsp.block(1,0).reinit (dof_p, dof_u);
-      dsp.block(0,1).reinit (dof_u, dof_p);
-      dsp.block(1,1).reinit (dof_p, dof_p);
-      dsp.collect_sizes();
-
+      BlockDynamicSparsityPattern dsp (dofs_per_block, dofs_per_block);
       DoFTools::make_sparsity_pattern (dof_handler, dsp, nonzero_constraints);
       sparsity_pattern.copy_from (dsp);
     }
 
     system_matrix.reinit (sparsity_pattern);
 
-
-    present_solution.reinit (2);
-    present_solution.block(0).reinit (dof_u);
-    present_solution.block(1).reinit (dof_p);
-    present_solution.collect_sizes ();
-
-    newton_update.reinit (2);
-    newton_update.block(0).reinit (dof_u);
-    newton_update.block(1).reinit (dof_p);
-    newton_update.collect_sizes ();
-
-    system_rhs.reinit (2);
-    system_rhs.block(0).reinit (dof_u);
-    system_rhs.block(1).reinit (dof_p);
-    system_rhs.collect_sizes ();
+    present_solution.reinit (dofs_per_block);
+    newton_update.reinit (dofs_per_block);
+    system_rhs.reinit (dofs_per_block);
   }
 
   // @sect4{Navier_Stokes_Newton::assemble_NavierStokes_system}
@@ -765,11 +746,7 @@ namespace Step57
 
     setup_dof();
 
-    BlockVector<double> tmp;
-    tmp.reinit (2);
-    tmp.block(0).reinit (dof_u);
-    tmp.block(1).reinit (dof_p);
-    tmp.collect_sizes ();
+    BlockVector<double> tmp (dofs_per_block);
 
     //  Transfer solution from coarse to fine mesh and apply boundary value constraints
     //  to the new transfered solution. Then set it to be the initial guess on the
