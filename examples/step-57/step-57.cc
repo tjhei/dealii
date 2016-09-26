@@ -608,6 +608,7 @@ namespace Step57
                     system_matrix,
                     pressure_mass_matrix,
                     pmass_preconditioner);
+
     gmres.solve (system_matrix,
                  newton_update,
                  system_rhs,
@@ -844,15 +845,12 @@ namespace Step57
   // @sect4{Navier_Stokes_Newton::process_solution}
   // In our test case, we do not know the analytic solution to Navier Stokes equations,
   // so another numerical result is considered to be the "real" solution. This function
-  // outputs horizontal velocity alone x=0.5 and y from 0 to 1.
+  // outputs the velocity components along x=0.5 and y from 0 to 1.
   template <int dim>
   void Navier_Stokes_Newton<dim>::process_solution(unsigned int refinement)
   {
     std::ostringstream filename;
-    filename << 1/viscosity
-             << "-line-"
-             << refinement
-             << ".txt";
+    filename << (1/viscosity) << "-line-" << refinement << ".txt";
 
     std::ofstream f (filename.str().c_str());
     f << "# y u_x u_y" << std::endl;
@@ -865,7 +863,6 @@ namespace Step57
 
     for (unsigned int i=0; i<=100; ++i)
       {
-
         p(dim-1) = i/100.0;
 
         Vector<double> tmp_vector(dim+1);
@@ -891,30 +888,22 @@ namespace Step57
   template <int dim>
   void Navier_Stokes_Newton<dim>::run()
   {
-
     GridGenerator::hyper_cube(triangulation);
     triangulation.refine_global(5);
 
-    const double Reynold =  1.0/viscosity;
+    const double Re =  1.0/viscosity;
 
-    // When the viscosity is larger than 1/1000, the solution to Stokes equations is good
-    // enough as an initial guess. If so, we do not need to search for the initial guess
-    // via staircase. Newton's iteration can be started directly.
-
-    if (Reynold <= 1000)
-      {
-        newton_iteration(1e-12, 50, 4, true, true);
-      }
-
-    // If the viscosity is smaller than 1/1000, we have to first search for an initial
-    // guess via "staircase". What we should notice is the search is always on the
-    // initial mesh, that is the $8 \times 8$ mesh in this program. After the searching
-    // part, we just do the same as we did when viscosity is larger than 1/1000: run
-    // Newton's iteration, refine the mesh, transfer solutions, and again.
-    else
+    // If the viscosity is smaller than 1/1000, we have to first search for an
+    // initial guess via a continuation method. What we should notice is the
+    // search is always on the initial mesh, that is the $8 \times 8$ mesh in
+    // this program. After that, we just do the same as we did when viscosity
+    // is larger than 1/1000: run Newton's iteration, refine the mesh,
+    // transfer solutions, and repeat.
+    if (Re > 1000.0)
       {
         std::cout << "       Searching for initial guess ... " << std::endl;
-        search_initial_guess(2000.0);
+        const double step_size = 2000.0;
+        search_initial_guess(step_size);
         std::cout << "*****************************************" << std::endl
                   << "       Initial guess obtained            " << std::endl
                   << "                  *                      " << std::endl
@@ -923,11 +912,19 @@ namespace Step57
                   << "                  *                      " << std::endl
                   << "*****************************************" << std::endl;
 
-
         std::cout << "       Computing solution with target viscosity ..." <<std::endl;
-        std::cout << "       Reynold = " << Reynold << std::endl;
-        viscosity = 1.0/Reynold;
+        std::cout << "       Reynold = " << Re << std::endl;
+        viscosity = 1.0/Re;
         newton_iteration(1e-12, 50, 4, false, true);
+      }
+    else
+      {
+        // When the viscosity is larger than 1/1000, the solution to Stokes
+        // equations is good enough as an initial guess. If so, we do not need
+        // to search for the initial guess using a continuation
+        // method. Newton's iteration can be started directly.
+
+        newton_iteration(1e-12, 50, 4, true, true);
       }
 
   }
