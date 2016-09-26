@@ -230,6 +230,7 @@ namespace Step57
     const BlockSparseMatrix<double> &stokes_matrix;
     const SparseMatrix<double>      &pressure_mass_matrix;
     const PreconditionerMp          &mp_preconditioner;
+    SparseDirectUMFPACK  A_direct;
   };
 
   template <class PreconditionerMp>
@@ -245,7 +246,9 @@ namespace Step57
     stokes_matrix        (S),
     pressure_mass_matrix (P),
     mp_preconditioner    (Mppreconditioner)
-  {}
+  {
+    A_direct.initialize(stokes_matrix.block(0,0));
+  }
 
   template <class PreconditionerMp>
   void
@@ -272,8 +275,6 @@ namespace Step57
       utmp+=src.block(0);
     }
 
-    SparseDirectUMFPACK  A_direct;
-    A_direct.initialize(stokes_matrix.block(0,0));
     A_direct.vmult (dst.block(0), utmp);
   }
 
