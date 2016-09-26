@@ -1,5 +1,12 @@
+<br>
 
-<i>This program was contributed by Liang Zhao and Timo Heister.</i>
+<i>This program was contributed by Liang Zhao and Timo Heister
+ 
+This material is based upon work partially supported by National Science
+Foundation grant DMS1522191 and the Computational Infrastructure in
+Geodynamics initiative (CIG), through the National Science Foundation under
+Award No. EAR-0949446 and The University of California-Davis.
+</i>
 
 <a name="Intro"></a> 
 <h1>Introduction</h1>
@@ -122,20 +129,23 @@ Now, Newton's iteration for solving the NSE is:
 For Newton's method to converge, the initial guess needs to be close
 enough to the solution, so it is crucial to find a good starting value.
 
-While the viscosity $\nu$ is large, 1/400 in test case 1, we set the
-initial guess to be the solution to the Stokes equation with viscosity
-$\nu$. For what value of $\nu$ is large, this can only be determined via numerical experiment. In this tutorial, we accept that the solution to Stokes problem is a 
-good initial guess if the visociy of NSE is 1/1000, and this is what we do at the first step while finding an initial guess if viscosity is small. 
+While the viscosity $\nu$ is large, 1/400 in test case 1, we set the initial
+guess to be the solution to the Stokes equation with viscosity $\nu$. For what
+value of $\nu$ is large, this can only be determined via numerical
+experiment. In this tutorial, we accept that the solution to Stokes problem is
+a good initial guess if the visociy of NSE is 1/1000, and this is what we do
+at the first step while finding an initial guess if viscosity is small.
 
-However, the convective term $(\mathbf{u}\cdot\nabla)\mathbf{u}$
-will be donimant if viscosity is small, like 1/10000 in test case 2. 
-In this situation, we use continuation method to set up a series of auxiliary NSE with
-viscosity aprroaching to the one in the target NSE. Correspondingly, we set a sequence
-$\{\nu_{i}\}$ with $\nu_{n}= \nu$, and accept that the solutions to two 
-NSE with viscosity $\nu_{i}$ and $\nu_{i+1}$ are closed if $|\nu_{i} - \nu_{i+1}|$ is small. 
-Then we use the solution to the NSE with viscosity $\nu_{i}$ as the initial guess of the NSE
-with $\nu_{i+1}$. It is like a staircase from Stokes equations to the
-NSE we want to solve. 
+
+However, the convective term $(\mathbf{u}\cdot\nabla)\mathbf{u}$ will be
+donimant if viscosity is small, like 1/10000 in test case 2.  In this
+situation, we use continuation method to set up a series of auxiliary NSE with
+viscosity aprroaching to the one in the target NSE. Correspondingly, we set a
+sequence $\{\nu_{i}\}$ with $\nu_{n}= \nu$, and accept that the solutions to
+two NSE with viscosity $\nu_{i}$ and $\nu_{i+1}$ are closed if $|\nu_{i} -
+\nu_{i+1}|$ is small.  Then we use the solution to the NSE with viscosity
+$\nu_{i}$ as the initial guess of the NSE with $\nu_{i+1}$. It is like a
+staircase from Stokes equations to the NSE we want to solve.
 
 That is we first solve a Stokes problem
 
@@ -265,9 +275,9 @@ M_p^{-1}B)_{ij}$. See [2].
 
 <h3> Test Case </h3>
 
-Here we use Lid driven cavity flow as our test case, see[3] for details. Since we do not
-have reference solution for this test problem, the 2-norm of residual,
-$\|b-Gx\|_2$ will be used to check convergence. The domain of Navier
+Here we use Lid driven cavity flow as our test case, see [3] for details. Since
+we do not have reference solution for this test problem, the 2-norm of
+residual, $\|b-Gx\|_2$ will be used to check convergence. The domain of Navier
 Stokes equations is defined on the unit square and the right hand side
 $f=0$. The boundary condition is
 
@@ -312,25 +322,3 @@ The cavity reference values for RE=400 and RE=10000 are from [4] and [5], respec
   <li>  Numerical solutions of 2-D steady incompressible driven cavity flow at high Reynolds numbers, E.Erturk, T.C.Corke and C.Gokcol
 
 </ol>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

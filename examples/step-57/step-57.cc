@@ -394,7 +394,6 @@ namespace Step57
   // set up for applying different constraints(nonzero for the initial step and
   // zero for the others). "left" and "right" are flags to determine whether to
   // assemble system matrix and right hand side vector, respectively.
-
   template <int dim>
   void Navier_Stokes_Newton<dim>::assemble_NavierStokes_system(bool initial_step,
       bool assemble_matrix,
@@ -575,10 +574,7 @@ namespace Step57
   void Navier_Stokes_Newton<dim>::solve (bool initial_step)
   {
     SolverControl solver_control (system_matrix.m(),1e-4*system_rhs.l2_norm(), true);
-
-    SolverFGMRES<BlockVector<double> >::AdditionalData gmres_data;
-
-    SolverFGMRES<BlockVector<double> > gmres(solver_control,gmres_data);
+    SolverFGMRES<BlockVector<double> > gmres(solver_control);
 
     SparseILU<double> pmass_preconditioner;
     pmass_preconditioner.initialize (pressure_mass_matrix,
@@ -890,8 +886,7 @@ namespace Step57
                   << "                  *                      " << std::endl
                   << "*****************************************" << std::endl;
 
-        std::cout << "       Computing solution with target viscosity ..." <<std::endl;
-        std::cout << "       Reynold = " << Re << std::endl;
+        std::cout << "       Computing solution with target Re = " << Re << std::endl;
         viscosity = 1.0/Re;
         newton_iteration(1e-12, 50, 4, false, true);
       }
@@ -918,12 +913,3 @@ int main()
   Navier_Stokes_Newton<2> flow(1);
   flow.run();
 }
-
-
-
-
-
-
-
-
-

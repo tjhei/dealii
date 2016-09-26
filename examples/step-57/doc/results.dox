@@ -1,10 +1,15 @@
 <h1>Results</h1>
 
-Now we use the method we discussed above to solve Navier Stokes equations with viscosity 1/400 and 1/10000. 
+Now we use the method we discussed above to solve Navier Stokes equations with
+viscosity 1/400 and 1/10000.
 
 <h3> Test case 1: Re=400 </h3>
 
-In the first test case the viscosity is set to be 1/400. As we disccussed in introduction, the initial guess is the soluton to corresponding Stokes problem. In the following table, the residuals at each Newton's iteration on every mesh is shown. By the data in the table, it shows the convergence rate of Newton's iteration is quadratic. 
+In the first test case the viscosity is set to be 1/400. As we disccussed in
+introduction, the initial guess is the soluton to corresponding Stokes
+problem. In the following table, the residuals at each Newton's iteration on
+every mesh is shown. By the data in the table, it shows the convergence rate
+of Newton's iteration is quadratic.
 
 <table align="center" border="1">
   
@@ -144,7 +149,10 @@ In the first test case the viscosity is set to be 1/400. As we disccussed in int
   </tr>
 </table>
 
-The following is the generated grids during solving. For this case of Re=400, the initial guess is obtianed by solving Stokes on $8 \times 8$ mesh, and the mesh is refined adaptively. Between meshs, the solution from coarse is transfered to fine mesh as an initial guess.  
+The following is the generated grids during solving. For this case of Re=400,
+the initial guess is obtianed by solving Stokes on $8 \times 8$ mesh, and the
+mesh is refined adaptively. Between meshs, the solution from coarse is
+transfered to fine mesh as an initial guess.
 
 <TABLE WIDTH="60%" ALIGN="center">
   <tr>
@@ -174,17 +182,36 @@ The following is the generated grids during solving. For this case of Re=400, th
 
 This picture is the graphical result of lid-drive cavity with Re=400.
 <img src="step-57_Re400_Streamline.png" alt="">
-Then the solution by Newton's iteration is compared with a reference solution from High-Re Solutions for Incompressible Flow Using the Navier-Stokes Equations and a Multigrid Method, U. Ghia, K.N.Ghia and C.T.Shin. 
+
+Then the solution by Newton's iteration is compared with a reference solution
+from High-Re Solutions for Incompressible Flow Using the Navier-Stokes
+Equations and a Multigrid Method, U. Ghia, K.N.Ghia and C.T.Shin.
+
 <img src="step-57_Re400_compare.svg" alt="">
  
 <h3> Test case 1: Re=10000 </h3>
 
-Newton's iteration requires a good initial guess. However, the nonlinear term gets dominant when Reynold number is large, so that the solution to Stokes equations may be far away from the exact solution. If the Stokes solution acts as the initial guess, the convergence will be lost. The following picture shows that the residual can not get lower as iteration going on. 
+Newton's iteration requires a good initial guess. However, the nonlinear term
+gets dominant when Reynold number is large, so that the solution to Stokes
+equations may be far away from the exact solution. If the Stokes solution acts
+as the initial guess, the convergence will be lost. The following picture
+shows that the residual can not get lower as iteration going on.
+
 <img src="step-57_Re10000_loss_convergence.svg" alt="">
-The initial guess, therefore, have to be obtained via a staircase which has been discuessed in introduction. Here the step size is 2000 and the initial mesh is of size $32 \times 32$. After obtaining an initial guess, the mesh is refined as in previous test case. The following picture shows that at each stair Newton's iteration has quadratic convergence and the convergence rate is also quadratic on every refined mesh. 60 steps of Newton's iterations are excuted for solving this test case. 
+
+The initial guess, therefore, have to be obtained via a staircase which has
+been discuessed in introduction. Here the step size is 2000 and the initial
+mesh is of size $32 \times 32$. After obtaining an initial guess, the mesh is
+refined as in previous test case. The following picture shows that at each
+stair Newton's iteration has quadratic convergence and the convergence rate is
+also quadratic on every refined mesh. 60 steps of Newton's iterations are
+excuted for solving this test case.
+
 <img src="step-57_Re10000_get_convergence.svg" alt="">
 
-Also we show the residual from each step of Newton's iteration on every mesh. The quadratic convergence is shown clearly in the table.
+Also we show the residual from each step of Newton's iteration on every
+mesh. The quadratic convergence is shown clearly in the table.
+
 <table align="center" border="1">
   
   <tr>
@@ -367,10 +394,10 @@ We compare the solution by Newtion's method with reference solution which can be
 The following picture presents the graphical result.
 <img src="step-57_Re10000_Streamline.png" alt="">
 
-Furthermore, we should notice that the error consists of the nonlinear error, which can be minished by Newton's iteration, and the discrete error. The discrete error depends on the mesh size. That is why we have to refine the mesh and repeat Newton's iteration on the new one. From above table, we can see that the residual(nonlinear error) is under 1e-12 on each mesh, but the following picture shows us the difference among solutions on every mesh. 
-<img src="step-57_Re10000_solutions_on_meshes.svg" alt="">
-
-
-
-
-
+Furthermore, we should notice that the error consists of the nonlinear error,
+which can be minished by Newton's iteration, and the discrete error. The
+discrete error depends on the mesh size. That is why we have to refine the
+mesh and repeat Newton's iteration on the new one. From above table, we can
+see that the residual(nonlinear error) is under 1e-12 on each mesh, but the
+following picture shows us the difference among solutions on every mesh.  <img
+src="step-57_Re10000_solutions_on_meshes.svg" alt="">
