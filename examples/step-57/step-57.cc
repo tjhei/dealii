@@ -679,7 +679,7 @@ namespace Step57
                 evaluation_point = present_solution;
                 assemble_matrix(first_step);
                 if (outer_iteration == 0)
-                    assemble_rhs(first_step);
+                  assemble_rhs(first_step);
                 solve(first_step);
 
                 double alpha;
