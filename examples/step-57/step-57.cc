@@ -173,7 +173,7 @@ namespace Step57
             ExcIndexRange (component, 0, this->n_components));
     if (component == 0)
       {
-        if (p[1]>1.0-1e-5)
+        if (p[dim-1] > 1.0-1e-5)
           return 1.0;
         else
           return 0.0;
