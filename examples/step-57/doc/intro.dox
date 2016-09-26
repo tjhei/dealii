@@ -320,5 +320,5 @@ The cavity reference values for RE=400 and RE=10000 are from [4] and [5], respec
   <li>  http://www.cfd-online.com/Wiki/Lid-driven_cavity_problem
   <li>  High-Re solution for incompreesible flow using the Navier-Stokes Equations and a Multigrid Method, U.Ghia, K.N.Ghia, and C.T.Shin
   <li>  Numerical solutions of 2-D steady incompressible driven cavity flow at high Reynolds numbers, E.Erturk, T.C.Corke and C.Gokcol
-
+  <li> Implicit Weighted ENO Schemes for the Three-Dimensional Incompressible Navier-Stokes Equations, Yang et al, 1998
 </ol>
