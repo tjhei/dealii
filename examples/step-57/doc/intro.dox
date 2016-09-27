@@ -16,7 +16,7 @@ Award No. EAR-0949446 and The University of California-Davis.
 In this tutorial, we show how to solve the incompressible Navier
 Stokes equations (NSE) by Newton's method. Here we consider the viscous
 flows to be steady and incompressible. If a domain $\Omega \subset
-\mathbb{R}^{d}$, $d=2,3$, containing piecewise smooth boundary
+\mathbb{R}^{d}$, $d=2,3$, with a piecewise smooth boundary
 $\partial \Omega$, and a force field $\textbf{f}$ are given, we seek
 a velocity field $\textbf{u}$ and a pressure field $\textbf{p}$
 satisfying
@@ -26,13 +26,14 @@ satisfying
 - \nabla \cdot \textbf{u} &=& 0
 @f}
 
-Different from the Stokes equations, as discussed in step-22 the NSE are a
+Different from the Stokes equations as discussed in step-22 the NSE are a
 nonlinear system because of the convective term $(\textbf{u} \cdot
-\nabla)\textbf{u}$. The first step to compute its numerical solution
+\nabla)\textbf{u}$. The first step to compute a numerical solution
 is linearization of NSE and this will be done using Newton's method. A
 time-dependent problem is discussed in step-35, which linearize NSE
-using the solution from last time step. Therefore, no nonlinear solve is needed for
-semi-implicit discretization for time-dependent problems
+using the solution from last time step. Therefore, for a semi-implicit
+discretization of the time-dependent NSE like the one in step-35 no nonlinear 
+solve is necessary.
 <h3> Linearization of Navier Stokes Equations </h3>
 
 Moving the right hand side terms to the left, we rewrite the NSE as
@@ -48,14 +49,14 @@ F(\mathbf{u}, p) = \left(
 
 $F(\textbf{u}, p)$ is a nonlinear function whose root is 
 the solution to the NSE. Assuming the initial guess is good enough to
-guarantee the convergence of Newton's iteraton and denoting
+guarantee the convergence of Newton's iteration and denoting
 $\textbf{x} = (\textbf{u}, p)$, Newton's iteration on a vector field
 can be defined as
 @f{eqnarray*} \textbf{x}^{k+1} = \textbf{x}^{k} -
 (\nabla F(\textbf{x}^{k}))^{-1} F(\textbf{x}^{k}),
 @f}
 where
-$\textbf{x}^{k+1}$ is the approximation solution in step k+1 and
+$\textbf{x}^{k+1}$ is the approximate solution in step k+1 and
 $\textbf{x}^{k}$ represents the solution from the last step, and $\nabla
 F(\textbf{x}^{k})$ is the Jacobian matrix evaluated at
 $\textbf{x}^{k}$.
@@ -109,8 +110,8 @@ where $\textbf{g} =\textbf{f}+\nu \Delta\textbf{u}^k -(\textbf{u}^k
 \cdot \nabla)\textbf{u}^k -\nabla p^k$, $\textbf{f}$ is the right hand
 side of the NSE (the body force), $\textbf{u}^k$ and $p^k$ are the solutions from the
 previous iteration. In this linear system, the only unknowns are the
-update terms: $\delta \textbf{u}^{k}$ and $\delta p^{k}$, then the
-strategy we use in step-22 can be used to solve it. The weak form is
+update terms $\delta \textbf{u}^{k}$ and $\delta p^{k}$, then the
+strategy we use in step-22 can solve it. The weak form is
 derived like it is done in step-22.
 
 Now, Newton's iteration for solving the NSE is:
@@ -130,19 +131,19 @@ For Newton's method to converge, the initial guess needs to be close
 enough to the solution, so it is crucial to find a good starting value.
 
 While the viscosity $\nu$ is large, 1/400 in test case 1, we set the initial
-guess to be the solution to the Stokes equation with viscosity $\nu$. For what
+guess to be the solution to the Stokes equation with viscosity $\nu$. As to what
 value of $\nu$ is large, this can only be determined via numerical
 experiment. In this tutorial, we accept that the solution to Stokes problem is
-a good initial guess if the visociy of NSE is 1/1000, and this is what we do
+a good initial guess if the viscosity of NSE is 1/1000, and this is what we do
 at the first step while finding an initial guess if viscosity is small.
 
 
 However, the convective term $(\mathbf{u}\cdot\nabla)\mathbf{u}$ will be
-donimant if viscosity is small, like 1/10000 in test case 2.  In this
-situation, we use continuation method to set up a series of auxiliary NSE with
-viscosity aprroaching to the one in the target NSE. Correspondingly, we set a
+dominant if viscosity is small, like 1/10000 in test case 2.  In this
+situation, we use a continuation method to set up a series of auxiliary NSE with
+viscosity approaching to the one in the target NSE. Correspondingly, we set a
 sequence $\{\nu_{i}\}$ with $\nu_{n}= \nu$, and accept that the solutions to
-two NSE with viscosity $\nu_{i}$ and $\nu_{i+1}$ are closed if $|\nu_{i} -
+two NSE with viscosity $\nu_{i}$ and $\nu_{i+1}$ are close if $|\nu_{i} -
 \nu_{i+1}|$ is small.  Then we use the solution to the NSE with viscosity
 $\nu_{i}$ as the initial guess of the NSE with $\nu_{i+1}$. It is like a
 staircase from Stokes equations to the NSE we want to solve.
@@ -243,15 +244,14 @@ P^{-1} = \left(\begin{array}{cc} \tilde{A} & B^T \\
 @f}
 
 with $\tilde{A} = A + \gamma B^TW^{-1}B$ and $\tilde{S}$ is the
-corresponding Schur complement $\tilde{S} = B^T \tilde{A}^{-1} B$. we
+corresponding Schur complement $\tilde{S} = B^T \tilde{A}^{-1} B$. We
 let $W = M_p$ where $M_p$ is the pressure mass matrix, then
 $\tilde{S}^{-1}$ can be approximated by
 
 @f{eqnarray*}
 \tilde{S}^{-1} \approx -(\nu+\gamma)M_p^{-1}.
 @f}
-See "An Augmented Lagrangian-Based Approach to the Ossen Problem,
-M.Benzi and M.Olshanskii" for details.
+See [1] for details.
 
 We decompose $P^{-1}$ as
 
@@ -263,22 +263,21 @@ P^{-1} =
 @f}
 
 Here two inexact solvers will be needed for $\tilde{A}^{-1}$ and
-$\tilde{S}^{-1}$. See [1]. Since the pressure mass
+$\tilde{S}^{-1}$, see [1]. Since the pressure mass
 matrix is symmetric, the solver for $\tilde{S}^{-1}$ is not diffcult
 and we can use CG with ILU as preconditionerr. We use the direct
 solver UMFPACK for $\tilde{A}^{-1}$. The remaining is a sparse
 mastrix-vector product with $B^T$. Further more, the augmented
-lagrangian term will be assembled through Grad-Div stabilization:
+Lagrangian term will be assembled through Grad-Div stabilization:
 $(\nabla \cdot \phi _{j}, \nabla \cdot \phi _{i}) \approx (B^T
-M_p^{-1}B)_{ij}$. See [2].
-
+M_p^{-1}B)_{ij}$, see [2].
 
 <h3> Test Case </h3>
 
 Here we use Lid driven cavity flow as our test case, see [3] for details. Since
-we do not have reference solution for this test problem, the 2-norm of
-residual, $\|b-Gx\|_2$ will be used to check convergence. The domain of Navier
-Stokes equations is defined on the unit square and the right hand side
+we do not a have reference solution for this test problem, the 2-norm of
+residual, $\|b-Gx\|_2$ will be used to check convergence. The computational domain
+ is the unit square and the right hand side
 $f=0$. The boundary condition is
 
 @f{eqnarray*} 

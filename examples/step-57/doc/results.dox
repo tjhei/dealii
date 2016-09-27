@@ -151,8 +151,8 @@ of Newton's iteration is quadratic.
 
 The following is the generated grids during solving. For this case of Re=400,
 the initial guess is obtianed by solving Stokes on $8 \times 8$ mesh, and the
-mesh is refined adaptively. Between meshs, the solution from coarse is
-transfered to fine mesh as an initial guess.
+mesh is refined adaptively. Between meshes, the solution from coarse is
+interpolated to fine mesh as an initial guess.
 
 <TABLE WIDTH="60%" ALIGN="center">
   <tr>
@@ -184,8 +184,7 @@ This picture is the graphical result of lid-drive cavity with Re=400.
 <img src="step-57_Re400_Streamline.png" alt="">
 
 Then the solution by Newton's iteration is compared with a reference solution
-from High-Re Solutions for Incompressible Flow Using the Navier-Stokes
-Equations and a Multigrid Method, U. Ghia, K.N.Ghia and C.T.Shin.
+from [4].
 
 <img src="step-57-compare-Re400.svg" alt="">
  
@@ -195,7 +194,8 @@ Newton's iteration requires a good initial guess. However, the nonlinear term
 gets dominant when Reynold number is large, so that the solution to Stokes
 equations may be far away from the exact solution. If the Stokes solution acts
 as the initial guess, the convergence will be lost. The following picture
-shows that the residual can not get lower as iteration going on.
+shows that the nonlinear iteration gets stuck and the residual no longer decreases 
+with further iterations.
 
 <img src="step-57_Re10000_loss_convergence.svg" alt="">
 
@@ -389,18 +389,20 @@ The generated grids during solving is shown as below.
     </td>
   </tr>
 </table>
-We compare the solution by Newtion's method with reference solution which can be found in Numerical Solutions of 2-D Steady incompressible driven cavity flow at high Reynolds numbers, E.Erturk, T.C.Corke and C.Gokcol.
+We compare the solution by Newtion's method with reference solution from [5].
 <img src="step-57-compare-Re10000.svg" alt="">
 The following picture presents the graphical result.
 <img src="step-57_Re10000_Streamline.png" alt="">
 
 Furthermore, we should notice that the error consists of the nonlinear error,
-which can be minished by Newton's iteration, and the discrete error. The
+which decreasing as Newton's iteration going on, and the discrete error. The
 discrete error depends on the mesh size. That is why we have to refine the
-mesh and repeat Newton's iteration on the new one. From above table, we can
-see that the residual(nonlinear error) is under 1e-12 on each mesh, but the
-following picture shows us the difference among solutions on every mesh.  <img
-src="step-57-converge-Re10000.svg" alt="">
+mesh and repeat Newton's iteration on the next finer mesh. From above table, we can
+see that the residual (nonlinear error) is below 1e-12 on each mesh, but the
+following picture shows us the difference between solutions on subsequently finer 
+meshes.
+
+<img src="step-57-converge-Re10000.svg" alt="">
 
 <a name="extensions"></a>
 <h3>Possibilities for extensions</h3>
