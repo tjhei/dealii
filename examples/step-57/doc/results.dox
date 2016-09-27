@@ -187,7 +187,7 @@ Then the solution by Newton's iteration is compared with a reference solution
 from High-Re Solutions for Incompressible Flow Using the Navier-Stokes
 Equations and a Multigrid Method, U. Ghia, K.N.Ghia and C.T.Shin.
 
-<img src="step-57_Re400_compare.svg" alt="">
+<img src="step-57-compare-Re400.svg" alt="">
  
 <h3> Test case 1: Re=10000 </h3>
 
@@ -390,7 +390,7 @@ The generated grids during solving is shown as below.
   </tr>
 </table>
 We compare the solution by Newtion's method with reference solution which can be found in Numerical Solutions of 2-D Steady incompressible driven cavity flow at high Reynolds numbers, E.Erturk, T.C.Corke and C.Gokcol.
-<img src="step-57_Re10000_compare.svg" alt="">
+<img src="step-57-compare-Re10000.svg" alt="">
 The following picture presents the graphical result.
 <img src="step-57_Re10000_Streamline.png" alt="">
 
@@ -400,7 +400,7 @@ discrete error depends on the mesh size. That is why we have to refine the
 mesh and repeat Newton's iteration on the new one. From above table, we can
 see that the residual(nonlinear error) is under 1e-12 on each mesh, but the
 following picture shows us the difference among solutions on every mesh.  <img
-src="step-57_Re10000_solutions_on_meshes.svg" alt="">
+src="step-57-converge-Re10000.svg" alt="">
 
 <a name="extensions"></a>
 <h3>Possibilities for extensions</h3>
