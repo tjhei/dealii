@@ -24,6 +24,7 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/logstream.h>
 #include <deal.II/base/utilities.h>
+#include <deal.II/base/tensor.h>
 
 #include <deal.II/lac/block_vector.h>
 #include <deal.II/lac/full_matrix.h>
@@ -290,7 +291,7 @@ namespace Step57
   Navier_Stokes_Newton<dim>::Navier_Stokes_Newton(const unsigned int degree)
     :
 
-    viscosity(1.0/400.0),
+    viscosity(1.0/10000.0),
     gamma(1.0),
     degree(degree),
     triangulation(Triangulation<dim>::maximum_smoothing),
@@ -439,7 +440,6 @@ namespace Step57
 
     std::vector<Tensor<1, dim> >  present_velocity_values    (n_q_points);
     std::vector<Tensor<2, dim> >  present_velocity_gradients (n_q_points);
-    std::vector<double>           present_velocity_divergence(n_q_points);
     std::vector<double>           present_pressure_values    (n_q_points);
 
     std::vector<double>           div_phi_u                 (dofs_per_cell);
@@ -464,9 +464,6 @@ namespace Step57
 
         fe_values[velocities].get_function_gradients(evaluation_point,
                                                      present_velocity_gradients);
-
-        fe_values[velocities].get_function_divergences(evaluation_point,
-                                                       present_velocity_divergence);
 
         fe_values[pressure].get_function_values(evaluation_point,
                                                 present_pressure_values);
@@ -508,13 +505,14 @@ namespace Step57
 
                 if (assemble_rhs)
                   {
+                	double present_velocity_divergence =  trace(present_velocity_gradients[q]);
                     local_rhs(i) += (
                                       -viscosity*scalar_product(present_velocity_gradients[q],grad_phi_u[i]) // -(gradU_old, gradV_u)
                                       -present_velocity_gradients[q]*present_velocity_values[q]*phi_u[i]
                                       // -(U_old*gradU_old, V_u)
                                       +present_pressure_values[q]*div_phi_u[i] // +(P_old, div_V_u)
-                                      +present_velocity_divergence[q]*phi_p[i]   // +(div_U_oid, V_p)
-                                      -gamma*present_velocity_divergence[q]*div_phi_u[i]
+                                      +present_velocity_divergence*phi_p[i]   // +(div_U_oid, V_p)
+                                      -gamma*present_velocity_divergence*div_phi_u[i]
                                     )*fe_values.JxW(q);
                   }
 
