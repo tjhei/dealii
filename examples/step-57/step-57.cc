@@ -505,7 +505,7 @@ namespace Step57
 
                 if (assemble_rhs)
                   {
-                	double present_velocity_divergence =  trace(present_velocity_gradients[q]);
+                    double present_velocity_divergence =  trace(present_velocity_gradients[q]);
                     local_rhs(i) += (
                                       -viscosity*scalar_product(present_velocity_gradients[q],grad_phi_u[i]) // -(gradU_old, gradV_u)
                                       -present_velocity_gradients[q]*present_velocity_values[q]*phi_u[i]
