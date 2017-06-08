@@ -250,7 +250,8 @@ build_one_patch
           for (unsigned int dataset=0; dataset<this->cell_data.size(); ++dataset)
             {
               const double value
-                = this->cell_data[dataset]->get_cell_data_value (cell_and_index->second);
+                = this->cell_data[dataset]->get_cell_data_value (cell_and_index->first->level(),
+                                                                 cell_and_index->second);
               for (unsigned int q=0; q<n_q_points; ++q)
                 patch.data(offset+dataset,q) = value;
             }
@@ -321,27 +322,11 @@ void DataOut<dim,DoFHandlerType>::build_patches (const unsigned int n_subdivisio
 }
 
 
-
 template <int dim, typename DoFHandlerType>
-void DataOut<dim,DoFHandlerType>::build_patches
-(const Mapping<DoFHandlerType::dimension,DoFHandlerType::space_dimension> &mapping,
- const unsigned int                                                        n_subdivisions_,
- const CurvedCellRegion                                                    curved_region)
+void DataOut<dim,DoFHandlerType>::
+compute_index_maps (std::vector<std::vector<unsigned int> > &cell_to_patch_index_map,
+                    std::vector<std::pair<cell_iterator, unsigned int> > &all_cells) const
 {
-  // Check consistency of redundant template parameter
-  Assert (dim==DoFHandlerType::dimension, ExcDimensionMismatch(dim, DoFHandlerType::dimension));
-
-  Assert (this->triangulation != nullptr,
-          Exceptions::DataOut::ExcNoTriangulationSelected());
-
-  const unsigned int n_subdivisions = (n_subdivisions_ != 0)
-                                      ? n_subdivisions_
-                                      : this->default_subdivisions;
-  Assert (n_subdivisions >= 1,
-          Exceptions::DataOut::ExcInvalidNumberOfSubdivisions(n_subdivisions));
-
-  this->validate_dataset_names();
-
   // First count the cells we want to create patches of. Also fill the object
   // that maps the cell indices to the patch numbers, as this will be needed
   // for generation of neighborship information.
@@ -354,8 +339,6 @@ void DataOut<dim,DoFHandlerType>::build_patches
   //
   // It turns out that we create one patch for each selected cell, so patch_index==cell_index.
   //
-  // will be cell_to_patch_index_map[cell->level][cell->index] = patch_index
-  std::vector<std::vector<unsigned int> > cell_to_patch_index_map;
   cell_to_patch_index_map.resize (this->triangulation->n_levels());
   for (unsigned int l=0; l<this->triangulation->n_levels(); ++l)
     {
@@ -372,8 +355,6 @@ void DataOut<dim,DoFHandlerType>::build_patches
                                          DoFHandlerType::space_dimension>::no_neighbor);
     }
 
-  // will be all_cells[patch_index] = pair(cell, active_index)
-  std::vector<std::pair<cell_iterator, unsigned int> > all_cells;
   {
     // important: we need to compute the active_index of the cell in the range
     // 0..n_active_cells() because this is where we need to look up cell
@@ -402,6 +383,7 @@ void DataOut<dim,DoFHandlerType>::build_patches
         Assert (static_cast<unsigned int>(cell->index()) <
                 cell_to_patch_index_map[cell->level()].size(),
                 ExcInternalError());
+
         Assert (active_index < this->triangulation->n_active_cells(),
                 ExcInternalError());
         cell_to_patch_index_map[cell->level()][cell->index()] = all_cells.size();
@@ -409,6 +391,36 @@ void DataOut<dim,DoFHandlerType>::build_patches
         all_cells.emplace_back (cell, active_index);
       }
   }
+
+}
+
+
+template <int dim, typename DoFHandlerType>
+void DataOut<dim,DoFHandlerType>::build_patches
+(const Mapping<DoFHandlerType::dimension,DoFHandlerType::space_dimension> &mapping,
+ const unsigned int                                                        n_subdivisions_,
+ const CurvedCellRegion                                                    curved_region)
+{
+  // Check consistency of redundant template parameter
+  Assert (dim==DoFHandlerType::dimension, ExcDimensionMismatch(dim, DoFHandlerType::dimension));
+
+  Assert (this->triangulation != nullptr,
+          Exceptions::DataOut::ExcNoTriangulationSelected());
+
+  const unsigned int n_subdivisions = (n_subdivisions_ != 0)
+                                      ? n_subdivisions_
+                                      : this->default_subdivisions;
+  Assert (n_subdivisions >= 1,
+          Exceptions::DataOut::ExcInvalidNumberOfSubdivisions(n_subdivisions));
+
+  this->validate_dataset_names();
+
+
+  // will be cell_to_patch_index_map[cell->level][cell->index] = patch_index
+  std::vector<std::vector<unsigned int> > cell_to_patch_index_map;
+  // will be all_cells[patch_index] = pair(cell, cell_data_index)
+  std::vector<std::pair<cell_iterator, unsigned int> > all_cells;
+  this->compute_index_maps(cell_to_patch_index_map, all_cells);
 
   this->patches.clear ();
   this->patches.resize(all_cells.size());
@@ -480,7 +492,7 @@ void DataOut<dim,DoFHandlerType>::build_patches
 
 template <int dim, typename DoFHandlerType>
 typename DataOut<dim,DoFHandlerType>::cell_iterator
-DataOut<dim,DoFHandlerType>::first_cell ()
+DataOut<dim,DoFHandlerType>::first_cell () const
 {
   return this->triangulation->begin_active ();
 }
@@ -490,7 +502,7 @@ DataOut<dim,DoFHandlerType>::first_cell ()
 template <int dim, typename DoFHandlerType>
 typename DataOut<dim,DoFHandlerType>::cell_iterator
 DataOut<dim,DoFHandlerType>::next_cell
-(const typename DataOut<dim,DoFHandlerType>::cell_iterator &cell)
+(const typename DataOut<dim,DoFHandlerType>::cell_iterator &cell) const
 {
   // convert the iterator to an active_iterator and advance this to the next
   // active cell
@@ -504,7 +516,7 @@ DataOut<dim,DoFHandlerType>::next_cell
 
 template <int dim, typename DoFHandlerType>
 typename DataOut<dim,DoFHandlerType>::cell_iterator
-DataOut<dim,DoFHandlerType>::first_locally_owned_cell ()
+DataOut<dim,DoFHandlerType>::first_locally_owned_cell () const
 {
   typename DataOut<dim,DoFHandlerType>::cell_iterator
   cell = first_cell();
@@ -524,7 +536,7 @@ DataOut<dim,DoFHandlerType>::first_locally_owned_cell ()
 template <int dim, typename DoFHandlerType>
 typename DataOut<dim,DoFHandlerType>::cell_iterator
 DataOut<dim,DoFHandlerType>::next_locally_owned_cell
-(const typename DataOut<dim,DoFHandlerType>::cell_iterator &old_cell)
+(const typename DataOut<dim,DoFHandlerType>::cell_iterator &old_cell) const
 {
   typename DataOut<dim,DoFHandlerType>::cell_iterator
   cell = next_cell(old_cell);

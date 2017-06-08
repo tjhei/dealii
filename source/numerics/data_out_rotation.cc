@@ -367,7 +367,7 @@ build_one_patch (const cell_iterator                                            
                 = std::distance (this->triangulation->begin_active(),
                                  typename Triangulation<dimension,space_dimension>::active_cell_iterator(*cell));
               const double value
-                = this->cell_data[dataset]->get_cell_data_value (cell_number);
+                = this->cell_data[dataset]->get_cell_data_value ((*cell)->level(), cell_number);
               switch (dimension)
                 {
                 case 1:

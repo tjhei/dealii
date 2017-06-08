@@ -31,6 +31,8 @@
 #include <deal.II/numerics/data_postprocessor.h>
 #include <deal.II/numerics/data_component_interpretation.h>
 
+#include <deal.II/multigrid/multigrid.h>
+
 #include <memory>
 
 DEAL_II_NAMESPACE_OPEN
@@ -193,7 +195,7 @@ namespace internal
        */
       virtual
       double
-      get_cell_data_value (const unsigned int cell_number) const = 0;
+      get_cell_data_value (const unsigned int cell_level, const unsigned int cell_index) const = 0;
 
       /**
        * Given a FEValuesBase object, extract the values on the present cell
@@ -691,6 +693,16 @@ public:
                         const std::vector<DataComponentInterpretation::DataComponentInterpretation> &data_component_interpretation
                         = std::vector<DataComponentInterpretation::DataComponentInterpretation>());
 
+  template <class VectorType>
+  void add_data_vector (const MGLevelObject<VectorType>               &data,
+                        const std::string &name);
+
+  template <class VectorType>
+  void add_data_vector (const DoFHandlerType           &dof_handler,
+                        const MGLevelObject<VectorType>               &data,
+                        const std::vector<std::string> &names,
+                        const std::vector<DataComponentInterpretation::DataComponentInterpretation> &data_component_interpretation
+                        = std::vector<DataComponentInterpretation::DataComponentInterpretation>());
 
   /**
    * This function is an abbreviation of the function above with only a scalar

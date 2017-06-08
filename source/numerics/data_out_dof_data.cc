@@ -40,6 +40,8 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/fe/mapping_q1.h>
 
+#include <deal.II/multigrid/multigrid.h>
+
 #include <sstream>
 
 DEAL_II_NAMESPACE_OPEN
@@ -406,7 +408,7 @@ namespace internal
        */
       virtual
       double
-      get_cell_data_value (const unsigned int cell_number) const;
+      get_cell_data_value (const unsigned int cell_level, const unsigned int cell_index) const;
 
       /**
        * Given a FEValuesBase object, extract the values on the present cell
@@ -482,7 +484,7 @@ namespace internal
        */
       virtual std::size_t memory_consumption () const;
 
-    private:
+    protected:
       /**
        * Pointer to the data vector. Note that ownership of the vector pointed
        * to remains with the caller of this class.
@@ -536,13 +538,12 @@ namespace internal
     }
 
 
-
     template <typename DoFHandlerType, typename VectorType>
     double
     DataEntry<DoFHandlerType,VectorType>::
-    get_cell_data_value (const unsigned int cell_number) const
+    get_cell_data_value (const unsigned int /*cell_level*/, const unsigned int cell_index) const
     {
-      return get_vector_element(*vector, cell_number);
+      return get_vector_element(*vector, cell_index);
     }
 
 
@@ -825,6 +826,103 @@ namespace internal
       vector = nullptr;
       this->dof_handler = nullptr;
     }
+
+    template<typename DoFHandlerType, typename VectorType>
+    class MGDataEntry : public DataEntry<DoFHandlerType, VectorType>
+    {
+    public:
+
+      double
+      get_cell_data_value (const unsigned int cell_level, const unsigned int cell_index) const
+      {
+        // cell_number is counting over all cells so compute the level and
+        // index from it
+        unsigned int idx = cell_index;
+        unsigned int lvl = vectors->min_level();
+        while ((*vectors)[lvl].size() <= idx)
+          {
+            idx -= (*vectors)[lvl].size();
+            ++lvl;
+          }
+        return get_vector_element((*vectors)[lvl], idx);
+      }
+
+      MGDataEntry
+      (const DoFHandlerType           *dofs,
+       const MGLevelObject<VectorType>               *data,
+       const std::vector<std::string> &names,
+       const std::vector<DataComponentInterpretation::DataComponentInterpretation> &data_component_interpretation)
+        : DataEntry<DoFHandlerType, VectorType>(dofs, nullptr, names, data_component_interpretation),
+          vectors(data)
+      {}
+
+      void get_function_values(const FEValuesBase<DoFHandlerType::dimension,
+                               DoFHandlerType::space_dimension> &fe_patch_values, std::vector<double> &patch_values) const;
+
+    private:
+      const MGLevelObject<VectorType> *vectors;
+    };
+
+
+    template <typename VectorType>
+    struct temp_get_indices
+    {
+      static void extract(std::vector<double> &values,
+                          const VectorType &vector,
+                          const std::vector<unsigned int> &indices
+                         );
+    };
+
+
+    template<typename VectorType>
+    void temp_get_indices<VectorType>::extract(std::vector<double> &values,
+                                               const VectorType &vector,
+                                               const std::vector<unsigned int> &indices)
+    {
+      for (unsigned int i=0; i<values.size(); ++i)
+        values[i] = vector[indices[i]];
+    }
+
+    template<>
+    void temp_get_indices<LinearAlgebra::EpetraWrappers::Vector>::
+    extract(std::vector<double> &values,
+            const LinearAlgebra::EpetraWrappers::Vector &vector,
+            const std::vector<unsigned int> &indices)
+    {
+      // I don't have element access
+      Assert(false, ExcNotImplemented());
+    }
+
+
+
+    template<typename DoFHandlerType, typename VectorType>
+    void MGDataEntry<DoFHandlerType, VectorType>::
+    get_function_values(const FEValuesBase<DoFHandlerType::dimension, DoFHandlerType::space_dimension> &fe_patch_values, std::vector<double> &patch_values) const
+    {
+      typename DoFHandlerType::level_cell_iterator
+      dof_cell(&fe_patch_values.get_cell()->get_triangulation(),
+               fe_patch_values.get_cell()->level(),
+               fe_patch_values.get_cell()->index(),
+               this->dof_handler);
+
+      const VectorType *vector = &((*vectors)[dof_cell->level()]);
+
+      const unsigned int dofs_per_cell = this->dof_handler->get_fe()[0].dofs_per_cell;
+
+
+      std::vector<unsigned int> dof_indices (dofs_per_cell);
+      dof_cell->get_mg_dof_indices(dof_indices);
+      std::vector<double> values(dofs_per_cell);
+      temp_get_indices<VectorType>::extract(values,
+                                            *vector,
+                                            dof_indices);
+
+      for (unsigned int i=0; i<dofs_per_cell; ++i)
+        for (unsigned int q_point=0; q_point<patch_values.size(); ++q_point)
+          patch_values[q_point] += values[i] * fe_patch_values.shape_value(i, q_point);
+    }
+
+
   }
 }
 
@@ -1125,6 +1223,58 @@ add_data_vector
   dof_data.emplace_back (std::move(new_entry));
 }
 
+
+
+
+
+template <typename DoFHandlerType,
+          int patch_dim, int patch_space_dim>
+template <typename VectorType>
+void
+DataOut_DoFData<DoFHandlerType,patch_dim,patch_space_dim>::
+add_data_vector (const MGLevelObject<VectorType>               &data,
+                 const std::string &name)
+{
+  std::vector<std::string> names(1, name);
+  std::vector<DataComponentInterpretation::DataComponentInterpretation>
+  data_component_interpretation (1, DataComponentInterpretation::component_is_scalar);
+
+  auto new_entry = std_cxx14::make_unique<internal::DataOut::MGDataEntry<DoFHandlerType,VectorType>>
+                   (nullptr, &data, names, data_component_interpretation);
+  cell_data.emplace_back (std::move(new_entry));
+}
+
+
+template <typename DoFHandlerType,
+          int patch_dim, int patch_space_dim>
+template <typename VectorType>
+void
+DataOut_DoFData<DoFHandlerType,patch_dim,patch_space_dim>::
+add_data_vector (const DoFHandlerType           &dof_handler,
+                 const MGLevelObject<VectorType>               &data,
+                 const std::vector<std::string> &names,
+                 const std::vector<DataComponentInterpretation::DataComponentInterpretation> &data_component_interpretation_)
+{
+  if (triangulation == nullptr)
+    triangulation = SmartPointer<const Triangulation<DoFHandlerType::dimension,DoFHandlerType::space_dimension> >(&dof_handler.get_triangulation(), typeid(*this).name());
+
+  Assert (&dof_handler.get_triangulation() == triangulation,
+          ExcMessage("The triangulation attached to the DoFHandler does not "
+                     "match with the one set previously"));
+
+  const std::vector<DataComponentInterpretation::DataComponentInterpretation> &
+  data_component_interpretation
+    = (data_component_interpretation_.size() != 0
+       ?
+       data_component_interpretation_
+       :
+       std::vector<DataComponentInterpretation::DataComponentInterpretation>
+       (names.size(), DataComponentInterpretation::component_is_scalar));
+
+  auto new_entry = std_cxx14::make_unique<internal::DataOut::MGDataEntry<DoFHandlerType,VectorType>>
+                   (&dof_handler, &data, names, data_component_interpretation);
+  dof_data.emplace_back (std::move(new_entry));
+}
 
 
 template <typename DoFHandlerType,

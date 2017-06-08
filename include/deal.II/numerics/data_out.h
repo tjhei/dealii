@@ -291,7 +291,7 @@ public:
    * implementation returns the first active cell, but you might want to
    * return other cells in a derived class.
    */
-  virtual cell_iterator first_cell ();
+  virtual cell_iterator first_cell () const;
 
   /**
    * Return the next cell after @p cell which we want output for.  If there
@@ -304,23 +304,23 @@ public:
    * implementation. Overloading only one of the two functions might not be a
    * good idea.
    */
-  virtual cell_iterator next_cell (const cell_iterator &cell);
+  virtual cell_iterator next_cell (const cell_iterator &cell) const;
 
-private:
+protected:
 
   /**
    * Return the first cell produced by the first_cell()/next_cell() function
    * pair that is locally owned. If this object operates on a non-distributed
    * triangulation, the result equals what first_cell() returns.
    */
-  virtual cell_iterator first_locally_owned_cell ();
+  virtual cell_iterator first_locally_owned_cell () const;
 
   /**
    * Return the next cell produced by the next_cell() function that is locally
    * owned. If this object operates on a non-distributed triangulation, the
    * result equals what first_cell() returns.
    */
-  virtual cell_iterator next_locally_owned_cell (const cell_iterator &cell);
+  virtual cell_iterator next_locally_owned_cell (const cell_iterator &cell) const;
 
   /**
    * Build one patch. This function is called in a WorkStream context.
@@ -336,6 +336,26 @@ private:
    internal::DataOut::ParallelData<DoFHandlerType::dimension, DoFHandlerType::space_dimension>  &scratch_data,
    const unsigned int                                            n_subdivisions,
    const CurvedCellRegion                                        curved_cell_region);
+
+  /**
+   * Fill a data structure that maps each cell selected for output (each "locally owned" cell by using first_locally_owned_cell() and next_locally_owned_cell() and whatever their meaning is)
+   * to an index (called cell_data_index below). In this implementation cell_data_index corresponds to cell->active_cell_index().
+   *
+   * Note, there is a confusing mess of different indices here at play:
+   * - patch_index - the index of a cell (or patch) in all_cells
+   * - cell->index - only unique on each level, used in cell_to_patch_index_map
+   * - active_index - index for an active cell when counting from begin_active() using ++cell, also returned by cell->active_cell_index
+   * - cell_data_index - index into a cell_data vector for cell data.
+   *
+   * @param[out] cell_to_patch_index_map will be <tt>cell_to_patch_index_map[cell->level][cell->index] = patch_index</tt>
+   * @param[out] all_cells A vector of all cells that will be written.
+   *   <tt>all_cells[patch_index] = pair(cell, cell_data_index)</tt>
+   */
+  virtual
+  void
+  compute_index_maps (std::vector<std::vector<unsigned int> > &cell_to_patch_index_map,
+                      std::vector<std::pair<cell_iterator, unsigned int> > &all_cells) const;
+
 };
 
 

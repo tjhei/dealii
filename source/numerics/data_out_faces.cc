@@ -258,7 +258,7 @@ build_one_patch (const FaceDescriptor *cell_and_face,
                              typename Triangulation<dimension,space_dimension>::active_cell_iterator(cell_and_face->first));
 
           const double value
-            = this->cell_data[dataset]->get_cell_data_value (cell_number);
+            = this->cell_data[dataset]->get_cell_data_value (-1, cell_number);
           for (unsigned int q=0; q<n_q_points; ++q)
             patch.data(dataset+offset,q) = value;
         }
