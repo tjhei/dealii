@@ -1278,16 +1278,14 @@ namespace parallel
                    const typename dealii::Triangulation<dim,spacedim>::MeshSmoothing smooth_grid,
                    const Settings settings_)
       :
-      // Do not check for distorted cells.
-      // For multigrid, we need limit_level_difference_at_vertices
-      // to make sure the transfer operators only need to consider two levels.
+      // Enforce limit_level_difference_at_vertices. This is not strictly
+      // required, but done for historical reasons (keep test output etc) as
+      // we used to set the p4est balance type to enforce this.
       dealii::parallel::Triangulation<dim,spacedim>
       (mpi_communicator,
-       (settings_ & construct_multigrid_hierarchy) ?
        static_cast<typename dealii::Triangulation<dim,spacedim>::MeshSmoothing>
-       (smooth_grid | Triangulation<dim,spacedim>::limit_level_difference_at_vertices) :
-       smooth_grid,
-       false),
+       (smooth_grid | Triangulation<dim,spacedim>::limit_level_difference_at_vertices),
+       false),       // Do not check for distorted cells
       settings(settings_),
       triangulation_has_content (false),
       connectivity (nullptr),
@@ -1297,6 +1295,16 @@ namespace parallel
       n_attached_deserialize(0)
     {
       parallel_ghost = nullptr;
+
+      // For multigrid we need limit_level_difference_at_vertices to make sure
+      // the transfer operators only need to consider two levels. We currently
+      // enforce that this flag is set (see above), so this assert is
+      // redundant. We leave this here in case the setting above gets changed
+      // in the future.
+      Assert (!(settings_ & construct_multigrid_hierarchy)
+              ||
+              (this->smooth_grid & Triangulation<dim,spacedim>::limit_level_difference_at_vertices),
+              ExcMessage("For geometric Multigrid the smoothing flag limit_level_difference_at_vertices needs to be set"));
     }
 
 
@@ -2846,7 +2854,10 @@ namespace parallel
       // reset the pointer
       parallel_forest->user_pointer = this;
 
-      // enforce 2:1 hanging node condition
+      // Enforce 2:1 hanging node condition and potentially
+      // limit_level_difference_at_vertices directly in p4est.
+      // TODO: This won't be necessary in the future if we do the
+      // smoothing correctly.
       if (this->smooth_grid &
           dealii::Triangulation<dim, spacedim>::limit_level_difference_at_vertices)
         {
@@ -2859,7 +2870,7 @@ namespace parallel
                     :
                     typename dealii::internal::p4est::types<dim>::
                     balance_type(P8EST_CONNECT_FULL)),
-               /*init_callback=*/nullptr);
+                   /*init_callback=*/nullptr);
         }
       else
         {
