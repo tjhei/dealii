@@ -38,7 +38,66 @@ DEAL_II_NAMESPACE_OPEN
 
 namespace parallel
 {
+  namespace anotheridiot
+  {
+    /**
+     * this is a great function. in namespace with no comment
+     */
+    void test_number_7();
+  }
+  
+  
+  namespace idiot
+  {
+    void test_number_2();
+    
+    /**
+     * this is a great function. in namespace with no comment
+     */
+    void test_number_1();
+  }
 
+  /**
+   */
+  namespace idiot
+  {
+    /**
+     * another function in namespace with empty comment
+     */
+    void test_number_5();    
+  }
+
+  /**
+   * only documented here
+   */
+  namespace idiot
+  {
+    /**
+     * a function
+     */
+    void test_number_4(); 
+  }
+
+  namespace idiot
+  {
+    /**
+     * another function, this time after, without namespace comment
+     */
+    void test_number_6();
+  }
+  
+
+  class idiot_class_not_documented
+  {
+    public:
+      /**
+       * a function
+       */
+      void test_number_3();
+  };
+  
+  
+  
   /**
    * This namespace defines parallel algorithms that operate on meshes.
    */

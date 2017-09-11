@@ -43,8 +43,8 @@ EXTRACT_ALL            = NO
 EXTRACT_PRIVATE        = YES
 EXTRACT_STATIC         = YES
 EXTRACT_LOCAL_CLASSES  = YES
-HIDE_UNDOC_MEMBERS     = YES
-HIDE_UNDOC_CLASSES     = YES
+HIDE_UNDOC_MEMBERS     =  YES
+HIDE_UNDOC_CLASSES     =  NO
 SORT_MEMBER_DOCS       = NO
 SORT_BRIEF_DOCS        = NO
 SORT_BY_SCOPE_NAME     = NO
@@ -58,7 +58,7 @@ SHOW_USED_FILES        = YES
 
 QUIET                  = YES
 WARNINGS               = YES
-WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_UNDOCUMENTED   = YES
 WARN_IF_DOC_ERROR      = YES
 
 #---------------------------------------------------------------------------
