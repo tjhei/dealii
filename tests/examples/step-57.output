@@ -1,0 +1,274 @@
+       Searching for initial guess ... 
+*****************************************
+ Searching for initial guess with Re = 1000
+*****************************************
+*****************************************
+************  refinement = 0 ************ 
+viscosity= 0.001
+*****************************************
+   Number of active cells: 1024
+   Number of degrees of freedom: 9539 (8450+1089)
+ ****FGMRES steps: 3
+******************************
+ The residual of initial guess is 0.00734025
+ Initialization complete!  
+ ****FGMRES steps: 5
+ alpha =      1 res = 0.0135103
+ alpha =    0.5 res = 0.00567544
+ ---- Iteration 1 residual: 0.00567544
+ ****FGMRES steps: 4
+ alpha =      1 res = 0.00388434
+ ---- Iteration 2 residual: 0.00388434
+ ****FGMRES steps: 5
+ alpha =      1 res = 0.0113012
+ alpha =    0.5 res = 0.00343086
+ ---- Iteration 3 residual: 0.00343086
+ ****FGMRES steps: 5
+ alpha =      1 res = 0.00877118
+ alpha =    0.5 res = 0.0028588
+ ---- Iteration 4 residual: 0.0028588
+ ****FGMRES steps: 7
+ alpha =      1 res = 0.111969
+ alpha =    0.5 res = 0.028288
+ alpha =   0.25 res = 0.00768414
+ alpha =  0.125 res = 0.00330382
+ alpha = 0.0625 res = 0.00279324
+ ---- Iteration 5 residual: 0.00279324
+ ****FGMRES steps: 6
+ alpha =      1 res = 0.0210773
+ alpha =    0.5 res = 0.00576482
+ alpha =   0.25 res = 0.00272816
+ ---- Iteration 6 residual: 0.00272816
+ ****FGMRES steps: 6
+ alpha =      1 res = 0.0789879
+ alpha =    0.5 res = 0.0202639
+ alpha =   0.25 res = 0.00596799
+ alpha =  0.125 res = 0.00304639
+ alpha = 0.0625 res = 0.00268109
+ ---- Iteration 7 residual: 0.00268109
+ ****FGMRES steps: 6
+ alpha =      1 res = 0.75711
+ alpha =    0.5 res = 0.189624
+ alpha =   0.25 res = 0.0478722
+ alpha =  0.125 res = 0.012634
+ alpha = 0.0625 res = 0.00434274
+ alpha = 0.03125 res = 0.00287629
+ alpha = 0.015625 res = 0.00269232
+ alpha = 0.0078125 res = 0.00267232
+ ---- Iteration 8 residual: 0.00267232
+ ****FGMRES steps: 6
+ alpha =      1 res = 0.105677
+ alpha =    0.5 res = 0.0268214
+ alpha =   0.25 res = 0.00741613
+ alpha =  0.125 res = 0.00321561
+ alpha = 0.0625 res = 0.00264986
+ ---- Iteration 9 residual: 0.00264986
+ ****FGMRES steps: 5
+ alpha =      1 res = 0.00742076
+ alpha =    0.5 res = 0.00254314
+ ---- Iteration 10 residual: 0.00254314
+ ****FGMRES steps: 5
+ alpha =      1 res = 0.00581087
+ alpha =    0.5 res = 0.00196797
+ ---- Iteration 11 residual: 0.00196797
+ ****FGMRES steps: 6
+ alpha =      1 res = 0.000469082
+ ---- Iteration 12 residual: 0.000469082
+ ****FGMRES steps: 5
+ alpha =      1 res = 0.000241522
+ ---- Iteration 13 residual: 0.000241522
+ ****FGMRES steps: 5
+ alpha =      1 res = 1.71065e-06
+ ---- Iteration 14 residual: 1.71065e-06
+ ****FGMRES steps: 6
+ alpha =      1 res = 9.9638e-10
+ ---- Iteration 15 residual: 9.9638e-10
+ ****FGMRES steps: 7
+ alpha =      1 res = 2.27081e-14
+ ---- Iteration 16 residual: 2.27081e-14
+*****************************************
+ Searching for initial guess with Re = 3000
+*****************************************
+*****************************************
+************  refinement = 0 ************ 
+viscosity= 0.000333333
+*****************************************
+ ****FGMRES steps: 6
+ alpha =      1 res = 0.00285731
+ ---- Iteration 0 residual: 0.00285731
+ ****FGMRES steps: 5
+ alpha =      1 res = 0.00135627
+ ---- Iteration 1 residual: 0.00135627
+ ****FGMRES steps: 6
+ alpha =      1 res = 0.00181869
+ alpha =    0.5 res = 0.00088121
+ ---- Iteration 2 residual: 0.00088121
+ ****FGMRES steps: 6
+ alpha =      1 res = 6.23331e-05
+ ---- Iteration 3 residual: 6.23331e-05
+ ****FGMRES steps: 7
+ alpha =      1 res = 1.99175e-05
+ ---- Iteration 4 residual: 1.99175e-05
+ ****FGMRES steps: 6
+ alpha =      1 res = 7.78602e-09
+ ---- Iteration 5 residual: 7.78602e-09
+ ****FGMRES steps: 8
+ alpha =      1 res = 6.09579e-13
+ ---- Iteration 6 residual: 6.09579e-13
+*****************************************
+ Searching for initial guess with Re = 5000
+*****************************************
+*****************************************
+************  refinement = 0 ************ 
+viscosity= 0.0002
+*****************************************
+ ****FGMRES steps: 6
+ alpha =      1 res = 0.000156403
+ ---- Iteration 0 residual: 0.000156403
+ ****FGMRES steps: 7
+ alpha =      1 res = 2.73036e-05
+ ---- Iteration 1 residual: 2.73036e-05
+ ****FGMRES steps: 7
+ alpha =      1 res = 3.73586e-07
+ ---- Iteration 2 residual: 3.73586e-07
+ ****FGMRES steps: 7
+ alpha =      1 res = 5.02e-11
+ ---- Iteration 3 residual: 5.02e-11
+ ****FGMRES steps: 8
+ alpha =      1 res = 4.52836e-15
+ ---- Iteration 4 residual: 4.52836e-15
+*****************************************
+ Searching for initial guess with Re = 7000
+*****************************************
+*****************************************
+************  refinement = 0 ************ 
+viscosity= 0.000142857
+*****************************************
+ ****FGMRES steps: 6
+ alpha =      1 res = 5.17216e-05
+ ---- Iteration 0 residual: 5.17216e-05
+ ****FGMRES steps: 7
+ alpha =      1 res = 2.71141e-06
+ ---- Iteration 1 residual: 2.71141e-06
+ ****FGMRES steps: 7
+ alpha =      1 res = 3.20906e-09
+ ---- Iteration 2 residual: 3.20906e-09
+ ****FGMRES steps: 8
+ alpha =      1 res = 2.23134e-13
+ ---- Iteration 3 residual: 2.23134e-13
+*****************************************
+       Initial guess obtained            
+                  *                      
+                  *                      
+                  *                      
+                  *                      
+*****************************************
+       Computing solution with target Re = 7500
+*****************************************
+************  refinement = 0 ************ 
+viscosity= 0.000133333
+*****************************************
+ ****FGMRES steps: 6
+ alpha =      1 res = 1.89223e-06
+ ---- Iteration 0 residual: 1.89223e-06
+ ****FGMRES steps: 8
+ alpha =      1 res = 3.16439e-09
+ ---- Iteration 1 residual: 3.16439e-09
+ ****FGMRES steps: 9
+ alpha =      1 res = 1.76105e-14
+ ---- Iteration 2 residual: 1.76105e-14
+   Number of active cells: 2224
+   Number of degrees of freedom: 21257 (18842+2415)
+*****************************************
+        Do refinement ------   
+*****************************************
+************  refinement = 1 ************ 
+viscosity= 0.000133333
+*****************************************
+ ****FGMRES steps: 3
+ alpha =      1 res = 0.0042506
+ ---- Iteration 0 residual: 0.0042506
+ ****FGMRES steps: 7
+ alpha =      1 res = 0.0013732
+ ---- Iteration 1 residual: 0.0013732
+ ****FGMRES steps: 6
+ alpha =      1 res = 0.000219455
+ ---- Iteration 2 residual: 0.000219455
+ ****FGMRES steps: 6
+ alpha =      1 res = 8.82693e-06
+ ---- Iteration 3 residual: 8.82693e-06
+ ****FGMRES steps: 7
+ alpha =      1 res = 1.29739e-07
+ ---- Iteration 4 residual: 1.29739e-07
+ ****FGMRES steps: 7
+ alpha =      1 res = 4.43518e-11
+ ---- Iteration 5 residual: 4.43518e-11
+ ****FGMRES steps: 9
+ alpha =      1 res = 6.28631e-15
+ ---- Iteration 6 residual: 6.28631e-15
+   Number of active cells: 4864
+   Number of degrees of freedom: 46855 (41554+5301)
+*****************************************
+        Do refinement ------   
+*****************************************
+************  refinement = 2 ************ 
+viscosity= 0.000133333
+*****************************************
+ ****FGMRES steps: 3
+ alpha =      1 res = 0.00142993
+ ---- Iteration 0 residual: 0.00142993
+ ****FGMRES steps: 7
+ alpha =      1 res = 0.000415062
+ ---- Iteration 1 residual: 0.000415062
+ ****FGMRES steps: 6
+ alpha =      1 res = 1.78805e-05
+ ---- Iteration 2 residual: 1.78805e-05
+ ****FGMRES steps: 7
+ alpha =      1 res = 6.82096e-09
+ ---- Iteration 3 residual: 6.82096e-09
+ ****FGMRES steps: 9
+ alpha =      1 res = 1.25146e-13
+ ---- Iteration 4 residual: 1.25146e-13
+   Number of active cells: 10816
+   Number of degrees of freedom: 103671 (91986+11685)
+*****************************************
+        Do refinement ------   
+*****************************************
+************  refinement = 3 ************ 
+viscosity= 0.000133333
+*****************************************
+ ****FGMRES steps: 2
+ alpha =      1 res = 0.000487932
+ ---- Iteration 0 residual: 0.000487932
+ ****FGMRES steps: 8
+ alpha =      1 res = 9.11191e-05
+ ---- Iteration 1 residual: 9.11191e-05
+ ****FGMRES steps: 7
+ alpha =      1 res = 5.26782e-07
+ ---- Iteration 2 residual: 5.26782e-07
+ ****FGMRES steps: 8
+ alpha =      1 res = 2.27696e-11
+ ---- Iteration 3 residual: 2.27696e-11
+ ****FGMRES steps: 10
+ alpha =      1 res = 1.78009e-14
+ ---- Iteration 4 residual: 1.78009e-14
+   Number of active cells: 24340
+   Number of degrees of freedom: 232245 (206174+26071)
+*****************************************
+        Do refinement ------   
+*****************************************
+************  refinement = 4 ************ 
+viscosity= 0.000133333
+*****************************************
+ ****FGMRES steps: 2
+ alpha =      1 res = 0.000189981
+ ---- Iteration 0 residual: 0.000189981
+ ****FGMRES steps: 8
+ alpha =      1 res = 1.35553e-05
+ ---- Iteration 1 residual: 1.35553e-05
+ ****FGMRES steps: 7
+ alpha =      1 res = 9.37391e-09
+ ---- Iteration 2 residual: 9.37391e-09
+ ****FGMRES steps: 9
+ alpha =      1 res = 1.25883e-13
+ ---- Iteration 3 residual: 1.25883e-13

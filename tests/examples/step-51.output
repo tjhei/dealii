@@ -1,0 +1,135 @@
+Solving with Q1 elements, adaptive refinement
+=============================================
+
+Cycle 0:
+   Number of degrees of freedom: 80
+   Number of BiCGStab iterations: 35
+Cycle 1:
+   Number of degrees of freedom: 170
+   Number of BiCGStab iterations: 53
+Cycle 2:
+   Number of degrees of freedom: 314
+   Number of BiCGStab iterations: 61
+Cycle 3:
+   Number of degrees of freedom: 634
+   Number of BiCGStab iterations: 98
+Cycle 4:
+   Number of degrees of freedom: 1198
+   Number of BiCGStab iterations: 125
+Cycle 5:
+   Number of degrees of freedom: 2290
+   Number of BiCGStab iterations: 173
+Cycle 6:
+   Number of degrees of freedom: 4378
+   Number of BiCGStab iterations: 250
+Cycle 7:
+   Number of degrees of freedom: 7864
+   Number of BiCGStab iterations: 339
+Cycle 8:
+   Number of degrees of freedom: 14638
+   Number of BiCGStab iterations: 491
+Cycle 9:
+   Number of degrees of freedom: 27214
+   Number of BiCGStab iterations: 640
+cells dofs   val L2    grad L2  val L2-post 
+   16    80 1.804e+01 2.207e+01   1.798e+01 
+   31   170 9.874e+00 1.322e+01   9.798e+00 
+   61   314 7.452e-01 3.793e+00   4.891e-01 
+  121   634 3.240e-01 1.511e+00   2.616e-01 
+  238  1198 8.585e-02 8.212e-01   1.808e-02 
+  454  2290 4.802e-02 5.178e-01   2.195e-02 
+  898  4378 2.561e-02 2.947e-01   4.318e-03 
+ 1720  7864 1.306e-02 1.664e-01   2.978e-03 
+ 3271 14638 7.025e-03 9.815e-02   1.075e-03 
+ 6217 27214 4.119e-03 6.407e-02   9.975e-04 
+
+Solving with Q1 elements, global refinement
+===========================================
+
+Cycle 0:
+   Number of degrees of freedom: 80
+   Number of BiCGStab iterations: 35
+Cycle 1:
+   Number of degrees of freedom: 168
+   Number of BiCGStab iterations: 50
+Cycle 2:
+   Number of degrees of freedom: 288
+   Number of BiCGStab iterations: 62
+Cycle 3:
+   Number of degrees of freedom: 624
+   Number of BiCGStab iterations: 94
+Cycle 4:
+   Number of degrees of freedom: 1088
+   Number of BiCGStab iterations: 118
+Cycle 5:
+   Number of degrees of freedom: 2400
+   Number of BiCGStab iterations: 171
+Cycle 6:
+   Number of degrees of freedom: 4224
+   Number of BiCGStab iterations: 242
+Cycle 7:
+   Number of degrees of freedom: 9408
+   Number of BiCGStab iterations: 329
+Cycle 8:
+   Number of degrees of freedom: 16640
+   Number of BiCGStab iterations: 463
+Cycle 9:
+   Number of degrees of freedom: 37248
+   Number of BiCGStab iterations: 700
+cells dofs      val L2        grad L2      val L2-post   
+   16    80 1.804e+01    - 2.207e+01    - 1.798e+01    - 
+   36   168 6.125e+00 2.66 9.472e+00 2.09 6.084e+00 2.67 
+   64   288 9.785e-01 6.38 4.260e+00 2.78 7.102e-01 7.47 
+  144   624 2.730e-01 3.15 1.866e+00 2.04 6.115e-02 6.05 
+  256  1088 1.493e-01 2.10 1.046e+00 2.01 2.880e-02 2.62 
+  576  2400 6.965e-02 1.88 4.846e-01 1.90 9.204e-03 2.81 
+ 1024  4224 4.018e-02 1.91 2.784e-01 1.93 4.027e-03 2.87 
+ 2304  9408 1.831e-02 1.94 1.264e-01 1.95 1.236e-03 2.91 
+ 4096 16640 1.043e-02 1.96 7.185e-02 1.96 5.306e-04 2.94 
+ 9216 37248 4.690e-03 1.97 3.228e-02 1.97 1.599e-04 2.96 
+
+Solving with Q3 elements, global refinement
+===========================================
+
+Cycle 0:
+   Number of degrees of freedom: 160
+   Number of BiCGStab iterations: 51
+Cycle 1:
+   Number of degrees of freedom: 336
+   Number of BiCGStab iterations: 71
+Cycle 2:
+   Number of degrees of freedom: 576
+   Number of BiCGStab iterations: 82
+Cycle 3:
+   Number of degrees of freedom: 1248
+   Number of BiCGStab iterations: 125
+Cycle 4:
+   Number of degrees of freedom: 2176
+   Number of BiCGStab iterations: 162
+Cycle 5:
+   Number of degrees of freedom: 4800
+   Number of BiCGStab iterations: 247
+Cycle 6:
+   Number of degrees of freedom: 8448
+   Number of BiCGStab iterations: 346
+Cycle 7:
+   Number of degrees of freedom: 18816
+   Number of BiCGStab iterations: 485
+Cycle 8:
+   Number of degrees of freedom: 33280
+   Number of BiCGStab iterations: 660
+Cycle 9:
+   Number of degrees of freedom: 74496
+   Number of BiCGStab iterations: 1014
+cells dofs      val L2        grad L2      val L2-post   
+   16   160 3.613e-01    - 1.891e+00    - 3.020e-01    - 
+   36   336 6.411e-02 4.26 5.081e-01 3.24 3.238e-02 5.51 
+   64   576 3.480e-02 2.12 2.533e-01 2.42 5.277e-03 6.31 
+  144  1248 8.297e-03 3.54 5.924e-02 3.58 6.330e-04 5.23 
+  256  2176 2.254e-03 4.53 1.636e-02 4.47 1.403e-04 5.24 
+  576  4800 4.558e-04 3.94 3.277e-03 3.96 1.844e-05 5.01 
+ 1024  8448 1.471e-04 3.93 1.052e-03 3.95 4.378e-06 5.00 
+ 2304 18816 2.956e-05 3.96 2.104e-04 3.97 5.750e-07 5.01 
+ 4096 33280 9.428e-06 3.97 6.697e-05 3.98 1.361e-07 5.01 
+ 9216 74496 1.876e-06 3.98 1.330e-05 3.99 1.788e-08 5.01 
+

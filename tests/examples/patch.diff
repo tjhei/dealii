@@ -1,0 +1,257 @@
+*** ../../examples/step-37/step-37.cc	2017-02-01 10:08:14.336190175 -0500
+--- step-37.cc	2017-03-30 10:28:28.135729076 -0400
+***************
+*** 1090,1097 ****
+      setup_time += time.wall_time();
+      time_details << "MG build smoother time     (CPU/wall) " << time()
+                   << "s/" << time.wall_time() << "s\n";
+!     pcout << "Total setup time               (wall) " << setup_time
+!           << "s\n";
+  
+      time.reset();
+      time.start();
+--- 1090,1097 ----
+      setup_time += time.wall_time();
+      time_details << "MG build smoother time     (CPU/wall) " << time()
+                   << "s/" << time.wall_time() << "s\n";
+!     time_details << "Total setup time               (wall) " << setup_time
+! 		 << "s\n";
+  
+      time.reset();
+      time.start();
+***************
+*** 1100,1109 ****
+  
+      constraints.distribute(solution);
+  
+!     pcout << "Time solve ("
+!           << solver_control.last_step()
+!           << " iterations)  (CPU/wall) " << time() << "s/"
+!           << time.wall_time() << "s\n";
+    }
+  
+  
+--- 1100,1109 ----
+  
+      constraints.distribute(solution);
+  
+!     time_details << "Time solve ("
+! 		 << solver_control.last_step()
+! 		 << " iterations)  (CPU/wall) " << time() << "s/"
+! 		 << time.wall_time() << "s\n";
+    }
+  
+  
+***************
+*** 1168,1174 ****
+    template <int dim>
+    void LaplaceProblem<dim>::run ()
+    {
+!     for (unsigned int cycle=0; cycle<9-dim; ++cycle)
+        {
+          pcout << "Cycle " << cycle << std::endl;
+  
+--- 1168,1174 ----
+    template <int dim>
+    void LaplaceProblem<dim>::run ()
+    {
+!     for (unsigned int cycle=0; cycle<3; ++cycle)
+        {
+          pcout << "Cycle " << cycle << std::endl;
+  
+***************
+*** 1201,1206 ****
+--- 1201,1208 ----
+  
+        Utilities::MPI::MPI_InitFinalize mpi_init(argc, argv, 1);
+  
++       LaplaceProblem<2> laplace_problem_2d;
++       laplace_problem_2d.run ();
+        LaplaceProblem<dimension> laplace_problem;
+        laplace_problem.run ();
+      }
+*** ../../examples/step-55/step-55.cc	2017-03-30 14:07:14.467183767 -0400
+--- step-55.cc	2017-03-30 10:36:16.426994981 -0400
+***************
+*** 17,22 ****
+--- 17,23 ----
+   * Author: Timo Heister, Clemson University, 2016
+   */
+  
++ #include "../tests.h"
+  #include <deal.II/base/quadrature_lib.h>
+  #include <deal.II/base/function.h>
+  #include <deal.II/base/timer.h>
+***************
+*** 26,35 ****
+  
+  #include <deal.II/lac/generic_linear_algebra.h>
+  
+! #define FORCE_USE_OF_TRILINOS
+! #  include <Epetra_MultiVector.h>
+! #  include <ml_include.h>
+! #  include <ml_MultiLevelPreconditioner.h>
+  
+  namespace LA
+  {
+--- 27,33 ----
+  
+  #include <deal.II/lac/generic_linear_algebra.h>
+  
+! /* #define FORCE_USE_OF_TRILINOS */
+  
+  namespace LA
+  {
+***************
+*** 135,141 ****
+      vmult (VectorType       &dst,
+             const VectorType &src) const
+      {
+!       SolverControl solver_control (5*src.size(), 1e-8*src.l2_norm());
+        SolverCG<LA::MPI::Vector> cg (solver_control);
+        dst = 0;
+  
+--- 133,139 ----
+      vmult (VectorType       &dst,
+             const VectorType &src) const
+      {
+!       SolverControl solver_control (src.size(), 1e-8*src.l2_norm());
+        SolverCG<LA::MPI::Vector> cg (solver_control);
+        dst = 0;
+  
+***************
+*** 308,319 ****
+                     (Triangulation<dim>::smoothing_on_refinement |
+                      Triangulation<dim>::smoothing_on_coarsening)),
+      dof_handler (triangulation),
+!     pcout (std::cout,
+             (Utilities::MPI::this_mpi_process(mpi_communicator)
+              == 0)),
+      computing_timer (mpi_communicator,
+                       pcout,
+!                      TimerOutput::summary,
+                       TimerOutput::wall_times)
+    {}
+  
+--- 306,317 ----
+                     (Triangulation<dim>::smoothing_on_refinement |
+                      Triangulation<dim>::smoothing_on_coarsening)),
+      dof_handler (triangulation),
+!     pcout (deallog.get_file_stream(),
+             (Utilities::MPI::this_mpi_process(mpi_communicator)
+              == 0)),
+      computing_timer (mpi_communicator,
+                       pcout,
+!                      TimerOutput::never,
+                       TimerOutput::wall_times)
+    {}
+  
+***************
+*** 585,625 ****
+  #ifdef USE_PETSC_LA
+        data.symmetric_operator = true;
+  #else
+!       data.n_cycles = 1;
+!       data.higher_order_elements = true;
+!       data.elliptic = true;
+!       data.smoother_sweeps = 5;
+!       data.smoother_overlap = 1;
+! 
+!       std::vector<std::vector<bool> > constant_modes;
+!       FEValuesExtractors::Vector velocity_components(0);
+!       DoFTools::extract_constant_modes (dof_handler,
+!                                         fe.component_mask(velocity_components),
+!                                         constant_modes);
+!       data.constant_modes = constant_modes;
+!       data.output_details = true;
+  #endif
+! 
+!       Teuchos::ParameterList parameter_list;
+!       ML_Epetra::SetDefaults("SA",parameter_list);
+! 
+!       //ML_Epetra::SetDefaults("NSSA", parameter_list);
+!       parameter_list.set ("smoother: type", "Chebyshev");
+!       parameter_list.set("coarse: type", "Amesos-KLU");
+!       //parameter_list.set("initialize random seed", true);
+!       parameter_list.set("smoother: sweeps", 5);
+!       parameter_list.set("cycle applications", 1);
+!       parameter_list.set("prec type", "MGV");
+!       parameter_list.set("smoother: Chebyshev alpha",10.);
+!       parameter_list.set("smoother: ifpack overlap", 0);
+!       parameter_list.set("aggregation: threshold", 1e-4);
+!       parameter_list.set("coarse: max size", 2000);
+! 
+!       parameter_list.set ("ML output", 10); //or 10 for details
+! 
+!       prec_A.initialize(system_matrix.block(0,0),
+!                         data);
+!                         //parameter_list);
+      }
+  
+      LA::MPI::PreconditionAMG prec_S;
+--- 583,602 ----
+  #ifdef USE_PETSC_LA
+        data.symmetric_operator = true;
+  #else
+! //      data.n_cycles = 1;
+! //      data.higher_order_elements = true;
+! //      data.elliptic = true;
+! //      data.smoother_sweeps = 5;
+! //      data.smoother_overlap = 1;
+! 
+! //      std::vector<std::vector<bool> > constant_modes;
+! //      FEValuesExtractors::Vector velocity_components(0);
+! //      DoFTools::extract_constant_modes (dof_handler,
+! //                                        fe.component_mask(velocity_components),
+! //                                        constant_modes);
+! //      data.constant_modes = constant_modes;
+  #endif
+!       prec_A.initialize(system_matrix.block(0,0), data);
+      }
+  
+      LA::MPI::PreconditionAMG prec_S;
+***************
+*** 646,652 ****
+              preconditioner (prec_A, mp_inverse);
+  
+      // With that, we can finally set up the linear solver and solve the system:
+!     SolverControl solver_control (10*system_matrix.m(),
+                                    1e-10*system_rhs.l2_norm());
+  
+      SolverMinRes<LA::MPI::BlockVector> solver (solver_control);
+--- 623,629 ----
+              preconditioner (prec_A, mp_inverse);
+  
+      // With that, we can finally set up the linear solver and solve the system:
+!     SolverControl solver_control (system_matrix.m(),
+                                    1e-10*system_rhs.l2_norm());
+  
+      SolverMinRes<LA::MPI::BlockVector> solver (solver_control);
+***************
+*** 846,852 ****
+              output_results (cycle);
+            }
+  
+!         computing_timer.print_summary ();
+          computing_timer.reset ();
+  
+          pcout << std::endl;
+--- 823,829 ----
+              output_results (cycle);
+            }
+  
+!         //computing_timer.print_summary ();
+          computing_timer.reset ();
+  
+          pcout << std::endl;
+***************
+*** 859,864 ****
+--- 836,843 ----
+  
+  int main(int argc, char *argv[])
+  {
++   initlog();
++   
+    try
+      {
+        using namespace dealii;

@@ -1,0 +1,921 @@
+
+DEAL:minres:cg::Starting value 1.37362
+DEAL:minres:cg::Convergence step 1 value 5.14491e-12
+DEAL:minres::Starting value 13.1675
+DEAL:minres:cg::Starting value 0.338454
+DEAL:minres:cg::Convergence step 1 value 7.42302e-13
+DEAL:minres:cg::Starting value 0.0485528
+DEAL:minres:cg::Convergence step 1 value 2.53159e-13
+DEAL:minres:cg::Starting value 0.237928
+DEAL:minres:cg::Convergence step 1 value 4.17687e-13
+DEAL:minres:cg::Starting value 0.118371
+DEAL:minres:cg::Convergence step 1 value 3.92501e-13
+DEAL:minres:cg::Starting value 0.203707
+DEAL:minres:cg::Convergence step 1 value 5.58981e-13
+DEAL:minres:cg::Starting value 0.130903
+DEAL:minres:cg::Convergence step 1 value 3.09229e-13
+DEAL:minres:cg::Starting value 0.0659200
+DEAL:minres:cg::Convergence step 1 value 4.34293e-13
+DEAL:minres:cg::Starting value 0.215789
+DEAL:minres:cg::Convergence step 1 value 1.01422e-12
+DEAL:minres:cg::Starting value 0.0450887
+DEAL:minres:cg::Convergence step 1 value 4.59705e-13
+DEAL:minres:cg::Starting value 0.120385
+DEAL:minres:cg::Convergence step 1 value 5.17071e-13
+DEAL:minres:cg::Starting value 0.0772133
+DEAL:minres:cg::Convergence step 1 value 5.52823e-13
+DEAL:minres:cg::Starting value 0.236221
+DEAL:minres:cg::Convergence step 1 value 1.04946e-12
+DEAL:minres:cg::Starting value 0.0754767
+DEAL:minres:cg::Convergence step 1 value 7.21188e-13
+DEAL:minres:cg::Starting value 0.249092
+DEAL:minres:cg::Convergence step 1 value 1.16551e-12
+DEAL:minres:cg::Starting value 0.0309349
+DEAL:minres:cg::Convergence step 1 value 4.04613e-13
+DEAL:minres:cg::Starting value 0.184134
+DEAL:minres:cg::Convergence step 1 value 1.75058e-12
+DEAL:minres:cg::Starting value 0.0905552
+DEAL:minres:cg::Convergence step 1 value 4.54514e-13
+DEAL:minres:cg::Starting value 0.272225
+DEAL:minres:cg::Convergence step 1 value 1.21174e-12
+DEAL:minres:cg::Starting value 0.0803819
+DEAL:minres:cg::Convergence step 1 value 2.96136e-13
+DEAL:minres:cg::Starting value 0.260285
+DEAL:minres:cg::Convergence step 1 value 1.54109e-12
+DEAL:minres:cg::Starting value 0.0784329
+DEAL:minres:cg::Convergence step 1 value 2.60931e-13
+DEAL:minres:cg::Starting value 0.108856
+DEAL:minres:cg::Convergence step 1 value 5.89322e-13
+DEAL:minres:cg::Starting value 0.0793009
+DEAL:minres:cg::Convergence step 1 value 4.36541e-13
+DEAL:minres:cg::Starting value 0.209586
+DEAL:minres:cg::Convergence step 1 value 1.53291e-12
+DEAL:minres:cg::Starting value 0.0890704
+DEAL:minres:cg::Convergence step 1 value 2.60439e-13
+DEAL:minres:cg::Starting value 0.256639
+DEAL:minres:cg::Convergence step 1 value 8.24480e-13
+DEAL:minres:cg::Starting value 0.0228301
+DEAL:minres:cg::Convergence step 1 value 8.83299e-14
+DEAL:minres:cg::Starting value 0.317410
+DEAL:minres:cg::Convergence step 1 value 1.63778e-12
+DEAL:minres:cg::Starting value 0.0454635
+DEAL:minres:cg::Convergence step 1 value 1.40387e-13
+DEAL:minres:cg::Starting value 0.304836
+DEAL:minres:cg::Convergence step 1 value 1.86382e-12
+DEAL:minres:cg::Starting value 0.0413504
+DEAL:minres:cg::Convergence step 1 value 1.74027e-13
+DEAL:minres:cg::Starting value 0.157125
+DEAL:minres:cg::Convergence step 1 value 9.96686e-13
+DEAL:minres:cg::Starting value 0.0353890
+DEAL:minres:cg::Convergence step 1 value 9.41821e-14
+DEAL:minres:cg::Starting value 0.314723
+DEAL:minres:cg::Convergence step 1 value 1.81724e-12
+DEAL:minres:cg::Starting value 0.0329648
+DEAL:minres:cg::Convergence step 1 value 1.72441e-13
+DEAL:minres:cg::Starting value 0.249041
+DEAL:minres:cg::Convergence step 1 value 1.75189e-12
+DEAL:minres:cg::Starting value 0.0153935
+DEAL:minres:cg::Convergence step 1 value 4.52631e-14
+DEAL:minres::Convergence step 37 value 1.18289e-10
+DEAL:minres:cg::Starting value 1.26092
+DEAL:minres:cg::Convergence step 1 value 1.23275e-11
+DEAL:minres::Starting value 13.5589
+DEAL:minres:cg::Starting value 0.128463
+DEAL:minres:cg::Convergence step 1 value 8.20312e-13
+DEAL:minres:cg::Starting value 0.123139
+DEAL:minres:cg::Convergence step 1 value 8.83773e-13
+DEAL:minres:cg::Starting value 0.0705000
+DEAL:minres:cg::Convergence step 1 value 5.06318e-13
+DEAL:minres:cg::Starting value 0.159468
+DEAL:minres:cg::Convergence step 1 value 8.21703e-13
+DEAL:minres:cg::Starting value 0.0819912
+DEAL:minres:cg::Convergence step 1 value 5.31860e-13
+DEAL:minres:cg::Starting value 0.0965903
+DEAL:minres:cg::Convergence step 1 value 5.51794e-13
+DEAL:minres:cg::Starting value 0.138459
+DEAL:minres:cg::Convergence step 1 value 8.27239e-13
+DEAL:minres:cg::Starting value 0.0655254
+DEAL:minres:cg::Convergence step 1 value 5.89233e-13
+DEAL:minres:cg::Starting value 0.133785
+DEAL:minres:cg::Convergence step 1 value 7.12394e-13
+DEAL:minres:cg::Starting value 0.0894840
+DEAL:minres:cg::Convergence step 1 value 7.92970e-13
+DEAL:minres:cg::Starting value 0.0621787
+DEAL:minres:cg::Convergence step 1 value 6.30716e-13
+DEAL:minres:cg::Starting value 0.120233
+DEAL:minres:cg::Convergence step 1 value 1.15652e-12
+DEAL:minres:cg::Starting value 0.0761252
+DEAL:minres:cg::Convergence step 1 value 7.51305e-13
+DEAL:minres:cg::Starting value 0.0880875
+DEAL:minres:cg::Convergence step 1 value 1.15222e-12
+DEAL:minres:cg::Starting value 0.116338
+DEAL:minres:cg::Convergence step 1 value 1.10072e-12
+DEAL:minres:cg::Starting value 0.0620339
+DEAL:minres:cg::Convergence step 1 value 8.37408e-13
+DEAL:minres:cg::Starting value 0.101554
+DEAL:minres:cg::Convergence step 1 value 1.95487e-12
+DEAL:minres:cg::Starting value 0.0797142
+DEAL:minres:cg::Convergence step 1 value 9.84640e-13
+DEAL:minres:cg::Starting value 0.0649818
+DEAL:minres:cg::Convergence step 1 value 1.36313e-12
+DEAL:minres:cg::Starting value 0.115861
+DEAL:minres:cg::Convergence step 1 value 3.30154e-12
+DEAL:minres:cg::Starting value 0.0688077
+DEAL:minres:cg::Convergence step 1 value 6.36041e-13
+DEAL:minres:cg::Starting value 0.0838599
+DEAL:minres:cg::Convergence step 1 value 2.53564e-12
+DEAL:minres:cg::Starting value 0.0887131
+DEAL:minres:cg::Convergence step 1 value 2.05696e-12
+DEAL:minres:cg::Starting value 0.0484523
+DEAL:minres:cg::Convergence step 1 value 6.39726e-13
+DEAL:minres:cg::Starting value 0.101155
+DEAL:minres:cg::Convergence step 1 value 2.18833e-12
+DEAL:minres:cg::Starting value 0.0887703
+DEAL:minres:cg::Convergence step 1 value 1.35545e-12
+DEAL:minres:cg::Starting value 0.0654874
+DEAL:minres:cg::Convergence step 1 value 1.11699e-12
+DEAL:minres:cg::Starting value 0.114522
+DEAL:minres:cg::Convergence step 1 value 2.85653e-12
+DEAL:minres:cg::Starting value 0.0640901
+DEAL:minres:cg::Convergence step 1 value 7.30125e-13
+DEAL:minres:cg::Starting value 0.0671250
+DEAL:minres:cg::Convergence step 1 value 1.29047e-12
+DEAL:minres:cg::Starting value 0.119307
+DEAL:minres:cg::Convergence step 1 value 2.26467e-12
+DEAL:minres:cg::Starting value 0.0645610
+DEAL:minres:cg::Convergence step 1 value 8.11128e-13
+DEAL:minres:cg::Starting value 0.0797413
+DEAL:minres:cg::Convergence step 1 value 2.67376e-12
+DEAL:minres:cg::Starting value 0.0940046
+DEAL:minres:cg::Convergence step 1 value 2.31341e-12
+DEAL:minres:cg::Starting value 0.0566931
+DEAL:minres:cg::Convergence step 1 value 7.78564e-13
+DEAL:minres:cg::Starting value 0.105948
+DEAL:minres:cg::Convergence step 1 value 2.64076e-12
+DEAL:minres:cg::Starting value 0.0758561
+DEAL:minres:cg::Convergence step 1 value 1.01377e-12
+DEAL:minres:cg::Starting value 0.0624470
+DEAL:minres:cg::Convergence step 1 value 9.78468e-13
+DEAL:minres:cg::Starting value 0.113139
+DEAL:minres:cg::Convergence step 1 value 2.15632e-12
+DEAL:minres:cg::Starting value 0.0699431
+DEAL:minres:cg::Convergence step 1 value 7.69151e-13
+DEAL:minres:cg::Starting value 0.0971025
+DEAL:minres:cg::Convergence step 1 value 1.27705e-12
+DEAL:minres:cg::Starting value 0.0868201
+DEAL:minres:cg::Convergence step 1 value 1.31923e-12
+DEAL:minres:cg::Starting value 0.0628989
+DEAL:minres:cg::Convergence step 1 value 6.82043e-13
+DEAL:minres:cg::Starting value 0.119128
+DEAL:minres:cg::Convergence step 1 value 1.67389e-12
+DEAL:minres:cg::Starting value 0.0716136
+DEAL:minres:cg::Convergence step 1 value 7.88132e-13
+DEAL:minres:cg::Starting value 0.0806343
+DEAL:minres:cg::Convergence step 1 value 9.19001e-13
+DEAL:minres:cg::Starting value 0.127637
+DEAL:minres:cg::Convergence step 1 value 1.41913e-12
+DEAL:minres:cg::Starting value 0.0557881
+DEAL:minres:cg::Convergence step 1 value 5.65020e-13
+DEAL:minres:cg::Starting value 0.0859973
+DEAL:minres:cg::Convergence step 1 value 1.23771e-12
+DEAL:minres:cg::Starting value 0.109974
+DEAL:minres:cg::Convergence step 1 value 1.28167e-12
+DEAL:minres:cg::Starting value 0.0558606
+DEAL:minres:cg::Convergence step 1 value 5.54288e-13
+DEAL:minres:cg::Starting value 0.106965
+DEAL:minres:cg::Convergence step 1 value 1.31749e-12
+DEAL:minres:cg::Starting value 0.0924063
+DEAL:minres:cg::Convergence step 1 value 1.02771e-12
+DEAL:minres:cg::Starting value 0.0512369
+DEAL:minres:cg::Convergence step 1 value 5.98526e-13
+DEAL:minres:cg::Starting value 0.114794
+DEAL:minres:cg::Convergence step 1 value 1.62634e-12
+DEAL:minres:cg::Starting value 0.0752987
+DEAL:minres:cg::Convergence step 1 value 7.63898e-13
+DEAL:minres:cg::Starting value 0.0624825
+DEAL:minres:cg::Convergence step 1 value 7.63441e-13
+DEAL:minres:cg::Starting value 0.124193
+DEAL:minres:cg::Convergence step 1 value 1.68214e-12
+DEAL:minres:cg::Starting value 0.0671099
+DEAL:minres:cg::Convergence step 1 value 7.57195e-13
+DEAL:minres:cg::Starting value 0.0914746
+DEAL:minres:cg::Convergence step 1 value 8.73830e-13
+DEAL:minres:cg::Starting value 0.120359
+DEAL:minres:cg::Convergence step 1 value 1.45381e-12
+DEAL:minres:cg::Starting value 0.0657580
+DEAL:minres:cg::Convergence step 1 value 8.62559e-13
+DEAL:minres:cg::Starting value 0.118463
+DEAL:minres:cg::Convergence step 1 value 1.23420e-12
+DEAL:minres:cg::Starting value 0.0841340
+DEAL:minres:cg::Convergence step 1 value 1.07427e-12
+DEAL:minres:cg::Starting value 0.0724768
+DEAL:minres:cg::Convergence step 1 value 1.07583e-12
+DEAL:minres:cg::Starting value 0.118097
+DEAL:minres:cg::Convergence step 1 value 1.81161e-12
+DEAL:minres:cg::Starting value 0.0649817
+DEAL:minres:cg::Convergence step 1 value 6.74372e-13
+DEAL:minres:cg::Starting value 0.0736304
+DEAL:minres:cg::Convergence step 1 value 1.90213e-12
+DEAL:minres:cg::Starting value 0.104338
+DEAL:minres:cg::Convergence step 1 value 1.93879e-12
+DEAL:minres:cg::Starting value 0.0632055
+DEAL:minres:cg::Convergence step 1 value 1.19603e-12
+DEAL:minres:cg::Starting value 0.0947550
+DEAL:minres:cg::Convergence step 1 value 3.03477e-12
+DEAL:minres:cg::Starting value 0.0766131
+DEAL:minres:cg::Convergence step 1 value 1.23477e-12
+DEAL:minres:cg::Starting value 0.0634971
+DEAL:minres:cg::Convergence step 1 value 1.50148e-12
+DEAL:minres:cg::Starting value 0.110354
+DEAL:minres:cg::Convergence step 1 value 2.94856e-12
+DEAL:minres:cg::Starting value 0.0550566
+DEAL:minres:cg::Convergence step 1 value 6.88934e-13
+DEAL:minres:cg::Starting value 0.0934691
+DEAL:minres:cg::Convergence step 1 value 1.89607e-12
+DEAL:minres:cg::Starting value 0.0863301
+DEAL:minres:cg::Convergence step 1 value 1.84902e-12
+DEAL:minres:cg::Starting value 0.0602027
+DEAL:minres:cg::Convergence step 1 value 6.58133e-13
+DEAL:minres:cg::Starting value 0.111504
+DEAL:minres:cg::Convergence step 1 value 1.86814e-12
+DEAL:minres:cg::Starting value 0.0758598
+DEAL:minres:cg::Convergence step 1 value 1.04544e-12
+DEAL:minres:cg::Starting value 0.0481825
+DEAL:minres:cg::Convergence step 1 value 6.04384e-13
+DEAL:minres:cg::Starting value 0.107452
+DEAL:minres:cg::Convergence step 1 value 1.58732e-12
+DEAL:minres:cg::Starting value 0.0698713
+DEAL:minres:cg::Convergence step 1 value 8.48741e-13
+DEAL:minres:cg::Starting value 0.0627382
+DEAL:minres:cg::Convergence step 1 value 7.53862e-13
+DEAL:minres:cg::Starting value 0.126653
+DEAL:minres:cg::Convergence step 1 value 1.74753e-12
+DEAL:minres:cg::Starting value 0.0625483
+DEAL:minres:cg::Convergence step 1 value 6.16137e-13
+DEAL:minres:cg::Starting value 0.0632991
+DEAL:minres:cg::Convergence step 1 value 1.01500e-12
+DEAL:minres:cg::Starting value 0.116950
+DEAL:minres:cg::Convergence step 1 value 1.58920e-12
+DEAL:minres:cg::Starting value 0.0546179
+DEAL:minres:cg::Convergence step 1 value 8.30296e-13
+DEAL:minres::Convergence step 89 value 4.90518e-10
+DEAL:minres:cg::Starting value 0.981360
+DEAL:minres:cg::Convergence step 1 value 3.40835e-11
+DEAL:minres::Starting value 16.8041
+DEAL:minres:cg::Starting value 0.0527494
+DEAL:minres:cg::Convergence step 1 value 1.23508e-12
+DEAL:minres:cg::Starting value 0.0813511
+DEAL:minres:cg::Convergence step 1 value 2.53234e-12
+DEAL:minres:cg::Starting value 0.0275805
+DEAL:minres:cg::Convergence step 1 value 1.00633e-12
+DEAL:minres:cg::Starting value 0.0690162
+DEAL:minres:cg::Convergence step 1 value 1.67734e-12
+DEAL:minres:cg::Starting value 0.0503499
+DEAL:minres:cg::Convergence step 1 value 1.39764e-12
+DEAL:minres:cg::Starting value 0.0417804
+DEAL:minres:cg::Convergence step 1 value 9.65268e-13
+DEAL:minres:cg::Starting value 0.0717174
+DEAL:minres:cg::Convergence step 1 value 1.58568e-12
+DEAL:minres:cg::Starting value 0.0398257
+DEAL:minres:cg::Convergence step 1 value 1.16184e-12
+DEAL:minres:cg::Starting value 0.0539058
+DEAL:minres:cg::Convergence step 1 value 1.32973e-12
+DEAL:minres:cg::Starting value 0.0570240
+DEAL:minres:cg::Convergence step 1 value 1.80325e-12
+DEAL:minres:cg::Starting value 0.0344488
+DEAL:minres:cg::Convergence step 1 value 1.09779e-12
+DEAL:minres:cg::Starting value 0.0593490
+DEAL:minres:cg::Convergence step 1 value 2.10532e-12
+DEAL:minres:cg::Starting value 0.0473731
+DEAL:minres:cg::Convergence step 1 value 1.54530e-12
+DEAL:minres:cg::Starting value 0.0389387
+DEAL:minres:cg::Convergence step 1 value 1.18647e-12
+DEAL:minres:cg::Starting value 0.0742261
+DEAL:minres:cg::Convergence step 1 value 2.11746e-12
+DEAL:minres:cg::Starting value 0.0340968
+DEAL:minres:cg::Convergence step 1 value 1.26288e-12
+DEAL:minres:cg::Starting value 0.0476611
+DEAL:minres:cg::Convergence step 1 value 1.47998e-12
+DEAL:minres:cg::Starting value 0.0599568
+DEAL:minres:cg::Convergence step 1 value 1.69384e-12
+DEAL:minres:cg::Starting value 0.0345948
+DEAL:minres:cg::Convergence step 1 value 1.17798e-12
+DEAL:minres:cg::Starting value 0.0534689
+DEAL:minres:cg::Convergence step 1 value 2.30159e-12
+DEAL:minres:cg::Starting value 0.0498431
+DEAL:minres:cg::Convergence step 1 value 1.70229e-12
+DEAL:minres:cg::Starting value 0.0365434
+DEAL:minres:cg::Convergence step 1 value 2.55031e-12
+DEAL:minres:cg::Starting value 0.0605835
+DEAL:minres:cg::Convergence step 1 value 3.53449e-12
+DEAL:minres:cg::Starting value 0.0355287
+DEAL:minres:cg::Convergence step 1 value 1.54881e-12
+DEAL:minres:cg::Starting value 0.0366700
+DEAL:minres:cg::Convergence step 1 value 3.95861e-12
+DEAL:minres:cg::Starting value 0.0527239
+DEAL:minres:cg::Convergence step 1 value 4.20289e-12
+DEAL:minres:cg::Starting value 0.0348684
+DEAL:minres:cg::Convergence step 1 value 1.56594e-12
+DEAL:minres:cg::Starting value 0.0484887
+DEAL:minres:cg::Convergence step 1 value 5.21211e-12
+DEAL:minres:cg::Starting value 0.0430650
+DEAL:minres:cg::Convergence step 1 value 3.10851e-12
+DEAL:minres:cg::Starting value 0.0292506
+DEAL:minres:cg::Convergence step 1 value 1.70954e-12
+DEAL:minres:cg::Starting value 0.0583361
+DEAL:minres:cg::Convergence step 1 value 5.28954e-12
+DEAL:minres:cg::Starting value 0.0373797
+DEAL:minres:cg::Convergence step 1 value 2.08789e-12
+DEAL:minres:cg::Starting value 0.0386822
+DEAL:minres:cg::Convergence step 1 value 2.54391e-12
+DEAL:minres:cg::Starting value 0.0592272
+DEAL:minres:cg::Convergence step 1 value 5.31763e-12
+DEAL:minres:cg::Starting value 0.0290934
+DEAL:minres:cg::Convergence step 1 value 1.23816e-12
+DEAL:minres:cg::Starting value 0.0379911
+DEAL:minres:cg::Convergence step 1 value 3.12206e-12
+DEAL:minres:cg::Starting value 0.0582511
+DEAL:minres:cg::Convergence step 1 value 3.96972e-12
+DEAL:minres:cg::Starting value 0.0297596
+DEAL:minres:cg::Convergence step 1 value 1.51231e-12
+DEAL:minres:cg::Starting value 0.0444113
+DEAL:minres:cg::Convergence step 1 value 5.02725e-12
+DEAL:minres:cg::Starting value 0.0488755
+DEAL:minres:cg::Convergence step 1 value 4.17252e-12
+DEAL:minres:cg::Starting value 0.0327744
+DEAL:minres:cg::Convergence step 1 value 1.80720e-12
+DEAL:minres:cg::Starting value 0.0543492
+DEAL:minres:cg::Convergence step 1 value 5.43017e-12
+DEAL:minres:cg::Starting value 0.0374987
+DEAL:minres:cg::Convergence step 1 value 2.13576e-12
+DEAL:minres:cg::Starting value 0.0328383
+DEAL:minres:cg::Convergence step 1 value 2.08732e-12
+DEAL:minres:cg::Starting value 0.0568442
+DEAL:minres:cg::Convergence step 1 value 4.83368e-12
+DEAL:minres:cg::Starting value 0.0342536
+DEAL:minres:cg::Convergence step 1 value 1.57240e-12
+DEAL:minres:cg::Starting value 0.0425724
+DEAL:minres:cg::Convergence step 1 value 2.89360e-12
+DEAL:minres:cg::Starting value 0.0550301
+DEAL:minres:cg::Convergence step 1 value 4.02470e-12
+DEAL:minres:cg::Starting value 0.0300188
+DEAL:minres:cg::Convergence step 1 value 1.13225e-12
+DEAL:minres:cg::Starting value 0.0492211
+DEAL:minres:cg::Convergence step 1 value 2.54878e-12
+DEAL:minres:cg::Starting value 0.0513873
+DEAL:minres:cg::Convergence step 1 value 2.45048e-12
+DEAL:minres:cg::Starting value 0.0315700
+DEAL:minres:cg::Convergence step 1 value 1.38880e-12
+DEAL:minres:cg::Starting value 0.0574013
+DEAL:minres:cg::Convergence step 1 value 2.81703e-12
+DEAL:minres:cg::Starting value 0.0390019
+DEAL:minres:cg::Convergence step 1 value 1.62796e-12
+DEAL:minres:cg::Starting value 0.0449711
+DEAL:minres:cg::Convergence step 1 value 2.14503e-12
+DEAL:minres:cg::Starting value 0.0558056
+DEAL:minres:cg::Convergence step 1 value 2.86701e-12
+DEAL:minres:cg::Starting value 0.0329848
+DEAL:minres:cg::Convergence step 1 value 1.21779e-12
+DEAL:minres:cg::Starting value 0.0533094
+DEAL:minres:cg::Convergence step 1 value 2.74050e-12
+DEAL:minres:cg::Starting value 0.0504687
+DEAL:minres:cg::Convergence step 1 value 2.20198e-12
+DEAL:minres:cg::Starting value 0.0324499
+DEAL:minres:cg::Convergence step 1 value 1.41723e-12
+DEAL:minres:cg::Starting value 0.0640220
+DEAL:minres:cg::Convergence step 1 value 3.36832e-12
+DEAL:minres:cg::Starting value 0.0370262
+DEAL:minres:cg::Convergence step 1 value 1.43673e-12
+DEAL:minres:cg::Starting value 0.0341248
+DEAL:minres:cg::Convergence step 1 value 1.61881e-12
+DEAL:minres:cg::Starting value 0.0649438
+DEAL:minres:cg::Convergence step 1 value 3.51166e-12
+DEAL:minres:cg::Starting value 0.0310167
+DEAL:minres:cg::Convergence step 1 value 1.21383e-12
+DEAL:minres:cg::Starting value 0.0383080
+DEAL:minres:cg::Convergence step 1 value 1.99018e-12
+DEAL:minres:cg::Starting value 0.0615101
+DEAL:minres:cg::Convergence step 1 value 3.32152e-12
+DEAL:minres:cg::Starting value 0.0293258
+DEAL:minres:cg::Convergence step 1 value 1.05168e-12
+DEAL:minres:cg::Starting value 0.0474395
+DEAL:minres:cg::Convergence step 1 value 2.52775e-12
+DEAL:minres:cg::Starting value 0.0570067
+DEAL:minres:cg::Convergence step 1 value 2.93536e-12
+DEAL:minres:cg::Starting value 0.0321323
+DEAL:minres:cg::Convergence step 1 value 1.22634e-12
+DEAL:minres:cg::Starting value 0.0645604
+DEAL:minres:cg::Convergence step 1 value 2.52330e-12
+DEAL:minres:cg::Starting value 0.0415679
+DEAL:minres:cg::Convergence step 1 value 1.68269e-12
+DEAL:minres:cg::Starting value 0.0412975
+DEAL:minres:cg::Convergence step 1 value 1.95776e-12
+DEAL:minres:cg::Starting value 0.0646536
+DEAL:minres:cg::Convergence step 1 value 2.91726e-12
+DEAL:minres:cg::Starting value 0.0325766
+DEAL:minres:cg::Convergence step 1 value 1.27991e-12
+DEAL:minres:cg::Starting value 0.0539882
+DEAL:minres:cg::Convergence step 1 value 2.27393e-12
+DEAL:minres:cg::Starting value 0.0552730
+DEAL:minres:cg::Convergence step 1 value 2.14922e-12
+DEAL:minres:cg::Starting value 0.0289850
+DEAL:minres:cg::Convergence step 1 value 1.42890e-12
+DEAL:minres:cg::Starting value 0.0557790
+DEAL:minres:cg::Convergence step 1 value 2.98537e-12
+DEAL:minres:cg::Starting value 0.0431071
+DEAL:minres:cg::Convergence step 1 value 1.74274e-12
+DEAL:minres:cg::Starting value 0.0317796
+DEAL:minres:cg::Convergence step 1 value 2.24365e-12
+DEAL:minres:cg::Starting value 0.0559529
+DEAL:minres:cg::Convergence step 1 value 4.03543e-12
+DEAL:minres:cg::Starting value 0.0363628
+DEAL:minres:cg::Convergence step 1 value 1.59568e-12
+DEAL:minres:cg::Starting value 0.0423023
+DEAL:minres:cg::Convergence step 1 value 3.74131e-12
+DEAL:minres:cg::Starting value 0.0505396
+DEAL:minres:cg::Convergence step 1 value 3.89836e-12
+DEAL:minres:cg::Starting value 0.0308303
+DEAL:minres:cg::Convergence step 1 value 1.57507e-12
+DEAL:minres:cg::Starting value 0.0492232
+DEAL:minres:cg::Convergence step 1 value 4.86907e-12
+DEAL:minres:cg::Starting value 0.0428303
+DEAL:minres:cg::Convergence step 1 value 2.74309e-12
+DEAL:minres:cg::Starting value 0.0353978
+DEAL:minres:cg::Convergence step 1 value 2.10335e-12
+DEAL:minres:cg::Starting value 0.0597760
+DEAL:minres:cg::Convergence step 1 value 5.28931e-12
+DEAL:minres:cg::Starting value 0.0319073
+DEAL:minres:cg::Convergence step 1 value 1.51500e-12
+DEAL:minres:cg::Starting value 0.0332332
+DEAL:minres:cg::Convergence step 1 value 2.05626e-12
+DEAL:minres:cg::Starting value 0.0618322
+DEAL:minres:cg::Convergence step 1 value 4.18831e-12
+DEAL:minres:cg::Starting value 0.0302771
+DEAL:minres:cg::Convergence step 1 value 1.18094e-12
+DEAL:minres:cg::Starting value 0.0420186
+DEAL:minres:cg::Convergence step 1 value 2.79451e-12
+DEAL:minres:cg::Starting value 0.0583955
+DEAL:minres:cg::Convergence step 1 value 3.91189e-12
+DEAL:minres:cg::Starting value 0.0305284
+DEAL:minres:cg::Convergence step 1 value 1.18916e-12
+DEAL:minres:cg::Starting value 0.0520505
+DEAL:minres:cg::Convergence step 1 value 3.48106e-12
+DEAL:minres::Convergence step 99 value 4.85412e-10
+DEAL:minres:cg::Starting value 0.721793
+DEAL:minres:cg::Convergence step 8 value 1.41187e-09
+DEAL:minres::Starting value 21.9685
+DEAL:minres:cg::Starting value 0.0214691
+DEAL:minres:cg::Convergence step 7 value 1.72023e-10
+DEAL:minres:cg::Starting value 0.0415306
+DEAL:minres:cg::Convergence step 8 value 7.51879e-11
+DEAL:minres:cg::Starting value 0.0120100
+DEAL:minres:cg::Convergence step 8 value 1.80593e-11
+DEAL:minres:cg::Starting value 0.0311757
+DEAL:minres:cg::Convergence step 8 value 5.02930e-11
+DEAL:minres:cg::Starting value 0.0299859
+DEAL:minres:cg::Convergence step 8 value 5.21716e-11
+DEAL:minres:cg::Starting value 0.0185093
+DEAL:minres:cg::Convergence step 8 value 3.32419e-11
+DEAL:minres:cg::Starting value 0.0343788
+DEAL:minres:cg::Convergence step 8 value 5.32779e-11
+DEAL:minres:cg::Starting value 0.0242880
+DEAL:minres:cg::Convergence step 8 value 4.89352e-11
+DEAL:minres:cg::Starting value 0.0222467
+DEAL:minres:cg::Convergence step 8 value 3.46206e-11
+DEAL:minres:cg::Starting value 0.0333121
+DEAL:minres:cg::Convergence step 8 value 5.83895e-11
+DEAL:minres:cg::Starting value 0.0176897
+DEAL:minres:cg::Convergence step 8 value 4.13595e-11
+DEAL:minres:cg::Starting value 0.0281692
+DEAL:minres:cg::Convergence step 8 value 4.54184e-11
+DEAL:minres:cg::Starting value 0.0283792
+DEAL:minres:cg::Convergence step 8 value 5.38222e-11
+DEAL:minres:cg::Starting value 0.0170230
+DEAL:minres:cg::Convergence step 8 value 3.29772e-11
+DEAL:minres:cg::Starting value 0.0334664
+DEAL:minres:cg::Convergence step 8 value 6.06160e-11
+DEAL:minres:cg::Starting value 0.0218949
+DEAL:minres:cg::Convergence step 8 value 4.79314e-11
+DEAL:minres:cg::Starting value 0.0213143
+DEAL:minres:cg::Convergence step 8 value 4.18500e-11
+DEAL:minres:cg::Starting value 0.0330733
+DEAL:minres:cg::Convergence step 8 value 5.61591e-11
+DEAL:minres:cg::Starting value 0.0196618
+DEAL:minres:cg::Convergence step 8 value 4.30459e-11
+DEAL:minres:cg::Starting value 0.0227502
+DEAL:minres:cg::Convergence step 8 value 4.50890e-11
+DEAL:minres:cg::Starting value 0.0319652
+DEAL:minres:cg::Convergence step 8 value 6.75594e-11
+DEAL:minres:cg::Starting value 0.0169819
+DEAL:minres:cg::Convergence step 8 value 3.43276e-11
+DEAL:minres:cg::Starting value 0.0294669
+DEAL:minres:cg::Convergence step 8 value 5.07283e-11
+DEAL:minres:cg::Starting value 0.0262864
+DEAL:minres:cg::Convergence step 8 value 5.33111e-11
+DEAL:minres:cg::Starting value 0.0165988
+DEAL:minres:cg::Convergence step 8 value 3.96703e-11
+DEAL:minres:cg::Starting value 0.0310574
+DEAL:minres:cg::Convergence step 8 value 6.08473e-11
+DEAL:minres:cg::Starting value 0.0228367
+DEAL:minres:cg::Convergence step 8 value 5.18681e-11
+DEAL:minres:cg::Starting value 0.0187919
+DEAL:minres:cg::Convergence step 8 value 4.03122e-11
+DEAL:minres:cg::Starting value 0.0334430
+DEAL:minres:cg::Convergence step 8 value 6.61499e-11
+DEAL:minres:cg::Starting value 0.0155819
+DEAL:minres:cg::Convergence step 8 value 4.20501e-11
+DEAL:minres:cg::Starting value 0.0227683
+DEAL:minres:cg::Convergence step 8 value 5.86300e-11
+DEAL:minres:cg::Starting value 0.0266421
+DEAL:minres:cg::Convergence step 8 value 6.44627e-11
+DEAL:minres:cg::Starting value 0.0187961
+DEAL:minres:cg::Convergence step 8 value 4.86307e-11
+DEAL:minres:cg::Starting value 0.0285872
+DEAL:minres:cg::Convergence step 8 value 7.06646e-11
+DEAL:minres:cg::Starting value 0.0192531
+DEAL:minres:cg::Convergence step 8 value 5.09680e-11
+DEAL:minres:cg::Starting value 0.0167543
+DEAL:minres:cg::Convergence step 8 value 4.21483e-11
+DEAL:minres:cg::Starting value 0.0303098
+DEAL:minres:cg::Convergence step 8 value 7.74566e-11
+DEAL:minres:cg::Starting value 0.0173922
+DEAL:minres:cg::Convergence step 8 value 4.50505e-11
+DEAL:minres:cg::Starting value 0.0206415
+DEAL:minres:cg::Convergence step 8 value 4.88406e-11
+DEAL:minres:cg::Starting value 0.0272266
+DEAL:minres:cg::Convergence step 8 value 7.07510e-11
+DEAL:minres:cg::Starting value 0.0169540
+DEAL:minres:cg::Convergence step 8 value 4.15235e-11
+DEAL:minres:cg::Starting value 0.0248392
+DEAL:minres:cg::Convergence step 8 value 5.44774e-11
+DEAL:minres:cg::Starting value 0.0252735
+DEAL:minres:cg::Convergence step 8 value 6.19341e-11
+DEAL:minres:cg::Starting value 0.0148368
+DEAL:minres:cg::Convergence step 8 value 4.02028e-11
+DEAL:minres:cg::Starting value 0.0266265
+DEAL:minres:cg::Convergence step 8 value 6.87569e-11
+DEAL:minres:cg::Starting value 0.0227356
+DEAL:minres:cg::Convergence step 8 value 5.81460e-11
+DEAL:minres:cg::Starting value 0.0176611
+DEAL:minres:cg::Convergence step 8 value 4.51507e-11
+DEAL:minres:cg::Starting value 0.0298024
+DEAL:minres:cg::Convergence step 8 value 7.57289e-11
+DEAL:minres:cg::Starting value 0.0175158
+DEAL:minres:cg::Convergence step 8 value 4.77328e-11
+DEAL:minres:cg::Starting value 0.0195589
+DEAL:minres:cg::Convergence step 8 value 4.64408e-11
+DEAL:minres:cg::Starting value 0.0302286
+DEAL:minres:cg::Convergence step 8 value 7.38654e-11
+DEAL:minres:cg::Starting value 0.0166583
+DEAL:minres:cg::Convergence step 8 value 4.31545e-11
+DEAL:minres:cg::Starting value 0.0256829
+DEAL:minres:cg::Convergence step 8 value 5.68846e-11
+DEAL:minres:cg::Starting value 0.0264785
+DEAL:minres:cg::Convergence step 8 value 6.23121e-11
+DEAL:minres:cg::Starting value 0.0158984
+DEAL:minres:cg::Convergence step 8 value 4.12218e-11
+DEAL:minres:cg::Starting value 0.0304804
+DEAL:minres:cg::Convergence step 8 value 6.51005e-11
+DEAL:minres:cg::Starting value 0.0202484
+DEAL:minres:cg::Convergence step 8 value 5.02302e-11
+DEAL:minres:cg::Starting value 0.0156082
+DEAL:minres:cg::Convergence step 8 value 3.95776e-11
+DEAL:minres:cg::Starting value 0.0297144
+DEAL:minres:cg::Convergence step 8 value 6.78944e-11
+DEAL:minres:cg::Starting value 0.0199950
+DEAL:minres:cg::Convergence step 8 value 5.33074e-11
+DEAL:minres:cg::Starting value 0.0198204
+DEAL:minres:cg::Convergence step 8 value 4.82606e-11
+DEAL:minres:cg::Starting value 0.0305847
+DEAL:minres:cg::Convergence step 8 value 7.39632e-11
+DEAL:minres:cg::Starting value 0.0158494
+DEAL:minres:cg::Convergence step 8 value 4.20271e-11
+DEAL:minres:cg::Starting value 0.0214694
+DEAL:minres:cg::Convergence step 8 value 5.79697e-11
+DEAL:minres:cg::Starting value 0.0269775
+DEAL:minres:cg::Convergence step 8 value 6.86724e-11
+DEAL:minres:cg::Starting value 0.0162352
+DEAL:minres:cg::Convergence step 8 value 4.21100e-11
+DEAL:minres:cg::Starting value 0.0253257
+DEAL:minres:cg::Convergence step 8 value 6.53340e-11
+DEAL:minres:cg::Starting value 0.0224819
+DEAL:minres:cg::Convergence step 8 value 6.10913e-11
+DEAL:minres:cg::Starting value 0.0201833
+DEAL:minres:cg::Convergence step 8 value 5.04409e-11
+DEAL:minres:cg::Starting value 0.0295534
+DEAL:minres:cg::Convergence step 8 value 7.52372e-11
+DEAL:minres:cg::Starting value 0.0159659
+DEAL:minres:cg::Convergence step 8 value 4.22639e-11
+DEAL:minres:cg::Starting value 0.0218458
+DEAL:minres:cg::Convergence step 8 value 5.28716e-11
+DEAL:minres:cg::Starting value 0.0288814
+DEAL:minres:cg::Convergence step 8 value 7.04496e-11
+DEAL:minres:cg::Starting value 0.0159169
+DEAL:minres:cg::Convergence step 8 value 4.45170e-11
+DEAL:minres:cg::Starting value 0.0266385
+DEAL:minres:cg::Convergence step 8 value 6.06583e-11
+DEAL:minres:cg::Starting value 0.0260574
+DEAL:minres:cg::Convergence step 8 value 6.62342e-11
+DEAL:minres:cg::Starting value 0.0145550
+DEAL:minres:cg::Convergence step 8 value 3.90683e-11
+DEAL:minres:cg::Starting value 0.0297689
+DEAL:minres:cg::Convergence step 8 value 6.49741e-11
+DEAL:minres:cg::Starting value 0.0221521
+DEAL:minres:cg::Convergence step 8 value 5.86223e-11
+DEAL:minres:cg::Starting value 0.0176901
+DEAL:minres:cg::Convergence step 8 value 4.15255e-11
+DEAL:minres:cg::Starting value 0.0320797
+DEAL:minres:cg::Convergence step 8 value 6.61846e-11
+DEAL:minres:cg::Starting value 0.0199238
+DEAL:minres:cg::Convergence step 8 value 5.09830e-11
+DEAL:minres:cg::Starting value 0.0217467
+DEAL:minres:cg::Convergence step 8 value 5.05368e-11
+DEAL:minres:cg::Starting value 0.0317536
+DEAL:minres:cg::Convergence step 8 value 6.91422e-11
+DEAL:minres:cg::Starting value 0.0168586
+DEAL:minres:cg::Convergence step 8 value 4.51387e-11
+DEAL:minres:cg::Starting value 0.0278840
+DEAL:minres:cg::Convergence step 8 value 5.85308e-11
+DEAL:minres:cg::Starting value 0.0254757
+DEAL:minres:cg::Convergence step 8 value 6.04718e-11
+DEAL:minres:cg::Starting value 0.0174342
+DEAL:minres:cg::Convergence step 8 value 4.41329e-11
+DEAL:minres:cg::Starting value 0.0318895
+DEAL:minres:cg::Convergence step 8 value 6.91771e-11
+DEAL:minres:cg::Starting value 0.0197531
+DEAL:minres:cg::Convergence step 8 value 5.10300e-11
+DEAL:minres:cg::Starting value 0.0186553
+DEAL:minres:cg::Convergence step 8 value 4.44076e-11
+DEAL:minres:cg::Starting value 0.0330219
+DEAL:minres:cg::Convergence step 8 value 7.58780e-11
+DEAL:minres:cg::Starting value 0.0163106
+DEAL:minres:cg::Convergence step 8 value 4.37167e-11
+DEAL:minres:cg::Starting value 0.0202372
+DEAL:minres:cg::Convergence step 8 value 4.94334e-11
+DEAL:minres:cg::Starting value 0.0305656
+DEAL:minres:cg::Convergence step 8 value 7.36695e-11
+DEAL:minres:cg::Starting value 0.0162046
+DEAL:minres:cg::Convergence step 8 value 4.26193e-11
+DEAL:minres:cg::Starting value 0.0235431
+DEAL:minres:cg::Convergence step 8 value 5.32017e-11
+DEAL:minres:cg::Starting value 0.0271026
+DEAL:minres:cg::Convergence step 8 value 6.79056e-11
+DEAL:minres:cg::Starting value 0.0176383
+DEAL:minres:cg::Convergence step 8 value 4.68561e-11
+DEAL:minres:cg::Starting value 0.0293617
+DEAL:minres:cg::Convergence step 8 value 6.93029e-11
+DEAL:minres:cg::Starting value 0.0196578
+DEAL:minres:cg::Convergence step 8 value 4.94968e-11
+DEAL:minres:cg::Starting value 0.0194447
+DEAL:minres:cg::Convergence step 8 value 5.20216e-11
+DEAL:minres:cg::Starting value 0.0291494
+DEAL:minres:cg::Convergence step 8 value 7.57979e-11
+DEAL:minres:cg::Starting value 0.0163271
+DEAL:minres:cg::Convergence step 8 value 4.33913e-11
+DEAL:minres:cg::Starting value 0.0247305
+DEAL:minres:cg::Convergence step 8 value 6.09687e-11
+DEAL:minres::Convergence step 105 value 6.87601e-10
+DEAL:minres:cg::Starting value 0.519428
+DEAL:minres:cg::Convergence step 8 value 9.10796e-10
+DEAL:minres::Starting value 29.7309
+DEAL:minres:cg::Starting value 0.00924727
+DEAL:minres:cg::Convergence step 7 value 8.42847e-11
+DEAL:minres:cg::Starting value 0.0189153
+DEAL:minres:cg::Convergence step 8 value 3.71826e-11
+DEAL:minres:cg::Starting value 0.00622974
+DEAL:minres:cg::Convergence step 8 value 8.44172e-12
+DEAL:minres:cg::Starting value 0.0140457
+DEAL:minres:cg::Convergence step 8 value 2.14509e-11
+DEAL:minres:cg::Starting value 0.0192091
+DEAL:minres:cg::Convergence step 8 value 2.83101e-11
+DEAL:minres:cg::Starting value 0.00753202
+DEAL:minres:cg::Convergence step 8 value 1.46992e-11
+DEAL:minres:cg::Starting value 0.0160139
+DEAL:minres:cg::Convergence step 8 value 2.23968e-11
+DEAL:minres:cg::Starting value 0.0149683
+DEAL:minres:cg::Convergence step 8 value 2.50401e-11
+DEAL:minres:cg::Starting value 0.00987329
+DEAL:minres:cg::Convergence step 8 value 1.59701e-11
+DEAL:minres:cg::Starting value 0.0177434
+DEAL:minres:cg::Convergence step 8 value 2.86324e-11
+DEAL:minres:cg::Starting value 0.0104253
+DEAL:minres:cg::Convergence step 8 value 2.37626e-11
+DEAL:minres:cg::Starting value 0.0141486
+DEAL:minres:cg::Convergence step 8 value 1.95695e-11
+DEAL:minres:cg::Starting value 0.0149180
+DEAL:minres:cg::Convergence step 8 value 2.40505e-11
+DEAL:minres:cg::Starting value 0.00808688
+DEAL:minres:cg::Convergence step 8 value 1.76925e-11
+DEAL:minres:cg::Starting value 0.0148933
+DEAL:minres:cg::Convergence step 8 value 2.64591e-11
+DEAL:minres:cg::Starting value 0.0134610
+DEAL:minres:cg::Convergence step 8 value 2.59682e-11
+DEAL:minres:cg::Starting value 0.00953982
+DEAL:minres:cg::Convergence step 8 value 2.09043e-11
+DEAL:minres:cg::Starting value 0.0167874
+DEAL:minres:cg::Convergence step 8 value 2.69110e-11
+DEAL:minres:cg::Starting value 0.0112327
+DEAL:minres:cg::Convergence step 8 value 2.33835e-11
+DEAL:minres:cg::Starting value 0.0110801
+DEAL:minres:cg::Convergence step 8 value 2.04301e-11
+DEAL:minres:cg::Starting value 0.0173589
+DEAL:minres:cg::Convergence step 8 value 3.36493e-11
+DEAL:minres:cg::Starting value 0.00865018
+DEAL:minres:cg::Convergence step 8 value 1.77225e-11
+DEAL:minres:cg::Starting value 0.0114521
+DEAL:minres:cg::Convergence step 8 value 2.39475e-11
+DEAL:minres:cg::Starting value 0.0147122
+DEAL:minres:cg::Convergence step 8 value 3.21593e-11
+DEAL:minres:cg::Starting value 0.00953626
+DEAL:minres:cg::Convergence step 8 value 2.25318e-11
+DEAL:minres:cg::Starting value 0.0140623
+DEAL:minres:cg::Convergence step 8 value 2.79761e-11
+DEAL:minres:cg::Starting value 0.0142367
+DEAL:minres:cg::Convergence step 8 value 3.14588e-11
+DEAL:minres:cg::Starting value 0.00856223
+DEAL:minres:cg::Convergence step 8 value 1.84104e-11
+DEAL:minres:cg::Starting value 0.0164523
+DEAL:minres:cg::Convergence step 8 value 3.19207e-11
+DEAL:minres:cg::Starting value 0.0105538
+DEAL:minres:cg::Convergence step 8 value 2.45636e-11
+DEAL:minres:cg::Starting value 0.00903203
+DEAL:minres:cg::Convergence step 8 value 2.00966e-11
+DEAL:minres:cg::Starting value 0.0168163
+DEAL:minres:cg::Convergence step 8 value 3.28917e-11
+DEAL:minres:cg::Starting value 0.00980470
+DEAL:minres:cg::Convergence step 8 value 2.46287e-11
+DEAL:minres:cg::Starting value 0.0114413
+DEAL:minres:cg::Convergence step 8 value 2.27803e-11
+DEAL:minres:cg::Starting value 0.0159862
+DEAL:minres:cg::Convergence step 8 value 2.86232e-11
+DEAL:minres:cg::Starting value 0.00922298
+DEAL:minres:cg::Convergence step 8 value 2.29951e-11
+DEAL:minres:cg::Starting value 0.0128744
+DEAL:minres:cg::Convergence step 8 value 2.44289e-11
+DEAL:minres:cg::Starting value 0.0142936
+DEAL:minres:cg::Convergence step 8 value 2.98636e-11
+DEAL:minres:cg::Starting value 0.00915983
+DEAL:minres:cg::Convergence step 8 value 2.12795e-11
+DEAL:minres:cg::Starting value 0.0155670
+DEAL:minres:cg::Convergence step 8 value 3.18329e-11
+DEAL:minres:cg::Starting value 0.0109592
+DEAL:minres:cg::Convergence step 8 value 2.34084e-11
+DEAL:minres:cg::Starting value 0.00955630
+DEAL:minres:cg::Convergence step 8 value 2.18936e-11
+DEAL:minres:cg::Starting value 0.0151121
+DEAL:minres:cg::Convergence step 8 value 3.38123e-11
+DEAL:minres:cg::Starting value 0.00968868
+DEAL:minres:cg::Convergence step 8 value 2.25315e-11
+DEAL:minres:cg::Starting value 0.0108050
+DEAL:minres:cg::Convergence step 8 value 2.52368e-11
+DEAL:minres:cg::Starting value 0.0146924
+DEAL:minres:cg::Convergence step 8 value 3.31375e-11
+DEAL:minres:cg::Starting value 0.00814336
+DEAL:minres:cg::Convergence step 8 value 2.06283e-11
+DEAL:minres:cg::Starting value 0.0126044
+DEAL:minres:cg::Convergence step 8 value 2.92555e-11
+DEAL:minres:cg::Starting value 0.0133238
+DEAL:minres:cg::Convergence step 8 value 3.29528e-11
+DEAL:minres:cg::Starting value 0.00763166
+DEAL:minres:cg::Convergence step 8 value 1.88873e-11
+DEAL:minres:cg::Starting value 0.0133071
+DEAL:minres:cg::Convergence step 8 value 3.19295e-11
+DEAL:minres:cg::Starting value 0.0122815
+DEAL:minres:cg::Convergence step 8 value 3.03816e-11
+DEAL:minres:cg::Starting value 0.00852480
+DEAL:minres:cg::Convergence step 8 value 2.19524e-11
+DEAL:minres:cg::Starting value 0.0141884
+DEAL:minres:cg::Convergence step 8 value 3.38936e-11
+DEAL:minres:cg::Starting value 0.0106471
+DEAL:minres:cg::Convergence step 8 value 2.78774e-11
+DEAL:minres:cg::Starting value 0.00952880
+DEAL:minres:cg::Convergence step 8 value 2.37274e-11
+DEAL:minres:cg::Starting value 0.0146651
+DEAL:minres:cg::Convergence step 8 value 3.61972e-11
+DEAL:minres:cg::Starting value 0.00881433
+DEAL:minres:cg::Convergence step 8 value 2.40496e-11
+DEAL:minres:cg::Starting value 0.0118205
+DEAL:minres:cg::Convergence step 8 value 2.65992e-11
+DEAL:minres:cg::Starting value 0.0145826
+DEAL:minres:cg::Convergence step 8 value 3.59870e-11
+DEAL:minres:cg::Starting value 0.00843000
+DEAL:minres:cg::Convergence step 8 value 2.18072e-11
+DEAL:minres:cg::Starting value 0.0140315
+DEAL:minres:cg::Convergence step 8 value 3.14174e-11
+DEAL:minres:cg::Starting value 0.0122711
+DEAL:minres:cg::Convergence step 8 value 2.91321e-11
+DEAL:minres:cg::Starting value 0.00853949
+DEAL:minres:cg::Convergence step 8 value 2.12102e-11
+DEAL:minres:cg::Starting value 0.0156109
+DEAL:minres:cg::Convergence step 8 value 3.27962e-11
+DEAL:minres:cg::Starting value 0.0105732
+DEAL:minres:cg::Convergence step 8 value 2.75501e-11
+DEAL:minres:cg::Starting value 0.00987863
+DEAL:minres:cg::Convergence step 8 value 2.23330e-11
+DEAL:minres:cg::Starting value 0.0157538
+DEAL:minres:cg::Convergence step 8 value 3.27879e-11
+DEAL:minres:cg::Starting value 0.00914876
+DEAL:minres:cg::Convergence step 8 value 2.33423e-11
+DEAL:minres:cg::Starting value 0.0115504
+DEAL:minres:cg::Convergence step 8 value 2.83728e-11
+DEAL:minres:cg::Starting value 0.0141682
+DEAL:minres:cg::Convergence step 8 value 3.38041e-11
+DEAL:minres:cg::Starting value 0.00815667
+DEAL:minres:cg::Convergence step 8 value 2.05620e-11
+DEAL:minres:cg::Starting value 0.0126812
+DEAL:minres:cg::Convergence step 8 value 2.88051e-11
+DEAL:minres:cg::Starting value 0.0124831
+DEAL:minres:cg::Convergence step 8 value 3.06176e-11
+DEAL:minres:cg::Starting value 0.00918610
+DEAL:minres:cg::Convergence step 8 value 2.19320e-11
+DEAL:minres:cg::Starting value 0.0145455
+DEAL:minres:cg::Convergence step 8 value 3.32732e-11
+DEAL:minres:cg::Starting value 0.0104528
+DEAL:minres:cg::Convergence step 8 value 2.55461e-11
+DEAL:minres:cg::Starting value 0.0104305
+DEAL:minres:cg::Convergence step 8 value 2.33583e-11
+DEAL:minres:cg::Starting value 0.0152321
+DEAL:minres:cg::Convergence step 8 value 3.49182e-11
+DEAL:minres:cg::Starting value 0.00879438
+DEAL:minres:cg::Convergence step 8 value 2.22844e-11
+DEAL:minres:cg::Starting value 0.0119622
+DEAL:minres:cg::Convergence step 8 value 2.63653e-11
+DEAL:minres:cg::Starting value 0.0142762
+DEAL:minres:cg::Convergence step 8 value 3.32224e-11
+DEAL:minres:cg::Starting value 0.00823073
+DEAL:minres:cg::Convergence step 8 value 2.07927e-11
+DEAL:minres:cg::Starting value 0.0142384
+DEAL:minres:cg::Convergence step 8 value 2.98367e-11
+DEAL:minres:cg::Starting value 0.0123493
+DEAL:minres:cg::Convergence step 8 value 2.92420e-11
+DEAL:minres:cg::Starting value 0.00809089
+DEAL:minres:cg::Convergence step 8 value 2.00311e-11
+DEAL:minres:cg::Starting value 0.0154621
+DEAL:minres:cg::Convergence step 8 value 3.09511e-11
+DEAL:minres:cg::Starting value 0.0109185
+DEAL:minres:cg::Convergence step 8 value 2.77889e-11
+DEAL:minres:cg::Starting value 0.00912313
+DEAL:minres:cg::Convergence step 8 value 2.06337e-11
+DEAL:minres:cg::Starting value 0.0162630
+DEAL:minres:cg::Convergence step 8 value 3.23960e-11
+DEAL:minres:cg::Starting value 0.00967580
+DEAL:minres:cg::Convergence step 8 value 2.38050e-11
+DEAL:minres:cg::Starting value 0.0101634
+DEAL:minres:cg::Convergence step 8 value 2.29784e-11
+DEAL:minres:cg::Starting value 0.0161983
+DEAL:minres:cg::Convergence step 8 value 3.42828e-11
+DEAL:minres:cg::Starting value 0.00856570
+DEAL:minres:cg::Convergence step 8 value 2.22765e-11
+DEAL:minres:cg::Starting value 0.0110197
+DEAL:minres:cg::Convergence step 8 value 2.27465e-11
+DEAL:minres:cg::Starting value 0.0158406
+DEAL:minres:cg::Convergence step 8 value 3.38920e-11
+DEAL:minres:cg::Starting value 0.00907592
+DEAL:minres:cg::Convergence step 8 value 2.26090e-11
+DEAL:minres:cg::Starting value 0.0140863
+DEAL:minres:cg::Convergence step 8 value 2.58907e-11
+DEAL:minres:cg::Starting value 0.0135121
+DEAL:minres:cg::Convergence step 8 value 2.90986e-11
+DEAL:minres:cg::Starting value 0.00935418
+DEAL:minres:cg::Convergence step 8 value 2.20760e-11
+DEAL:minres:cg::Starting value 0.0162178
+DEAL:minres:cg::Convergence step 8 value 3.03322e-11
+DEAL:minres:cg::Starting value 0.0106721
+DEAL:minres:cg::Convergence step 8 value 2.63608e-11
+DEAL:minres:cg::Starting value 0.0103062
+DEAL:minres:cg::Convergence step 8 value 2.31151e-11
+DEAL:minres:cg::Starting value 0.0163805
+DEAL:minres:cg::Convergence step 8 value 3.39521e-11
+DEAL:minres:cg::Starting value 0.00868751
+DEAL:minres:cg::Convergence step 8 value 2.18929e-11
+DEAL:minres:cg::Starting value 0.0119922
+DEAL:minres:cg::Convergence step 8 value 2.61355e-11
+DEAL:minres:cg::Starting value 0.0150824
+DEAL:minres:cg::Convergence step 8 value 3.29577e-11
+DEAL:minres:cg::Starting value 0.00816673
+DEAL:minres:cg::Convergence step 8 value 2.08979e-11
+DEAL:minres:cg::Starting value 0.0131551
+DEAL:minres:cg::Convergence step 8 value 2.72599e-11
+DEAL:minres:cg::Starting value 0.0134344
+DEAL:minres:cg::Convergence step 8 value 3.20024e-11
+DEAL:minres:cg::Starting value 0.00881602
+DEAL:minres:cg::Convergence step 8 value 2.10729e-11
+DEAL:minres:cg::Starting value 0.0154194
+DEAL:minres:cg::Convergence step 8 value 3.17445e-11
+DEAL:minres::Convergence step 112 value 9.95764e-10
+lue 0.0150824
+DEAL:minres:cg::Convergence step 8 value 3.29577e-11
+DEAL:minres:cg::Starting value 0.00816673
+DEAL:minres:cg::Convergence step 8 value 2.08979e-11
+DEAL:minres:cg::Starting value 0.0131551
+DEAL:minres:cg::Convergence step 8 value 2.72599e-11
+DEAL:minres:cg::Starting value 0.0134344
+DEAL:minres:cg::Convergence step 8 value 3.20024e-11
+DEAL:minres:cg::Starting value 0.00881602
+DEAL:minres:cg::Convergence step 8 value 2.10729e-11
+DEAL:minres:cg::Starting value 0.0154194
+DEAL:minres:cg::Convergence step 8 value 3.17445e-11
+DEAL:minres::Convergence step 112 value 9.95764e-10
+   Solved in 112 iterations.
+error: u_0: 1.13218e-05 p_0: 0.00140512
+

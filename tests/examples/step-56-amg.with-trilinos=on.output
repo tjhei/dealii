@@ -1,0 +1,76 @@
+Now running with AMG
+Refinement cycle 0
+   Set-up...
+	Number of active cells: 512
+	Number of degrees of freedom: 15468 (14739+729)
+   Assembling...
+   Solving...
+	Number of FGMRES iterations: 21
+	Total number of iterations used for approximation of A inverse: 330
+	Total number of iterations used for approximation of S inverse: 22
+
+   Note: The mean value was adjusted by 1.34664e-14
+
+   Velocity L2 Error: 0.000670888
+   Pressure L2 Error: 0.0036533
+   Velocity H1 Error: 0.0414704
+Refinement cycle 2
+   Set-up...
+	Number of active cells: 4096
+	Number of degrees of freedom: 112724 (107811+4913)
+   Assembling...
+   Solving...
+	Number of FGMRES iterations: 21
+	Total number of iterations used for approximation of A inverse: 265
+	Total number of iterations used for approximation of S inverse: 22
+
+   Note: The mean value was adjusted by -2.94148e-14
+
+   Velocity L2 Error: 8.37842e-05
+   Pressure L2 Error: 0.000884937
+   Velocity H1 Error: 0.0103781
+   VM Peak: 1280328
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      41.2s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assemble                        |         1 |      4.04s |       9.8% |
+| Setup                           |         1 |     0.494s |       1.2% |
+| Solve                           |         1 |      36.4s |        88% |
+| Solve - FGMRES                  |         1 |      33.2s |        81% |
+| setup AMG                       |         1 |      2.07s |         5% |
++---------------------------------+-----------+------------+------------+
+
+Refinement cycle 2
+   Set-up...
+	Number of active cells: 32768
+	Number of degrees of freedom: 859812 (823875+35937)
+   Assembling...
+   Solving...
+	Number of FGMRES iterations: 20
+	Total number of iterations used for approximation of A inverse: 353
+	Total number of iterations used for approximation of S inverse: 21
+
+   Note: The mean value was adjusted by -3.67973e-14
+
+   Velocity L2 Error: 1.04718e-05
+   Pressure L2 Error: 0.000220247
+   Velocity H1 Error: 0.00259519
+   VM Peak: 7004132
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       407s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assemble                        |         1 |      27.4s |       6.7% |
+| Setup                           |         1 |      3.75s |      0.92% |
+| Solve                           |         1 |       372s |        91% |
+| Solve - FGMRES                  |         1 |       344s |        84% |
+| setup AMG                       |         1 |      15.1s |       3.7% |
++---------------------------------+-----------+------------+------------+
+

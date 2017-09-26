@@ -1,0 +1,75 @@
+Cycle 0:
+   Number of active cells:       256
+   Number of degrees of freedom: 289 (by level: 4, 9, 25, 81, 289)
+   CG converged in 7 iterations.
+   wrote solution-00000.pvtu
+Cycle 1:
+   Number of active cells:       418
+   Number of degrees of freedom: 495 (by level: 4, 9, 25, 81, 289, 305)
+   CG converged in 8 iterations.
+   wrote solution-00001.pvtu
+Cycle 2:
+   Number of active cells:       643
+   Number of degrees of freedom: 774 (by level: 4, 9, 25, 81, 289, 626, 79)
+   CG converged in 9 iterations.
+   wrote solution-00002.pvtu
+Cycle 3:
+   Number of active cells:       931
+   Number of degrees of freedom: 1024 (by level: 4, 9, 25, 81, 289, 833, 189)
+   CG converged in 10 iterations.
+   wrote solution-00003.pvtu
+Cycle 4:
+   Number of active cells:       1522
+   Number of degrees of freedom: 1739 (by level: 4, 9, 25, 81, 289, 961, 710, 393)
+   CG converged in 10 iterations.
+   wrote solution-00004.pvtu
+Cycle 5:
+   Number of active cells:       2467
+   Number of degrees of freedom: 2812 (by level: 4, 9, 25, 81, 289, 961, 1642, 545, 437)
+   CG converged in 10 iterations.
+   wrote solution-00005.pvtu
+Cycle 6:
+   Number of active cells:       3457
+   Number of degrees of freedom: 3870 (by level: 4, 9, 25, 81, 289, 973, 2982, 553, 491)
+   CG converged in 10 iterations.
+   wrote solution-00006.pvtu
+Cycle 7:
+   Number of active cells:       5194
+   Number of degrees of freedom: 5671 (by level: 4, 9, 25, 81, 289, 1085, 3585, 693, 1109, 1007)
+   CG converged in 10 iterations.
+   wrote solution-00007.pvtu
+Cycle 8:
+   Number of active cells:       8743
+   Number of degrees of freedom: 9708 (by level: 4, 9, 25, 81, 289, 1085, 3601, 4169, 1361, 1917, 1092)
+   CG converged in 10 iterations.
+   wrote solution-00008.pvtu
+Cycle 9:
+   Number of active cells:       12769
+   Number of degrees of freedom: 14112 (by level: 4, 9, 25, 81, 289, 1089, 3674, 9038, 1413, 2161, 1907)
+   CG converged in 10 iterations.
+   wrote solution-00009.pvtu
+Cycle 10:
+   Number of active cells:       17329
+   Number of degrees of freedom: 18392 (by level: 4, 9, 25, 81, 289, 1089, 4101, 13011, 1481, 2451, 2699)
+   CG converged in 10 iterations.
+   wrote solution-00010.pvtu
+Cycle 11:
+   Number of active cells:       27787
+   Number of degrees of freedom: 30154 (by level: 4, 9, 25, 81, 289, 1089, 4225, 14021, 7770, 3041, 5065, 6183)
+   CG converged in 10 iterations.
+   wrote solution-00011.pvtu
+Cycle 12:
+   Number of active cells:       43129
+   Number of degrees of freedom: 47108 (by level: 4, 9, 25, 81, 289, 1089, 4225, 14109, 21796, 3169, 5673, 8485, 6587)
+   CG converged in 10 iterations.
+   wrote solution-00012.pvtu
+Cycle 13:
+   Number of active cells:       59662
+   Number of degrees of freedom: 64425 (by level: 4, 9, 25, 81, 289, 1089, 4225, 14369, 42486, 3169, 5797, 8993, 8437)
+   CG converged in 10 iterations.
+   wrote solution-00013.pvtu
+Cycle 14:
+   Number of active cells:       84634
+   Number of degrees of freedom: 91153 (by level: 4, 9, 25, 81, 289, 1089, 4225, 16637, 53901, 3349, 6337, 11187, 16681, 12255)
+   CG converged in 10 iterations.
+   wrote solution-00014.pvtu

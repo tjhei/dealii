@@ -1,0 +1,49 @@
+Now running with Multigrid
+Refinement cycle 0
+   Set-up...
+	Number of active cells: 64
+	Number of degrees of freedom: 2312 (2187+125)
+   Assembling...
+   Assembling Multigrid...
+   Solving...
+	Number of FGMRES iterations: 22
+	Total number of iterations used for approximation of A inverse: 69
+	Total number of iterations used for approximation of S inverse: 23
+
+   Note: The mean value was adjusted by -2.49679e-14
+
+   Velocity L2 Error: 0.00539774
+   Pressure L2 Error: 0.019341
+   Velocity H1 Error: 0.165265
+Refinement cycle 1
+   Set-up...
+	Number of active cells: 512
+	Number of degrees of freedom: 15468 (14739+729)
+   Assembling...
+   Assembling Multigrid...
+   Solving...
+	Number of FGMRES iterations: 21
+	Total number of iterations used for approximation of A inverse: 67
+	Total number of iterations used for approximation of S inverse: 22
+
+   Note: The mean value was adjusted by 1.20298e-14
+
+   Velocity L2 Error: 0.000670888
+   Pressure L2 Error: 0.0036533
+   Velocity H1 Error: 0.0414704
+Refinement cycle 2
+   Set-up...
+	Number of active cells: 4096
+	Number of degrees of freedom: 112724 (107811+4913)
+   Assembling...
+   Assembling Multigrid...
+   Solving...
+	Number of FGMRES iterations: 21
+	Total number of iterations used for approximation of A inverse: 67
+	Total number of iterations used for approximation of S inverse: 22
+
+   Note: The mean value was adjusted by 4.10112e-14
+
+   Velocity L2 Error: 8.37842e-05
+   Pressure L2 Error: 0.000884937
+   Velocity H1 Error: 0.0103781
