@@ -2457,7 +2457,7 @@ namespace internal
 
               // set level subdomain ids. if dofs already have their values set then
               // they must be on partition interfaces. in that case assign them to the
-              // processor wit the smaller subdomain id.
+              // processor with the smaller subdomain id.
               for (unsigned int i=0; i<dofs_per_cell; ++i)
                 if (level_subdomain_association[local_dof_indices[i]] ==
                     numbers::invalid_subdomain_id)
