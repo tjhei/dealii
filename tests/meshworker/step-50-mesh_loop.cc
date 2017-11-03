@@ -88,6 +88,40 @@ namespace Step50
 
 
   template <int dim>
+  struct ScratchData
+  {
+    ScratchData (const FiniteElement<dim> &fe,
+                 const unsigned int quadrature_degree)
+      :
+      fe_values (fe,
+                 QGauss<dim>(quadrature_degree),
+                 update_values   | update_gradients |
+                 update_quadrature_points | update_JxW_values)
+    {}
+
+    ScratchData (const ScratchData<dim> &scratch_data)
+      :
+      fe_values (scratch_data.fe_values.get_fe(),
+                 scratch_data.fe_values.get_quadrature(),
+                 update_values   | update_gradients |
+                 update_quadrature_points | update_JxW_values)
+    {}
+
+    FEValues<dim>     fe_values;
+
+  };
+
+  struct CopyData
+  {
+    unsigned int level;
+    unsigned int dofs_per_cell;
+
+    FullMatrix<double>                   cell_matrix;
+    Vector<double>                       cell_rhs;
+    std::vector<types::global_dof_index> local_dof_indices;
+  };
+
+  template <int dim>
   class LaplaceProblem
   {
   public:
@@ -96,6 +130,12 @@ namespace Step50
 
   private:
     void setup_system ();
+
+    template <class IteratorType>
+    void assemble_cell (const IteratorType &cell,
+                        ScratchData<dim> &scratch_data,
+                        CopyData &copy_data);
+
     void assemble_system_and_multigrid ();
     void assemble_multigrid ();
     void solve ();
@@ -258,37 +298,50 @@ namespace Step50
 
 
   template <int dim>
-  struct ScratchData
+  template <class IteratorType>
+  void LaplaceProblem<dim>::assemble_cell(const IteratorType &cell,
+                                          ScratchData<dim> &scratch_data,
+                                          CopyData &copy_data)
   {
-    ScratchData (const FiniteElement<dim> &fe,
-                 const unsigned int quadrature_degree)
-      :
-      fe_values (fe,
-                 QGauss<dim>(quadrature_degree),
-                 update_values   | update_gradients |
-                 update_quadrature_points | update_JxW_values)
-    {}
+    const unsigned int level = cell->level();
+    copy_data.level = level;
 
-    ScratchData (const ScratchData<dim> &scratch_data)
-      :
-      fe_values (scratch_data.fe_values.get_fe(),
-                 scratch_data.fe_values.get_quadrature(),
-                 update_values   | update_gradients |
-                 update_quadrature_points | update_JxW_values)
-    {}
+    const bool level_cell = cell->is_level_cell();
 
-    FEValues<dim>     fe_values;
+    const unsigned int dofs_per_cell = scratch_data.fe_values.get_fe().dofs_per_cell;
+    copy_data.dofs_per_cell = dofs_per_cell;
+    const unsigned int n_q_points      = scratch_data.fe_values.get_quadrature().size();
 
-  };
-  struct CopyData
-  {
-    unsigned int level;
-    unsigned int dofs_per_cell;
+    copy_data.cell_matrix.reinit (dofs_per_cell, dofs_per_cell);
+    if (!cell->is_level_cell())
+      copy_data.cell_rhs.reinit (dofs_per_cell);
 
-    FullMatrix<double>                   cell_matrix;
-    Vector<double>                       cell_rhs;
-    std::vector<types::global_dof_index> local_dof_indices;
-  };
+    copy_data.local_dof_indices.resize(dofs_per_cell);
+    cell->get_active_or_mg_dof_indices (copy_data.local_dof_indices);
+
+    scratch_data.fe_values.reinit (cell);
+
+    const Coefficient<dim> coefficient;
+    std::vector<double>    coefficient_values (n_q_points);
+    coefficient.value_list (scratch_data.fe_values.get_quadrature_points(),
+                            coefficient_values);
+
+    for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
+      for (unsigned int i=0; i<dofs_per_cell; ++i)
+        {
+          for (unsigned int j=0; j<dofs_per_cell; ++j)
+            copy_data.cell_matrix(i,j) += (coefficient_values[q_point] *
+                                           scratch_data.fe_values.shape_grad (i, q_point) *
+                                           scratch_data.fe_values.shape_grad (j, q_point) *
+                                           scratch_data.fe_values.JxW (q_point));
+          if (!cell->is_level_cell())
+            copy_data.cell_rhs(i) += (scratch_data.fe_values.shape_value(i,q_point) *
+                                      10.0 *
+                                      scratch_data.fe_values.JxW (q_point));
+        }
+  }
+
+
 
   template <int dim>
   void LaplaceProblem<dim>::assemble_system_and_multigrid ()
@@ -304,43 +357,6 @@ namespace Step50
         boundary_constraints[level].close ();
       }
 
-    auto cell_worker = [&] (const auto &cell, ScratchData<dim> &scratch_data, CopyData &copy_data)
-    {
-      const unsigned int level = cell->level();
-      copy_data.level = level;
-
-      const unsigned int dofs_per_cell = scratch_data.fe_values.get_fe().dofs_per_cell;
-      copy_data.dofs_per_cell = dofs_per_cell;
-      const unsigned int n_q_points      = scratch_data.fe_values.get_quadrature().size();
-
-      copy_data.cell_matrix.reinit (dofs_per_cell, dofs_per_cell);
-      if (!cell->has_children())
-        copy_data.cell_rhs.reinit (dofs_per_cell);
-
-      copy_data.local_dof_indices.resize(dofs_per_cell);
-      cell->get_active_or_mg_dof_indices (copy_data.local_dof_indices);
-
-      scratch_data.fe_values.reinit (cell);
-
-      const Coefficient<dim> coefficient;
-      std::vector<double>    coefficient_values (n_q_points);
-      coefficient.value_list (scratch_data.fe_values.get_quadrature_points(),
-                              coefficient_values);
-
-      for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
-        for (unsigned int i=0; i<dofs_per_cell; ++i)
-          {
-            for (unsigned int j=0; j<dofs_per_cell; ++j)
-              copy_data.cell_matrix(i,j) += (coefficient_values[q_point] *
-                                             scratch_data.fe_values.shape_grad (i, q_point) *
-                                             scratch_data.fe_values.shape_grad (j, q_point) *
-                                             scratch_data.fe_values.JxW (q_point));
-            if (!cell->has_children())
-              copy_data.cell_rhs(i) += (scratch_data.fe_values.shape_value(i,q_point) *
-                                        10.0 *
-                                        scratch_data.fe_values.JxW (q_point));
-          }
-    };
 
     auto copier_active = [&](const CopyData &c)
     {
@@ -366,19 +382,29 @@ namespace Step50
 
     MeshWorker::mesh_loop(mg_dof_handler.begin_active(),
                           mg_dof_handler.end(),
-                          cell_worker,
-                          copier_active,
-                          ScratchData<dim>(fe, degree+1),
-                          CopyData(),
-                          MeshWorker::assemble_own_cells);
+                          [&] (const decltype(mg_dof_handler.begin_active()) & cell,
+                               ScratchData<dim> &scratch_data,
+                               CopyData &copy_data)
+    {
+      this->assemble_cell(cell, scratch_data, copy_data);
+    },
+    copier_active,
+    ScratchData<dim>(fe, degree+1),
+    CopyData(),
+    MeshWorker::assemble_own_cells);
 
     MeshWorker::mesh_loop(mg_dof_handler.begin_mg(),
                           mg_dof_handler.end_mg(),
-                          cell_worker,
-                          copier_mg,
-                          ScratchData<dim>(fe, degree+1),
-                          CopyData(),
-                          MeshWorker::assemble_own_cells);
+                          [&] (const decltype(mg_dof_handler.begin_mg()) & cell,
+                               ScratchData<dim> &scratch_data,
+                               CopyData &copy_data)
+    {
+      this->assemble_cell(cell, scratch_data, copy_data);
+    },
+    copier_mg,
+    ScratchData<dim>(fe, degree+1),
+    CopyData(),
+    MeshWorker::assemble_own_cells);
 
     system_matrix.compress(VectorOperation::add);
     system_rhs.compress(VectorOperation::add);
