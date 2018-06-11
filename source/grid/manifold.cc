@@ -926,6 +926,8 @@ FlatManifold<dim, spacedim>::normal_vector(
       xi += delta_xi;
       ++iteration;
 
+      const double delta = (F - p).norm() / face->diameter();
+
       Assert(iteration < 10,
              ExcMessage("The Newton iteration to find the reference point "
                         "did not converge in 10 iterations. Do you have a "
@@ -933,7 +935,7 @@ FlatManifold<dim, spacedim>::normal_vector(
                         "of what a deformed cell is. You may want to output "
                         "the vertices of your cell."));
 
-      if (delta_xi.norm() < eps)
+      if (delta_xi.norm() < eps || delta < eps)
         break;
     }
 
