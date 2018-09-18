@@ -926,15 +926,6 @@ FlatManifold<dim, spacedim>::normal_vector(
       xi += delta_xi;
       ++iteration;
 
-      // It turns out that the check in reference coordinates with an absolute
-      // tolerance can cause a convergence failure of the Newton method as
-      // seen in tests/manifold/flat_manifold_09.cc. To work around this, also
-      // use a convergence check in world coordinates. This check has to be
-      // relative to the size of the face of course. Here we decided to use
-      // diameter because it works for non-planar faces and is cheap to
-      // compute:
-      const double delta = (F - p).norm() / face->diameter();
-
       Assert(iteration < 10,
              ExcMessage("The Newton iteration to find the reference point "
                         "did not converge in 10 iterations. Do you have a "
@@ -942,7 +933,16 @@ FlatManifold<dim, spacedim>::normal_vector(
                         "of what a deformed cell is. You may want to output "
                         "the vertices of your cell."));
 
-      if (delta_xi.norm() < eps || delta < eps)
+      // It turns out that the check in reference coordinates with an absolute
+      // tolerance can cause a convergence failure of the Newton method as
+      // seen in tests/manifold/flat_manifold_09.cc. To work around this, also
+      // use a convergence check in world coordinates. This check has to be
+      // relative to the size of the face of course. Here we decided to use
+      // diameter because it works for non-planar faces and is cheap to
+      // compute:
+      const double normalized_delta_world = (F - p).norm() / face->diameter();
+
+      if (delta_xi.norm() < eps || normalized_delta_world < eps)
         break;
     }
 
