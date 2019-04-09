@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------------
  *
- * Copyright (C) 2018 - 2019 by the deal.II authors
+ * Copyright (C) 2019 by the deal.II authors
  *
  * This file is part of the deal.II library.
  *
@@ -13,7 +13,7 @@
  *
  * ---------------------------------------------------------------------
  *
- * Authors: Thomas Clevenger, Clemson University
+ * Authors: Fabian Castelli, Karlsruhe Institute of Technology (KIT)
  *          Timo Heister, University of Utah
  */
 

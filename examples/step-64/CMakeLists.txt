@@ -1,9 +1,9 @@
 ##
-#  CMake script for the step-63 tutorial program:
+#  CMake script for the step-64 tutorial program:
 ##
 
 # Set the name of the project and target:
-SET(TARGET "step-63")
+SET(TARGET "step-64")
 
 # Declare all source files the target consists of. Here, this is only
 # the one step-X.cc file, but as you expand your project you may wish
@@ -31,6 +31,16 @@ IF(NOT ${deal.II_FOUND})
     "*** Could not locate a (sufficiently recent) version of deal.II. ***\n\n"
     "You may want to either pass a flag -DDEAL_II_DIR=/path/to/deal.II to cmake\n"
     "or set an environment variable \"DEAL_II_DIR\" that contains this path."
+    )
+ENDIF()
+
+IF(NOT DEAL_II_WITH_P4EST)
+  MESSAGE(FATAL_ERROR "
+Error! This tutorial requires a deal.II library that was configured with the following options:
+    DEAL_II_WITH_P4EST = ON
+However, the deal.II library found at ${DEAL_II_PATH} was configured with these options
+    DEAL_II_WITH_P4EST = ${DEAL_II_WITH_P4EST}
+which conflict with the requirements."
     )
 ENDIF()
 
