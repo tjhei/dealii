@@ -11,4 +11,4 @@ set DoF renumbering = downstream
 set With streamline diffusion = true
 
 # Output: true|false
-set Output = false 
+set Output = false
