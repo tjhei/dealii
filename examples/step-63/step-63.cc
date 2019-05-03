@@ -17,8 +17,6 @@
  *          Timo Heister, University of Utah
  */
 
-// @note: This is work in progress and will be an example for block smoothers
-// in geometric multigrid.
 #include <deal.II/base/tensor_function.h>
 #include <deal.II/base/work_stream.h>
 #include <deal.II/base/std_cxx14/memory.h>
