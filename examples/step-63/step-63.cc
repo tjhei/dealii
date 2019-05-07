@@ -17,6 +17,8 @@
  *          Timo Heister, University of Utah
  */
 
+// @sect3{Include files}
+
 #include <deal.II/base/tensor_function.h>
 #include <deal.II/base/work_stream.h>
 #include <deal.II/base/std_cxx14/memory.h>
@@ -26,6 +28,7 @@
 #include <deal.II/base/timer.h>
 #include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/path_search.h>
+
 #include <deal.II/lac/vector.h>
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/sparse_matrix.h>
@@ -41,19 +44,21 @@
 #include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/tria_iterator.h>
 #include <deal.II/grid/manifold_lib.h>
+#include <deal.II/grid/grid_out.h>
+
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_renumbering.h>
 #include <deal.II/dofs/dof_tools.h>
+
+#include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/mapping_q.h>
 #include <deal.II/fe/fe_values.h>
+
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
-#include <deal.II/meshworker/mesh_loop.h>
-#include <deal.II/fe/fe_q.h>
-#include <deal.II/fe/mapping_q.h>
-#include <deal.II/grid/grid_out.h>
 
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/multigrid/multigrid.h>
@@ -68,11 +73,16 @@
 #include <iostream>
 #include <random>
 
+// We will be using Meshworker::mesh_loop functionality for assembling matrices,
+// so we must include here:
+#include <deal.II/meshworker/mesh_loop.h>
+
 
 namespace Step63
 {
   using namespace dealii;
 
+  // @sect3{MeshWorker Data}
 
   template <int dim>
   struct ScratchData
@@ -109,6 +119,7 @@ namespace Step63
     std::vector<types::global_dof_index> local_dof_indices;
   };
 
+  // @sect3{Problem parameters}
 
   struct Settings
   {
@@ -181,8 +192,13 @@ namespace Step63
   }
 
 
-  // Functions for creating permutation of cells for output and Block
-  // smoothers
+  // @sect1{Cell permutations}
+  //
+  // The ordering in which cells and degrees of freedom are traversed
+  // will play a roll in the speed of convergence for some of the
+  // methods discussed in this tutorial (namely multiplicative methods
+  // like SOR). Here we define functions which return different orderings
+  // of cells as used in the block smoothers
   template <int dim>
   std::vector<unsigned int>
   create_downstream_cell_ordering(const DoFHandler<dim> &dof_handler,
@@ -295,6 +311,7 @@ namespace Step63
   }
 
 
+  // @sect3{Right Hand Side and Boundary Values}
 
   template <int dim>
   class RightHandSide : public Function<dim>
@@ -388,6 +405,8 @@ namespace Step63
       values[i] = BoundaryValues<dim>::value(points[i], component);
   }
 
+  // @sect3{Streamline Diffusion}
+
   template <int dim>
   double compute_stabilization_delta(const double         hk,
                                      const double         eps,
@@ -403,6 +422,8 @@ namespace Step63
     return hk / (2.0 * dir.norm() * pk) * (coth - 1.0 / Peclet);
   }
 
+
+  // @sect3{<code>AdvectionProlem</code> class}
 
   template <int dim>
   class AdvectionProblem
@@ -485,6 +506,7 @@ namespace Step63
   }
 
 
+  // @sect4{<code>AdvectionProblem::setup_system</code>}
 
   template <int dim>
   void AdvectionProblem<dim>::setup_system()
@@ -589,14 +611,16 @@ namespace Step63
                                                    level);
           mg_interface_sparsity_patterns[level].copy_from(dsp);
 
-          // We need both interface in and out matrices since our problem is not
-          // symmetric
+          // We need both interface in and out matrices since our problem is
+          // non-symmetric
           mg_interface_in[level].reinit(mg_interface_sparsity_patterns[level]);
           mg_interface_out[level].reinit(mg_interface_sparsity_patterns[level]);
         }
       }
   }
 
+
+  // @sect4{<code>AdvectionProblem::assemble_cell</code>}
 
   template <int dim>
   template <class IteratorType>
@@ -677,6 +701,8 @@ namespace Step63
         }
   }
 
+
+  // @sect4{<code>AdvectionProblem::assemble_system_and_multigrid</code>}
 
   template <int dim>
   void AdvectionProblem<dim>::assemble_system_and_multigrid()
@@ -766,6 +792,8 @@ namespace Step63
                           MeshWorker::assemble_own_cells);
   }
 
+
+  // @sect4{<code>AdvectionProblem::setup_smoother</code>}
 
   template <int dim>
   void AdvectionProblem<dim>::setup_smoother()
@@ -874,6 +902,8 @@ namespace Step63
   }
 
 
+  // @sect4{<code>AdvectionProblem::solve</code>}
+
   template <int dim>
   void AdvectionProblem<dim>::solve()
   {
@@ -882,6 +912,14 @@ namespace Step63
     SolverControl      solver_control(max_iters, solve_tolerance, true, true);
     solver_control.enable_history_data();
 
+    // Setup of the multigrid preconditioner follows almost identically to
+    // Step-16, the main difference being the various smoothers defined above
+    // and the fact that we need different interface edge matrices for in and
+    // out since our problem is non-symetric. (In reality, for this tutorial
+    // these interface matrices are empty since we are only using global
+    // refinement, and thus have no refinement edges. However, we have still
+    // included both here since if one made the simple switch to an adaptively
+    // refined method, the program would still run correctly.)
     using Transfer = MGTransferPrebuilt<Vector<double>>;
     Transfer mg_transfer(mg_constrained_dofs);
     mg_transfer.build_matrices(dof_handler);
@@ -895,6 +933,7 @@ namespace Step63
 
     mg_matrix.initialize(mg_matrices);
     mg_interface_matrix_in.initialize(mg_interface_in);
+    mg_interface_in[triangulation.n_global_levels() - 2].print(std::cout);
     mg_interface_matrix_out.initialize(mg_interface_out);
 
     Multigrid<Vector<double>> mg(
@@ -924,6 +963,7 @@ namespace Step63
   }
 
 
+  // @sect4{<code>AdvectionProblem::output_results</code>}
 
   template <int dim>
   void AdvectionProblem<dim>::output_results(const unsigned int cycle) const
@@ -986,6 +1026,11 @@ namespace Step63
   }
 
 
+  // @sect4{<code>AdvectionProblem::run</code>}
+
+  // As in most all tutorials, this function creates/refines the mesh and calls
+  // the various functions defined above to setup, assemble, solve, and output
+  // the results.
   template <int dim>
   void AdvectionProblem<dim>::run()
   {
@@ -996,8 +1041,13 @@ namespace Step63
 
         if (cycle == 0)
           {
-            GridGenerator::hyper_cube_with_cylindrical_hole(
-              triangulation, 0.3, 1.0, 0.5, 1, false);
+            // We are solving on the square <code>[-1,1]^dim</code> with a hole
+            // of radius 3/10 units centered at the origin.
+            GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
+                                                            0.3,
+                                                            1.0);
+
+            // Set manifold for the inner (curved) boundary.
             static const SphericalManifold<dim> manifold_description(
               Point<dim>(0, 0));
             triangulation.set_manifold(1, manifold_description);
@@ -1026,6 +1076,14 @@ namespace Step63
 } // namespace Step63
 
 
+// @sect4{The <code>main</code> function}
+
+// Here the main function is like most all tutorials. The only interesting bit
+// is that we require the user to pass a .prm file as a sole command line
+// argument (see Step-19 for a complete discussion of parameter files). If no
+// parameter file is given, the program will output the contents of a sample
+// parameter file with all default values to the screen that the user can then
+// copy and paste into their own .prm file.
 
 int main(int argc, char *argv[])
 {
