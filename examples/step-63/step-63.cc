@@ -326,7 +326,7 @@ namespace Step63
 
     virtual void value_list(const std::vector<Point<dim>> &points,
                             std::vector<double> &          values,
-                            const unsigned int component = 0) const override;
+                            const unsigned int             component = 0) const override;
   };
 
   template <int dim>
@@ -368,7 +368,7 @@ namespace Step63
 
     virtual void value_list(const std::vector<Point<dim>> &points,
                             std::vector<double> &          values,
-                            const unsigned int component = 0) const override;
+                            const unsigned int             component = 0) const override;
   };
 
 
@@ -933,7 +933,6 @@ namespace Step63
 
     mg_matrix.initialize(mg_matrices);
     mg_interface_matrix_in.initialize(mg_interface_in);
-    mg_interface_in[triangulation.n_global_levels() - 2].print(std::cout);
     mg_interface_matrix_out.initialize(mg_interface_out);
 
     Multigrid<Vector<double>> mg(
