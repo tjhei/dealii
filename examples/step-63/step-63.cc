@@ -311,7 +311,7 @@ namespace Step63
   }
 
 
-  // @sect3{Right Hand Side and Boundary Values}
+  // @sect3{Right-hand Side and Boundary Values}
 
   template <int dim>
   class RightHandSide : public Function<dim>
@@ -1027,7 +1027,7 @@ namespace Step63
 
   // @sect4{<code>AdvectionProblem::run</code>}
 
-  // As in most all tutorials, this function creates/refines the mesh and calls
+  // As in most tutorials, this function creates/refines the mesh and calls
   // the various functions defined above to setup, assemble, solve, and output
   // the results.
   template <int dim>
@@ -1077,7 +1077,7 @@ namespace Step63
 
 // @sect4{The <code>main</code> function}
 
-// Here the main function is like most all tutorials. The only interesting bit
+// Here the main function is like most tutorials. The only interesting bit
 // is that we require the user to pass a .prm file as a sole command line
 // argument (see Step-19 for a complete discussion of parameter files). If no
 // parameter file is given, the program will output the contents of a sample
