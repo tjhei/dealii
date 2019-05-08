@@ -399,9 +399,8 @@ namespace Step63
     (void)component;
 
     // Set boundary to 1 if $x=1$, or if $x>0.5$ and $y=-1$.
-    if (std::fabs(p[0] - 1) < 1e-8
-        || (std::fabs(p[1] + 1) < 1e-8 && p[0] >= 0.5)
-    )
+    if (std::fabs(p[0] - 1) < 1e-8 ||
+        (std::fabs(p[1] + 1) < 1e-8 && p[0] >= 0.5))
       {
         return 1.0;
       }
@@ -452,9 +451,10 @@ namespace Step63
   // The major difference is that, since we are defining our multigrid smoother
   // at runtime, we choose to define a function create_smoother() and a class
   // object mg_smoother which is a std::unique_ptr to a smoother that is derived
-  // from MGSmoother. Not that for smoother derived from RelaxationBlock, we must
-  // include a smoother_data object for each level. This will contain information
-  // about the cell ordering and the method of inverting cell matrices.
+  // from MGSmoother. Note that for smoother derived from RelaxationBlock, we
+  // must include a smoother_data object for each level. This will contain
+  // information about the cell ordering and the method of inverting cell
+  // matrices.
 
   template <int dim>
   class AdvectionProblem
@@ -533,7 +533,7 @@ namespace Step63
     if (dim > 1)
       advection_direction[1] = std::cos(numbers::PI / 6.0);
     if (dim > 2)
-      AssertThrow(false,ExcNotImplemented());
+      AssertThrow(false, ExcNotImplemented());
   }
 
 
@@ -816,8 +816,8 @@ namespace Step63
       // interface entries, i.e., the entry for dof pair (j,i) is stored in
       // interface_in(i,j). This is an optimization for the symmetric case
       // which allows only one matrix to be used when setting the edge_matrices
-      // in solve(). Here, however, since our problem is non-symmetric, we must store
-      // both interface_in and interface_out matrices.
+      // in solve(). Here, however, since our problem is non-symmetric, we must
+      // store both interface_in and interface_out matrices.
       for (unsigned int i = 0; i < copy_data.dofs_per_cell; ++i)
         for (unsigned int j = 0; j < copy_data.dofs_per_cell; ++j)
           if (mg_constrained_dofs.is_interface_matrix_entry(
