@@ -611,8 +611,8 @@ namespace Step63
                                                    level);
           mg_interface_sparsity_patterns[level].copy_from(dsp);
 
-          // We need both interface in and out matrices since our problem is
-          // non-symmetric
+          // Unlike the other GMG tutorials, we need both interface in and out
+          // matrices since our problem is non-symmetric.
           mg_interface_in[level].reinit(mg_interface_sparsity_patterns[level]);
           mg_interface_out[level].reinit(mg_interface_sparsity_patterns[level]);
         }
@@ -795,6 +795,32 @@ namespace Step63
 
   // @sect4{<code>AdvectionProblem::setup_smoother</code>}
 
+  // Here we setup the smoother based on the settings in the .prm. The two
+  // options that are of significance is the number of pre- and post-smoothing
+  // steps on each level of the multigrid v-cycle and the relaxation parameter.
+
+  // Since multiplicative methods tend to be more powerful than additive method,
+  // fewer smoothing steps are required to see convergence indepedent of mesh
+  // size. The same hold for block smoothers over point smoothers. This is
+  // reflected in the choice for the number of smoothing steps for each type of
+  // smoother below.
+
+  // The relaxation parameter for point smoothers is chosen based on trial and
+  // error, and they reflect values necessary to keep the iteration counts in
+  // the GMRES solve constant (or as close as possible) as we refine the mesh.
+  // The two values given for both ``Jacobi" and ``SOR" are for degree 1 and
+  // degree 3 finite elements. If the user wants to change to another degree,
+  // they may need to adjust these numbers. For block smoothers, this parameter
+  // has a more straightforward interpretation, namely that for additive methods
+  // in 2D, a DoF can have a repeated contribution from up to 4 cells,
+  // therefore we must relax these methods by 0.25 to compensate. This is not an
+  // issue for multiplicative methods as each cell inverse application carries
+  // new information to all its DoFs.
+
+  // Finally, as mention above, the point smoothers only operate on DoFs, and
+  // the block smoothers on cells, so only the block smoothers need to be given
+  // information regarding cell orderings. DoF ordering for point smoothers has
+  // already been taken care of.
   template <int dim>
   void AdvectionProblem<dim>::setup_smoother()
   {
@@ -843,6 +869,8 @@ namespace Step63
             std::vector<unsigned int> ordered_indices;
             switch (settings.dof_renumbering)
               {
+                // Order the cells on the downstream direction. This should
+                // represent the best case senario for multiplicative smoothers.
                 case Settings::DoFRenumberingStrategy::downstream:
                   ordered_indices =
                     create_downstream_cell_ordering(dof_handler,
@@ -850,6 +878,9 @@ namespace Step63
                                                     level);
                   break;
 
+                // Order the cells on the upstream direction. This should
+                // represent the worst case senario for multiplicative
+                // smoothers.
                 case Settings::DoFRenumberingStrategy::upstream:
                   ordered_indices =
                     create_downstream_cell_ordering(dof_handler,
@@ -857,11 +888,13 @@ namespace Step63
                                                     level);
                   break;
 
+                // Order the cells randomly.
                 case Settings::DoFRenumberingStrategy::random:
                   ordered_indices =
                     create_random_cell_ordering(dof_handler, level);
                   break;
 
+                // Keep the default cell ordering (z-order, see Glossary).
                 case Settings::DoFRenumberingStrategy::none: // Do nothing
                   break;
 
@@ -904,6 +937,25 @@ namespace Step63
 
   // @sect4{<code>AdvectionProblem::solve</code>}
 
+  // Before we can solve the system, we must first set up the multigrid preconditioner.
+  // This is requires the setup of the transfer between levels, the coarse matrix solver,
+  // and the smoother. This setup follows almost identically to
+  // Step-16, the main difference being the various smoothers defined above
+  // and the fact that we need different interface edge matrices for in and
+  // out since our problem is non-symetric. (In reality, for this tutorial
+  // these interface matrices are empty since we are only using global
+  // refinement, and thus have no refinement edges. However, we have still
+  // included both here since if one made the simple switch to an adaptively
+  // refined method, the program would still run correctly.)
+
+  // The last thing to note is that since our problem is non-symetric, we must
+  // an appropriate Krylov subspace method. We choose here to
+  // use GMRES since it offers the guarentee of residual reduction in each
+  // iteration. The major disatvantage to GMRES is that, for each iteration, we
+  // must store an additional temporary vector as well as compute an additional
+  // scalar product. However, the goal of this tutorial is to have very low iteration
+  // counts by using a powerful GMG preconditioner, so this should not be a factor. If
+  // the user is interested, another sutaible method offered in deal.II would be BiCGStab.
   template <int dim>
   void AdvectionProblem<dim>::solve()
   {
@@ -912,14 +964,6 @@ namespace Step63
     SolverControl      solver_control(max_iters, solve_tolerance, true, true);
     solver_control.enable_history_data();
 
-    // Setup of the multigrid preconditioner follows almost identically to
-    // Step-16, the main difference being the various smoothers defined above
-    // and the fact that we need different interface edge matrices for in and
-    // out since our problem is non-symetric. (In reality, for this tutorial
-    // these interface matrices are empty since we are only using global
-    // refinement, and thus have no refinement edges. However, we have still
-    // included both here since if one made the simple switch to an adaptively
-    // refined method, the program would still run correctly.)
     using Transfer = MGTransferPrebuilt<Vector<double>>;
     Transfer mg_transfer(mg_constrained_dofs);
     mg_transfer.build_matrices(dof_handler);
