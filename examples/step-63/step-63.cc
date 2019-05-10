@@ -303,6 +303,7 @@ namespace Step63
     std::vector<unsigned int> ordered_cells;
     ordered_cells.reserve(n_cells);
 
+
     for (const auto &cell : dof_handler.active_cell_iterators())
       ordered_cells.push_back(cell->index());
 
