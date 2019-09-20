@@ -15126,6 +15126,8 @@ Triangulation<dim, spacedim>::memory_consumption() const
 
 
 // explicit instantiations
+template struct CellData<0>;
+
 #include "tria.inst"
 
 DEAL_II_NAMESPACE_CLOSE
