@@ -1011,11 +1011,11 @@ namespace Utilities
           AssertThrowMPI(ierr);
 
           // allocate memory for answer message
-          request_buffers.emplace_back();
+          request_buffers.emplace_back(new std::vector<T2>);
           request_requests.emplace_back(new MPI_Request);
 
           // process request
-          auto &request_buffer = request_buffers.back();
+          auto &request_buffer = *request_buffers.back();
           this->process.process_request(other_rank,
                                         buffer_recv,
                                         request_buffer);

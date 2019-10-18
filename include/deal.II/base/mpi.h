@@ -941,7 +941,7 @@ namespace Utilities
       /**
        * Buffers for sending answers to requests.
        */
-      std::vector<std::vector<T2>> request_buffers;
+      std::vector<std::shared_ptr<std::vector<T2>>> request_buffers;
 
       /**
        * Requests for sending answers to requests.
