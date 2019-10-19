@@ -270,9 +270,14 @@ namespace Utilities
                      ExcInternalError());
 
             // 5) make sure that all messages have been sent
-            const auto ierr =
-              MPI_Waitall(request.size(), request.data(), MPI_STATUSES_IGNORE);
-            AssertThrowMPI(ierr);
+            if (requests.size() > 0)
+              {
+                const auto ierr = MPI_Waitall(request.size(),
+                                              request.data(),
+                                              MPI_STATUSES_IGNORE);
+                AssertThrowMPI(ierr);
+              }
+
 #else
             (void)owned_indices;
             (void)comm;
@@ -743,9 +748,13 @@ namespace Utilities
               }
 
             if (send_requests.size() > 0)
-              MPI_Waitall(send_requests.size(),
-                          send_requests.data(),
-                          MPI_STATUSES_IGNORE);
+              {
+                auto ierr = MPI_Waitall(send_requests.size(),
+                                        send_requests.data(),
+                                        MPI_STATUSES_IGNORE);
+                AssertThrowMPI(ierr);
+              }
+
 
 #  ifdef DEBUG
             for (const auto &it : requested_indices)
