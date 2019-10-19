@@ -1118,7 +1118,7 @@ namespace Utilities
           }
 
 
-        ierr = MPI_Wait(&barrier_request, MPI_STATUS_IGNORE);
+        auto ierr = MPI_Wait(&barrier_request, MPI_STATUS_IGNORE);
         AssertThrowMPI(ierr);
 
         for (auto &i : request_requests)

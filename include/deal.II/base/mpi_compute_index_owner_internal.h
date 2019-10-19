@@ -270,7 +270,7 @@ namespace Utilities
                      ExcInternalError());
 
             // 5) make sure that all messages have been sent
-            if (requests.size() > 0)
+            if (request.size() > 0)
               {
                 const auto ierr = MPI_Waitall(request.size(),
                                               request.data(),
