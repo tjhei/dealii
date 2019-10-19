@@ -269,9 +269,14 @@ namespace Utilities
                  mpi_comm,
                  MPI_STATUS_IGNORE);
 
-      MPI_Waitall(destinations.size(),
-                  send_requests.data(),
-                  MPI_STATUSES_IGNORE);
+      if (destinations.size() > 0)
+        {
+          auto ierr = MPI_Waitall(destinations.size(),
+                                  send_requests.data(),
+                                  MPI_STATUSES_IGNORE);
+          AssertThrowMPI(ierr);
+        }
+
       return origins;
 #  else
       // let all processors communicate the maximal number of destinations
@@ -1096,15 +1101,22 @@ namespace Utilities
 #ifdef DEAL_II_WITH_MPI
       // clean up
       {
-        auto ierr = MPI_Waitall(send_requests.size(),
-                                send_requests.data(),
-                                MPI_STATUSES_IGNORE);
-        AssertThrowMPI(ierr);
+        if (send_requests.size() > 0)
+          {
+            auto ierr = MPI_Waitall(send_requests.size(),
+                                    send_requests.data(),
+                                    MPI_STATUSES_IGNORE);
+            AssertThrowMPI(ierr);
+          }
 
-        ierr = MPI_Waitall(recv_requests.size(),
-                           recv_requests.data(),
-                           MPI_STATUSES_IGNORE);
-        AssertThrowMPI(ierr);
+        if (recv_requests.size() > 0)
+          {
+            auto ierr = MPI_Waitall(recv_requests.size(),
+                                    recv_requests.data(),
+                                    MPI_STATUSES_IGNORE);
+            AssertThrowMPI(ierr);
+          }
+
 
         ierr = MPI_Wait(&barrier_request, MPI_STATUS_IGNORE);
         AssertThrowMPI(ierr);
@@ -1351,12 +1363,21 @@ namespace Utilities
     {
 #ifdef DEAL_II_WITH_MPI
       // finalize all MPI_Requests
-      MPI_Waitall(send_and_recv_buffers.size(),
-                  send_and_recv_buffers.data(),
-                  MPI_STATUSES_IGNORE);
-      MPI_Waitall(requests_answers.size(),
-                  requests_answers.data(),
-                  MPI_STATUSES_IGNORE);
+      if (send_and_recv_buffers.size() > 0)
+        {
+          auto ierr = MPI_Waitall(send_and_recv_buffers.size(),
+                                  send_and_recv_buffers.data(),
+                                  MPI_STATUSES_IGNORE);
+          AssertThrowMPI(ierr);
+        }
+
+      if (requests_answers.size() > 0)
+        {
+          auto ierr = MPI_Waitall(requests_answers.size(),
+                                  requests_answers.data(),
+                                  MPI_STATUSES_IGNORE);
+          AssertThrowMPI(ierr);
+        }
 
       // unpack received data
       for (unsigned int i = 0; i < targets.size(); i++)
