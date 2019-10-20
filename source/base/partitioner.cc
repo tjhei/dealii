@@ -71,8 +71,12 @@ namespace Utilities
       , communicator(communicator_in)
       , have_ghost_indices(false)
     {
+      MPI_Barrier(communicator_in);
+
       set_owned_indices(locally_owned_indices);
       set_ghost_indices(ghost_indices_in);
+
+      MPI_Barrier(communicator_in);
     }
 
 
