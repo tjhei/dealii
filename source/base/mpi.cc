@@ -1128,11 +1128,11 @@ namespace Utilities
             AssertThrowMPI(ierr);
           }
 
-	//#  ifdef DEBUG
+        //#  ifdef DEBUG
         // note: IBarrier seems to make problem during testing, this additional
         // Barrier seems to help
         MPI_Barrier(this->comm);
-	//#  endif
+        //#  endif
       }
 
       // unpack data
