@@ -1128,11 +1128,11 @@ namespace Utilities
             AssertThrowMPI(ierr);
           }
 
-#  ifdef DEBUG
+	//#  ifdef DEBUG
         // note: IBarrier seems to make problem during testing, this additional
         // Barrier seems to help
         MPI_Barrier(this->comm);
-#  endif
+	//#  endif
       }
 
       // unpack data
@@ -1380,6 +1380,8 @@ namespace Utilities
           AssertThrowMPI(ierr);
         }
 
+      MPI_Barrier(this->comm);
+      
       // unpack received data
       for (unsigned int i = 0; i < targets.size(); i++)
         this->process.unpack_recv_buffer(targets[i], recv_buffers[i]);
