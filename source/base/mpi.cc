@@ -215,7 +215,7 @@ namespace Utilities
       const std::vector<unsigned int> &destinations)
     {
       MPI_Comm mpi_comm;
-      MPI_Comm_dup(mpi_comm_, mpi_comm);
+      MPI_Comm_dup(mpi_comm_, &mpi_comm);
 
       const unsigned int myid    = Utilities::MPI::this_mpi_process(mpi_comm);
       const unsigned int n_procs = Utilities::MPI::n_mpi_processes(mpi_comm);
