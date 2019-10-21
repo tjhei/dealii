@@ -211,9 +211,12 @@ namespace Utilities
 
     std::vector<unsigned int>
     compute_point_to_point_communication_pattern(
-      const MPI_Comm &                 mpi_comm,
+      const MPI_Comm &                 mpi_comm_,
       const std::vector<unsigned int> &destinations)
     {
+      MPI_Comm mpi_comm;
+      MPI_Comm_dup(mpi_comm_, mpi_comm);
+
       const unsigned int myid    = Utilities::MPI::this_mpi_process(mpi_comm);
       const unsigned int n_procs = Utilities::MPI::n_mpi_processes(mpi_comm);
 
@@ -252,11 +255,7 @@ namespace Utilities
                   mpi_comm,
                   send_requests.data() + (&el - destinations.data()));
 
-      // if no one to receive from, return an empty vector
-      if (n_recv_from == 0)
-        return std::vector<unsigned int>();
-
-      // ...otherwise receive `n_recv_from` times from the processes
+      // Receive `n_recv_from` times from the processes
       // who communicate with this one. Store the obtained id's
       // in the resulting vector
       std::vector<unsigned int> origins(n_recv_from);
@@ -277,6 +276,7 @@ namespace Utilities
           AssertThrowMPI(ierr);
         }
 
+      MPI_Comm_free(&mpi_comm);
       return origins;
 #  else
       // let all processors communicate the maximal number of destinations
@@ -285,8 +285,11 @@ namespace Utilities
         Utilities::MPI::max(destinations.size(), mpi_comm);
 
       if (max_n_destinations == 0)
+        {
         // all processes have nothing to send/receive:
+          MPI_Comm_free(&mpi_comm);
         return std::vector<unsigned int>();
+        }
 
       // now that we know the number of data packets every processor wants to
       // send, set up a buffer with the maximal size and copy our destinations
@@ -322,6 +325,7 @@ namespace Utilities
                    numbers::invalid_unsigned_int)
             break;
 
+      MPI_Comm_free(&mpi_comm);
       return origins;
 #  endif
     }
