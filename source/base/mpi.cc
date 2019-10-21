@@ -892,6 +892,8 @@ namespace Utilities
     void
     ConsensusAlgorithm_NBX<T1, T2>::run()
     {
+      MPI_Barrier(this->comm);
+
       // 1) send requests and start receiving the answers
       start_communication();
 
