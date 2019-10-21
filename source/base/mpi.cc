@@ -1381,7 +1381,7 @@ namespace Utilities
         }
 
       MPI_Barrier(this->comm);
-      
+
       // unpack received data
       for (unsigned int i = 0; i < targets.size(); i++)
         this->process.unpack_recv_buffer(targets[i], recv_buffers[i]);
