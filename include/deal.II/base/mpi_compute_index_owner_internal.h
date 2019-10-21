@@ -120,7 +120,7 @@ namespace Utilities
 
 #ifdef DEAL_II_WITH_MPI
 	    MPI_Comm comm;
-            MPI_Comm_dup(comm, &comm_);
+            MPI_Comm_dup(comm_, &comm);
             unsigned int my_rank = this_mpi_process(comm);
 
             types::global_dof_index dic_local_received = 0;
@@ -280,6 +280,7 @@ namespace Utilities
                 AssertThrowMPI(ierr);
               }
 
+	    MPI_Comm_free(&comm);
 #else
             (void)owned_indices;
             (void)comm;
