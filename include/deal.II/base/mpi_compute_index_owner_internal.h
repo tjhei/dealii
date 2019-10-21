@@ -630,6 +630,9 @@ namespace Utilities
 
 #ifdef DEAL_II_WITH_MPI
 
+            static unsigned int tag = 1000;
+            ++tag;
+
             // reserve enough slots for the requests ahead; depending on
             // whether the owning rank is one of the requesters or not, we
             // might have one less requests to execute, so fill the requests
@@ -681,7 +684,7 @@ namespace Utilities
                                 send_data[i].size(),
                                 MPI_UNSIGNED,
                                 dict.actually_owning_rank_list[i],
-                                1021,
+                                tag,
                                 comm,
                                 &send_requests.back());
                     AssertThrowMPI(ierr);
@@ -695,7 +698,7 @@ namespace Utilities
                 // wait for an incoming message
                 MPI_Status   status;
                 unsigned int ierr =
-                  MPI_Probe(MPI_ANY_SOURCE, 1021, comm, &status);
+                  MPI_Probe(MPI_ANY_SOURCE, tag, comm, &status);
                 AssertThrowMPI(ierr);
 
                 // retrieve size of incoming message
@@ -711,7 +714,7 @@ namespace Utilities
                                 number_amount,
                                 MPI_UNSIGNED,
                                 status.MPI_SOURCE,
-                                1021,
+                                tag,
                                 comm,
                                 &status);
                 AssertThrowMPI(ierr);
