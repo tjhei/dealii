@@ -113,12 +113,14 @@ namespace Utilities
            * ranges to the owner of the dictionary part.
            */
           void
-          reinit(const IndexSet &owned_indices, const MPI_Comm &comm)
+          reinit(const IndexSet &owned_indices, const MPI_Comm &comm_)
           {
             // 1) set up the partition
-            this->partition(owned_indices, comm);
+            this->partition(owned_indices, comm_);
 
 #ifdef DEAL_II_WITH_MPI
+	    MPI_Comm comm;
+            MPI_Comm_dup(comm, &comm_);
             unsigned int my_rank = this_mpi_process(comm);
 
             types::global_dof_index dic_local_received = 0;
