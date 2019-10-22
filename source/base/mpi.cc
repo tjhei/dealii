@@ -103,6 +103,15 @@ namespace Utilities
 
 
 
+    void
+    free_communicator(MPI_Comm &mpi_communicator)
+    {
+      const int ierr = MPI_Comm_free(&mpi_communicator);
+      AssertThrowMPI(ierr);
+    }
+
+
+
     int
     create_group(const MPI_Comm & comm,
                  const MPI_Group &group,
@@ -276,7 +285,7 @@ namespace Utilities
           AssertThrowMPI(ierr);
         }
 
-      MPI_Comm_free(&mpi_comm);
+      free_communicator(mpi_comm);
       return origins;
 #  else
       // let all processors communicate the maximal number of destinations
@@ -287,7 +296,7 @@ namespace Utilities
       if (max_n_destinations == 0)
         {
         // all processes have nothing to send/receive:
-          MPI_Comm_free(&mpi_comm);
+          free_communicator(mpi_comm);
         return std::vector<unsigned int>();
         }
 
@@ -325,7 +334,7 @@ namespace Utilities
                    numbers::invalid_unsigned_int)
             break;
 
-      MPI_Comm_free(&mpi_comm);
+      free_communicator(mpi_comm);
       return origins;
 #  endif
     }
@@ -535,6 +544,10 @@ namespace Utilities
       return mpi_communicator;
     }
 
+    void
+    free_communicator(MPI_Comm &/*mpi_communicator*/)
+    {
+    }
 
 
     MinMaxAvg

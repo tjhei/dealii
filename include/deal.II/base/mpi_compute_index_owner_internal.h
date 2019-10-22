@@ -390,12 +390,12 @@ namespace Utilities
            */
           ConsensusAlgorithmPayload(const IndexSet &owned_indices,
                                     const IndexSet &indices_to_look_up,
-                                    const MPI_Comm &comm,
+                                    const MPI_Comm &comm_,
                                     std::vector<unsigned int> &owning_ranks,
                                     const bool track_index_requests = false)
             : owned_indices(owned_indices)
             , indices_to_look_up(indices_to_look_up)
-            , comm(comm)
+            , comm(MPI::duplicate_communicator(comm_))
             , my_rank(this_mpi_process(comm))
             , n_procs(n_mpi_processes(comm))
             , track_index_requests(track_index_requests)
@@ -403,6 +403,11 @@ namespace Utilities
           {
             dict.reinit(owned_indices, comm);
             requesters.resize(dict.actually_owning_rank_list.size());
+          }
+
+          ~ConsensusAlgorithmPayload()
+          {
+            free_communicator(comm);
           }
 
           /**
@@ -633,8 +638,7 @@ namespace Utilities
 
 #ifdef DEAL_II_WITH_MPI
 
-            static unsigned int tag = 1000;
-            ++tag;
+            static unsigned int tag = 1027;
 
             // reserve enough slots for the requests ahead; depending on
             // whether the owning rank is one of the requesters or not, we
