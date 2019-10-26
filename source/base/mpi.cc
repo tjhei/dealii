@@ -733,6 +733,12 @@ namespace Utilities
     }
 
 
+    void
+    MPI_InitFinalize::register_static_request(MPI_Request &request)
+    {
+      requests.insert(&request);
+    }
+
     MPI_InitFinalize::~MPI_InitFinalize()
     {
       // make memory pool release all PETSc/Trilinos/MPI-based vectors that
@@ -741,8 +747,14 @@ namespace Utilities
       // would run after MPI_Finalize is called, leading to errors
 
 #ifdef DEAL_II_WITH_MPI
-      // Start with the deal.II MPI vectors (need to do this before finalizing
-      // PETSc because it finalizes MPI).  Delete vectors from the pools:
+      // Before exiting, wait for nonblocking communication to complete:
+      for (auto request : requests)
+        {
+          const int ierr = MPI_Wait(request, MPI_STATUS_IGNORE);
+          AssertThrowMPI(ierr);
+        }
+
+      // Start with deal.II MPI vectors and delete vectors from the pools:
       GrowingVectorMemory<
         LinearAlgebra::distributed::Vector<double>>::release_unused_memory();
       GrowingVectorMemory<LinearAlgebra::distributed::BlockVector<double>>::

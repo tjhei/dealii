@@ -31,6 +31,7 @@
 // some constructs with MPI data
 // types. Therefore, create some dummies
 using MPI_Comm     = int;
+using MPI_Request  = int;
 using MPI_Datatype = int;
 using MPI_Op       = int;
 #  ifndef MPI_COMM_WORLD
@@ -38,6 +39,9 @@ using MPI_Op       = int;
 #  endif
 #  ifndef MPI_COMM_SELF
 #    define MPI_COMM_SELF 0
+#  endif
+#  ifndef MPI_REQUEST_NULL
+#    define MPI_REQUEST_NULL 0
 #  endif
 #  ifndef MPI_MIN
 #    define MPI_MIN 0
@@ -704,6 +708,36 @@ namespace Utilities
        * MPI process.
        */
       ~MPI_InitFinalize();
+
+      /**
+       * Register a reference to an MPI_Request
+       * that we MPI_Wait on before calling MPI_Finalize.
+       *
+       * The object @p request needs to exist when MPI_Finalize is called, which means the
+       * request is typically statically allocated. Note that is is acceptable
+       * for a request to be already waited on (and consequently reset to
+       * MPI_REQUEST_NULL).
+       *
+       * A typical usage is the following idiom:
+       * @code
+       * void my_fancy_communication()
+       * {
+       *   static MPI_Request request = MPI_REQUEST_NULL;
+       *   MPI_InitFinalize::register_static_request(request);
+       *   MPI_Wait(&request, MPI_STATUS_IGNORE)
+       *   // [some algorithm that is not safe to be executed twice in a row.]
+       *   MPI_IBarrier(comm, &request);
+       * }
+       * @endcode
+       */
+      static void
+      register_static_request(MPI_Request &request);
+
+    private:
+      /**
+       * Requests to MPI_Wait before finalizing
+       */
+      static std::set<MPI_Request *> requests;
     };
 
     /**
