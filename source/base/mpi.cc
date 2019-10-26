@@ -742,7 +742,7 @@ namespace Utilities
 
 
 
-    std::set<MPI_Request*> MPI_InitFinalize::requests;
+    std::set<MPI_Request *> MPI_InitFinalize::requests;
 
 
 
