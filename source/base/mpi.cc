@@ -733,11 +733,18 @@ namespace Utilities
     }
 
 
+
     void
     MPI_InitFinalize::register_static_request(MPI_Request &request)
     {
       requests.insert(&request);
     }
+
+
+
+    std::set<MPI_Request*> MPI_InitFinalize::requests;
+
+
 
     MPI_InitFinalize::~MPI_InitFinalize()
     {
