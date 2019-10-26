@@ -24,8 +24,9 @@
 class CriticalSection
 {
 public:
-  explicit CriticalSection(MPI_Request &request)
-    : request(request)
+  explicit CriticalSection(const MPI_Comm &comm, MPI_Request &request)
+    : comm(comm)
+    , request(request)
   {
     Utilities::MPI::MPI_InitFinalize::register_static_request(request);
     const int ierr = MPI_Wait(&request, MPI_STATUS_IGNORE);
@@ -40,6 +41,7 @@ public:
 
 
 private:
+  MPI_Comm     comm;
   MPI_Request &request;
 };
 
@@ -48,7 +50,7 @@ void
 test(MPI_Comm comm)
 {
   static MPI_Request request = MPI_REQUEST_NULL;
-  CriticalSection    cs(request);
+  CriticalSection    cs(comm, request);
 
   int        tag     = 12345;
   const auto my_rank = Utilities::MPI::this_mpi_process(comm);
