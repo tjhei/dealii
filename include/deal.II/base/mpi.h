@@ -308,13 +308,8 @@ namespace Utilities
        * This will wait() until all ranks in the same communictor @p comm have completed
        * the last critical section (identified using @p request).
        */
-      explicit CriticalSection(const MPI_Comm &comm, MPI_Request &request)
-        : comm(comm)
-        , request(request)
-      {
-        Utilities::MPI::MPI_InitFinalize::register_static_request(request);
-        wait();
-      }
+      explicit CriticalSection(const MPI_Comm &comm, MPI_Request &request);
+
 
       /**
        * Wait for the barrier to complete. This function call is typically not
@@ -322,20 +317,12 @@ namespace Utilities
        * section is executed can lead to faster runtime.
        */
       void
-      wait()
-      {
-        const int ierr = MPI_Wait(&request, MPI_STATUS_IGNORE);
-        AssertThrowMPI(ierr);
-      }
+      wait();
 
       /**
        * Destructor. Initiates a non-blocking barrier.
        */
-      ~CriticalSection()
-      {
-        const int ierr = MPI_Ibarrier(comm, &request);
-        AssertThrowMPI(ierr);
-      }
+      ~CriticalSection();
 
     private:
       /**

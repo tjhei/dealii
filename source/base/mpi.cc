@@ -113,6 +113,33 @@ namespace Utilities
 
 
 
+    CriticalSection::CriticalSection(const MPI_Comm &comm, MPI_Request &request)
+      : comm(comm)
+      , request(request)
+    {
+      Utilities::MPI::MPI_InitFinalize::register_static_request(request);
+      wait();
+    }
+
+
+
+    void
+    CriticalSection::wait()
+    {
+      const int ierr = MPI_Wait(&request, MPI_STATUS_IGNORE);
+      AssertThrowMPI(ierr);
+    }
+
+
+
+    CriticalSection::~CriticalSection()
+    {
+      const int ierr = MPI_Ibarrier(comm, &request);
+      AssertThrowMPI(ierr);
+    }
+
+
+
     int
     create_group(const MPI_Comm & comm,
                  const MPI_Group &group,
@@ -552,6 +579,30 @@ namespace Utilities
     void
     free_communicator(MPI_Comm & /*mpi_communicator*/)
     {}
+
+
+
+    CriticalSection::CriticalSection(const MPI_Comm & /*comm*/,
+                                     MPI_Request &request)
+      : request(request)
+    {
+      // nothing to do without MPI.
+    }
+
+
+
+    void
+    CriticalSection::wait()
+    {
+      // nothing to do without MPI
+    }
+
+
+
+    CriticalSection::~CriticalSection()
+    {
+      // nothing to do without MPI
+    }
 
 
 
