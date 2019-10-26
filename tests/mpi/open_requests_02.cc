@@ -26,8 +26,8 @@
 void
 test(MPI_Comm comm)
 {
-  static MPI_Request request = MPI_REQUEST_NULL;
-  Utilities::MPI::CriticalSection    cs(comm, request);
+  static MPI_Request              request = MPI_REQUEST_NULL;
+  Utilities::MPI::CriticalSection cs(comm, request);
 
   int        tag     = 12345;
   const auto my_rank = Utilities::MPI::this_mpi_process(comm);
