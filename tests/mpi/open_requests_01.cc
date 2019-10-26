@@ -16,14 +16,35 @@
 
 // check MPI_InitializeFinalize::register_static_request
 
-
 #include <deal.II/base/mpi.h>
 
 #include "../tests.h"
 
 void
+unnecessary(MPI_Comm comm)
+{
+  // We register this request, but actually decide to wait at the end of this
+  // function, which means that the request is guaranteed to be NULL
+  // already. Make sure this works:
+  static MPI_Request request = MPI_REQUEST_NULL;
+  Utilities::MPI::MPI_InitFinalize::register_static_request(request);
+
+  int ierr = MPI_Ibarrier(comm, &request);
+  AssertThrowMPI(ierr);
+
+  ierr = MPI_Wait(&request, MPI_STATUS_IGNORE);
+  AssertThrowMPI(ierr);
+}
+
+
+void
 test(MPI_Comm comm)
 {
+  // Here we execute an Ibarrier at the end and a wait at the
+  // beginning. Without the barrier, multiple calls to this function fail as
+  // messages are mixed up. With it, the algorithm works, but not registering
+  // the request causes an error as well.
+
   static MPI_Request request = MPI_REQUEST_NULL;
   Utilities::MPI::MPI_InitFinalize::register_static_request(request);
   int ierr = MPI_Wait(&request, MPI_STATUS_IGNORE);
@@ -64,10 +85,12 @@ test(MPI_Comm comm)
 int
 main(int argc, char **argv)
 {
-  Utilities::MPI::MPI_InitFinalize mpi_initialization(
-    argc, argv, testing_max_num_threads());
+  Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
   mpi_initlog();
+
+  unnecessary(MPI_COMM_WORLD);
+  unnecessary(MPI_COMM_WORLD);
 
   test(MPI_COMM_WORLD);
   test(MPI_COMM_WORLD);
