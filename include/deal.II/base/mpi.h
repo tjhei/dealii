@@ -273,6 +273,84 @@ namespace Utilities
     };
 
     /**
+     * An implementation of a critical section that guards an algorithm with MPI
+     * communication when executed several times.
+     *
+     * This critical section enforces that a section of code (between the
+     * constructor and destructor of this helper class) only starts executing
+     * after all MPI ranks in the same communicator finished execution of this
+     * section from an earlier time.
+     *
+     * The class internally executes a non-blocking barrier in the destructor
+     * for each critical section and waits for the completion of the barrier
+     * when constructed.
+     *
+     * This makes certain MPI algorithms correct that rely on receiving messages
+     * using MPI_ANY_SOURCE, where executing the same algorithm more than once
+     * in a row can confuse messages between the first and second execution.
+     *
+     * Example usage:
+     * @code
+     * {
+     *   static MPI_Request request = MPI_REQUEST_NULL;
+     *   CriticalSection cs(comm, request);
+     *
+     *   // [code to be guarded]
+     * }
+     * @endcode
+     */
+    class CriticalSection
+    {
+    public:
+      /**
+       * Constructor. Note that @p request needs to be a static and unique variable.
+       *
+       * This will wait() until all ranks in the same communictor @p comm have completed
+       * the last critical section (identified using @p request).
+       */
+      explicit CriticalSection(const MPI_Comm &comm, MPI_Request &request)
+        : comm(comm)
+        , request(request)
+      {
+        Utilities::MPI::MPI_InitFinalize::register_static_request(request);
+        wait();
+      }
+
+      /**
+       * Wait for the barrier to complete. This function call is typically not
+       * needed in user code, as delaying the wait until the next time the
+       * section is executed can lead to faster runtime.
+       */
+      void
+      wait()
+      {
+        const int ierr = MPI_Wait(&request, MPI_STATUS_IGNORE);
+        AssertThrowMPI(ierr);
+      }
+
+      /**
+       * Destructor. Initiates a non-blocking barrier.
+       */
+      ~CriticalSection()
+      {
+        const int ierr = MPI_Ibarrier(comm, &request);
+        AssertThrowMPI(ierr);
+      }
+
+    private:
+      /**
+       * The communictor for the barrier.
+       */
+      MPI_Comm comm;
+      /**
+       * reference to the request where we keep track of the barrier.
+       */
+      MPI_Request &request;
+    };
+
+
+
+    /**
      * If @p comm is an intracommunicator, this function returns a new
      * communicator @p newcomm with communication group defined by the
      * @p group argument. The function is only collective over the group of
@@ -724,7 +802,7 @@ namespace Utilities
        * {
        *   static MPI_Request request = MPI_REQUEST_NULL;
        *   MPI_InitFinalize::register_static_request(request);
-       *   MPI_Wait(&request, MPI_STATUS_IGNORE)
+       *   MPI_Wait(&request, MPI_STATUS_IGNORE);
        *   // [some algorithm that is not safe to be executed twice in a row.]
        *   MPI_IBarrier(comm, &request);
        * }
