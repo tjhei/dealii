@@ -295,9 +295,9 @@ namespace Utilities
 
       if (max_n_destinations == 0)
         {
-        // all processes have nothing to send/receive:
+          // all processes have nothing to send/receive:
           free_communicator(mpi_comm);
-        return std::vector<unsigned int>();
+          return std::vector<unsigned int>();
         }
 
       // now that we know the number of data packets every processor wants to
@@ -545,9 +545,8 @@ namespace Utilities
     }
 
     void
-    free_communicator(MPI_Comm &/*mpi_communicator*/)
-    {
-    }
+    free_communicator(MPI_Comm & /*mpi_communicator*/)
+    {}
 
 
     MinMaxAvg
@@ -887,9 +886,10 @@ namespace Utilities
     template <typename T1, typename T2>
     ConsensusAlgorithm<T1, T2>::ConsensusAlgorithm(
       ConsensusAlgorithmProcess<T1, T2> &process,
-      const MPI_Comm &                   comm)
+      const MPI_Comm &                   communicator)
       : process(process)
-      , comm(comm)
+      , comm_dup(communicator)
+      , comm(*comm_dup)
       , my_rank(this_mpi_process(comm))
       , n_procs(n_mpi_processes(comm))
     {}

@@ -119,7 +119,7 @@ namespace Utilities
             this->partition(owned_indices, comm_);
 
 #ifdef DEAL_II_WITH_MPI
-	    MPI_Comm comm;
+            MPI_Comm comm;
             MPI_Comm_dup(comm_, &comm);
             unsigned int my_rank = this_mpi_process(comm);
 
@@ -280,7 +280,7 @@ namespace Utilities
                 AssertThrowMPI(ierr);
               }
 
-	    MPI_Comm_free(&comm);
+            MPI_Comm_free(&comm);
 #else
             (void)owned_indices;
             (void)comm;
@@ -765,6 +765,10 @@ namespace Utilities
                 AssertThrowMPI(ierr);
               }
 
+            // This barrier is important to make sure that two successive calls
+            // to this functions do not overlap and we confuse messages. See the
+            // discussion in https://github.com/dealii/dealii/issues/8929
+            MPI_Barrier(comm);
 
 #  ifdef DEBUG
             for (const auto &it : requested_indices)

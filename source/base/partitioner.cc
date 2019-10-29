@@ -178,7 +178,8 @@ namespace Utilities
       n_ghost_indices_data = ghost_indices_data.n_elements();
 
       have_ghost_indices =
-        Utilities::MPI::sum((n_ghost_indices_data>0)?1:0, communicator) > 0;
+        Utilities::MPI::sum((n_ghost_indices_data > 0) ? 1 : 0, communicator) >
+        0;
 
       // In the rest of this function, we determine the point-to-point
       // communication pattern of the partitioner. We make up a list with both

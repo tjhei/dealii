@@ -848,6 +848,9 @@ namespace Utilities
     class ConsensusAlgorithm
     {
     public:
+      /**
+       * Constructor.
+       */
       ConsensusAlgorithm(ConsensusAlgorithmProcess<T1, T2> &process,
                          const MPI_Comm &                   comm);
 
@@ -856,6 +859,9 @@ namespace Utilities
        */
       virtual ~ConsensusAlgorithm() = default;
 
+      /**
+       * Run the algorithm.
+       */
       virtual void
       run() = 0;
 
@@ -866,7 +872,13 @@ namespace Utilities
       ConsensusAlgorithmProcess<T1, T2> &process;
 
       /**
-       * MPI communicator.
+       * We duplicate the communicator to make this algorithm safe
+       * when executed twice in a row as we are using nonblocking operations.
+       */
+      const DuplicatedCommunicator comm_dup;
+
+      /**
+       * MPI communicator. Reference to comm_dup.
        */
       const MPI_Comm &comm;
 
