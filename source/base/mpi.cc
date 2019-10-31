@@ -113,33 +113,6 @@ namespace Utilities
 
 
 
-    CriticalSection::CriticalSection(const MPI_Comm &comm, MPI_Request &request)
-      : comm(comm)
-      , request(request)
-    {
-      Utilities::MPI::MPI_InitFinalize::register_static_request(request);
-      wait();
-    }
-
-
-
-    void
-    CriticalSection::wait()
-    {
-      const int ierr = MPI_Wait(&request, MPI_STATUS_IGNORE);
-      AssertThrowMPI(ierr);
-    }
-
-
-
-    CriticalSection::~CriticalSection()
-    {
-      const int ierr = MPI_Ibarrier(comm, &request);
-      AssertThrowMPI(ierr);
-    }
-
-
-
     int
     create_group(const MPI_Comm & comm,
                  const MPI_Group &group,
@@ -582,30 +555,6 @@ namespace Utilities
 
 
 
-    CriticalSection::CriticalSection(const MPI_Comm & /*comm*/,
-                                     MPI_Request &request)
-      : request(request)
-    {
-      // nothing to do without MPI.
-    }
-
-
-
-    void
-    CriticalSection::wait()
-    {
-      // nothing to do without MPI
-    }
-
-
-
-    CriticalSection::~CriticalSection()
-    {
-      // nothing to do without MPI
-    }
-
-
-
     MinMaxAvg
     min_max_avg(const double my_value, const MPI_Comm &)
     {
@@ -786,9 +735,18 @@ namespace Utilities
 
 
     void
-    MPI_InitFinalize::register_static_request(MPI_Request &request)
+    MPI_InitFinalize::register_request(MPI_Request &request)
     {
+      // insert if it is not in the set already:
       requests.insert(&request);
+    }
+
+
+
+    void
+    MPI_InitFinalize::unregister_request(MPI_Request &request)
+    {
+      requests.erase(&request);
     }
 
 
@@ -1537,6 +1495,75 @@ namespace Utilities
     template class ConsensusAlgorithmSelector<
       std::pair<types::global_dof_index, types::global_dof_index>,
       unsigned int>;
+
+
+
+    CollectiveMutex::CollectiveMutex(MPI_Comm &comm)
+      : locked(false)
+      , comm(comm)
+      , request(MPI_REQUEST_NULL)
+    {
+      Utilities::MPI::MPI_InitFinalize::register_request(request);
+    }
+
+
+
+    CollectiveMutex::~CollectiveMutex()
+    {
+      Assert(
+        !locked,
+        ExcMessage(
+          "Error: MPI::CollectiveMutex is still locked while being destructed!"));
+
+      Utilities::MPI::MPI_InitFinalize::unregister_request(request);
+    }
+
+
+
+    void
+    CollectiveMutex::lock()
+    {
+      Assert(
+        !locked,
+        ExcMessage(
+          "Error: MPI::CollectiveMutex needs to be unlocked before lock()"));
+
+#ifdef DEAL_II_WITH_MPI
+#  if DEAL_II_MPI_VERSION_GTE(3, 0)
+      // wait for non-blocking barrier to finish. This is a noop the
+      // first time we lock().
+      const int ierr = MPI_Wait(&request, MPI_STATUS_IGNORE);
+      AssertThrowMPI(ierr);
+#  else
+      // nothing to do as blocking barrier already completed
+#  endif
+#endif
+
+      locked = true;
+    }
+
+
+
+    void
+    CollectiveMutex::unlock()
+    {
+      Assert(
+        locked,
+        ExcMessage(
+          "Error: MPI::CollectiveMutex needs to be locked before unlock()"));
+
+#ifdef DEAL_II_WITH_MPI
+#  if DEAL_II_MPI_VERSION_GTE(3, 0)
+      const int ierr = MPI_Ibarrier(comm, &request);
+      AssertThrowMPI(ierr);
+#  else
+      const int ierr = MPI_Barrier(comm);
+      AssertThrowMPI(ierr);
+#  endif
+#endif
+
+      locked = false;
+    }
 
 #include "mpi.inst"
   } // end of namespace MPI

@@ -273,66 +273,82 @@ namespace Utilities
     };
 
     /**
-     * An implementation of a critical section that guards an algorithm with MPI
-     * communication when executed several times.
+     * This class represents a mutex to guard a critical section for a set of
+     * processors in a parallel computation using MPI.
      *
-     * This critical section enforces that a section of code (between the
-     * constructor and destructor of this helper class) only starts executing
-     * after all MPI ranks in the same communicator finished execution of this
-     * section from an earlier time.
+     * The lock() commands waits until all MPI ranks in the communicator (given
+     * in the constructor of this class) have released a previous lock using
+     * unlock().
      *
-     * The class internally executes a non-blocking barrier in the destructor
-     * for each critical section and waits for the completion of the barrier
-     * when constructed.
-     *
-     * This makes certain MPI algorithms correct that rely on receiving messages
-     * using MPI_ANY_SOURCE, where executing the same algorithm more than once
-     * in a row can confuse messages between the first and second execution.
-     *
-     * Example usage:
+     * A typical usage involves guarding a critical section using a lock guard:
      * @code
      * {
-     *   static MPI_Request request = MPI_REQUEST_NULL;
-     *   CriticalSection cs(comm, request);
-     *
-     *   // [code to be guarded]
+     *   static CollectiveMutex mutex(comm);
+     *   std::lock_guard<CollectiveMutex> lock(mutex);
+     *   // [ critical code to be guarded]
      * }
      * @endcode
+     *
+     * Here, the critical code will finish on all processors before the mutex
+     * can be acquired again (for example by a second execution of the block
+     * above. The critical code block typically involves MPI communication that
+     * would yield incorrect results without the lock. For example, if the code
+     * contains nonblocking receives with MPI_ANY_SOURCE, packets can be
+     * confused between iterations.
+     *
+     * Note that the mutex needs to be the same instance between calls to the
+     * same critical region. While not required, this can be achieved by making
+     * the instance static (like in the example above).
+     *
+     * The implementation uses an MPI barrier in the unlock() function. For MPI
+     * version 3 or newer, this barrier is executed in a non-blocking variant
+     * and we wait for completion only in the next call to lock().
      */
-    class CriticalSection
+    class CollectiveMutex
     {
     public:
       /**
-       * Constructor. Note that @p request needs to be a static and unique variable.
-       *
-       * This will wait() until all ranks in the same communictor @p comm have completed
-       * the last critical section (identified using @p request).
+       * Constructor of this class. The communicator @p comm determines the set
+       * of processors involved in this mutex.
        */
-      explicit CriticalSection(const MPI_Comm &comm, MPI_Request &request);
-
+      explicit CollectiveMutex(MPI_Comm &comm);
 
       /**
-       * Wait for the barrier to complete. This function call is typically not
-       * needed in user code, as delaying the wait until the next time the
-       * section is executed can lead to faster runtime.
+       * Destroy the mutex. Assumes the lock is not currently held.
+       */
+      ~CollectiveMutex();
+
+      /**
+       * Aquire the mutex and wait until we can do so.
+       *
+       * This is a collective call that needs to be executed by all processors
+       * in the communicator.
        */
       void
-      wait();
+      lock();
 
       /**
-       * Destructor. Initiates a non-blocking barrier.
+       * Release the lock.
+       *
+       * This is a collective call that needs to be executed by all processors
+       * in the communicator.
        */
-      ~CriticalSection();
+      void
+      unlock();
 
     private:
       /**
-       * The communictor for the barrier.
+       * Keep track if we have this lock right now.
+       */
+      bool locked;
+      /**
+       * The communicator.
        */
       MPI_Comm comm;
       /**
-       * reference to the request where we keep track of the barrier.
+       * The request to keep track of the non-blocking barrier.
        */
-      MPI_Request &request;
+      MPI_Request request;
     };
 
 
@@ -796,7 +812,13 @@ namespace Utilities
        * @endcode
        */
       static void
-      register_static_request(MPI_Request &request);
+      register_request(MPI_Request &request);
+
+      /**
+       * Unregister a request previously added using register_request().
+       */
+      static void
+      unregister_request(MPI_Request &request);
 
     private:
       /**

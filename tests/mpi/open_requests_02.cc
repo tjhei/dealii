@@ -14,21 +14,16 @@
 // ---------------------------------------------------------------------
 
 
-// check MPI::CriticalSection
-
+// check MPI::CollectiveMutex
 
 #include <deal.II/base/mpi.h>
 
 #include "../tests.h"
 
 
-
 void
-test(MPI_Comm comm)
+unguarded(MPI_Comm comm)
 {
-  static MPI_Request              request = MPI_REQUEST_NULL;
-  Utilities::MPI::CriticalSection cs(comm, request);
-
   int        tag     = 12345;
   const auto my_rank = Utilities::MPI::this_mpi_process(comm);
   const auto n_ranks = Utilities::MPI::n_mpi_processes(comm);
@@ -58,6 +53,30 @@ test(MPI_Comm comm)
 
 
 
+void
+test(MPI_Comm comm)
+{
+  // check that we can use a static mutex:
+  static Utilities::MPI::CollectiveMutex           mutex(comm);
+  std::lock_guard<Utilities::MPI::CollectiveMutex> lock(mutex);
+  unguarded(comm);
+}
+
+
+
+void
+test2(MPI_Comm comm)
+{
+  // Check that we can use a mutex that is not static:
+  Utilities::MPI::CollectiveMutex mutex(comm);
+  mutex.lock();
+  MPI_Barrier(comm);
+  mutex.unlock();
+  mutex.lock();
+  mutex.unlock();
+}
+
+
 int
 main(int argc, char **argv)
 {
@@ -69,4 +88,6 @@ main(int argc, char **argv)
   test(MPI_COMM_WORLD);
   test(MPI_COMM_WORLD);
   test(MPI_COMM_WORLD);
+
+  test2(MPI_COMM_WORLD);
 }
