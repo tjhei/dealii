@@ -57,8 +57,8 @@ void
 test(MPI_Comm comm)
 {
   // check that we can use a static mutex:
-  static Utilities::MPI::CollectiveMutex           mutex;
-  std::lock_guard<Utilities::MPI::CollectiveMutex> lock(mutex, comm);
+  static Utilities::MPI::CollectiveMutex      mutex;
+  Utilities::MPI::CollectiveMutex::ScopedLock lock(mutex, comm);
   unguarded(comm);
 }
 

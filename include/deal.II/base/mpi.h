@@ -316,7 +316,7 @@ namespace Utilities
       class ScopedLock
       {
       public:
-        explicit ScopedLock(CollectiveMutex &mutex, MPI_Comm &comm)
+        explicit ScopedLock(CollectiveMutex &mutex, const MPI_Comm &comm)
           : mutex(mutex)
           , comm(comm)
         {
@@ -330,7 +330,7 @@ namespace Utilities
 
       private:
         CollectiveMutex &mutex;
-        MPI_Comm &       comm;
+        const MPI_Comm & comm;
       };
 
       /**
