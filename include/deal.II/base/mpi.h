@@ -311,10 +311,32 @@ namespace Utilities
     {
     public:
       /**
-       * Constructor of this class. The communicator @p comm determines the set
-       * of processors involved in this mutex.
+       * This helper class provides a scoped lock for the CollectiveMutex.
        */
-      explicit CollectiveMutex(MPI_Comm &comm);
+      class ScopedLock
+      {
+      public:
+        explicit ScopedLock(CollectiveMutex &mutex, MPI_Comm &comm)
+          : mutex(mutex)
+          , comm(comm)
+        {
+          mutex.lock(comm);
+        }
+
+        ~ScopedLock()
+        {
+          mutex.unlock(comm);
+        }
+
+      private:
+        CollectiveMutex &mutex;
+        MPI_Comm &       comm;
+      };
+
+      /**
+       * Constructor of this class.
+       */
+      explicit CollectiveMutex();
 
       /**
        * Destroy the mutex. Assumes the lock is not currently held.
@@ -328,7 +350,7 @@ namespace Utilities
        * in the communicator.
        */
       void
-      lock();
+      lock(MPI_Comm comm);
 
       /**
        * Release the lock.
@@ -337,17 +359,14 @@ namespace Utilities
        * in the communicator.
        */
       void
-      unlock();
+      unlock(MPI_Comm comm);
 
     private:
       /**
        * Keep track if we have this lock right now.
        */
       bool locked;
-      /**
-       * The communicator.
-       */
-      MPI_Comm comm;
+
       /**
        * The request to keep track of the non-blocking barrier.
        */

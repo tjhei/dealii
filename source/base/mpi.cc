@@ -1498,9 +1498,8 @@ namespace Utilities
 
 
 
-    CollectiveMutex::CollectiveMutex(MPI_Comm &comm)
+    CollectiveMutex::CollectiveMutex()
       : locked(false)
-      , comm(comm)
       , request(MPI_REQUEST_NULL)
     {
       Utilities::MPI::MPI_InitFinalize::register_request(request);
@@ -1521,8 +1520,10 @@ namespace Utilities
 
 
     void
-    CollectiveMutex::lock()
+    CollectiveMutex::lock(MPI_Comm comm)
     {
+      (void)comm;
+
       Assert(
         !locked,
         ExcMessage(
@@ -1545,8 +1546,10 @@ namespace Utilities
 
 
     void
-    CollectiveMutex::unlock()
+    CollectiveMutex::unlock(MPI_Comm comm)
     {
+      (void)comm;
+
       Assert(
         locked,
         ExcMessage(
