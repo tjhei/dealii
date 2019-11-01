@@ -298,11 +298,13 @@ namespace Utilities
      *
      * Note that the mutex needs to be the same instance between calls to the
      * same critical region. While not required, this can be achieved by making
-     * the instance static (like in the example above).
+     * the instance static (like in the example above). The variable can also be a global
+     * variable, or a member variable of the object to which the executing function belongs.
      *
      * The implementation uses an MPI barrier in the unlock() function. For MPI
      * version 3 or newer, this barrier is executed in a non-blocking variant
-     * and we wait for completion only in the next call to lock().
+     * and we wait for completion only in the next call to lock() (which, in the example
+     * above, is called by the constructor of the `lock` object).
      */
     class CollectiveMutex
     {
@@ -792,7 +794,7 @@ namespace Utilities
 
       /**
        * Register a reference to an MPI_Request
-       * that we MPI_Wait on before calling MPI_Finalize.
+       * on which we need to call `MPI_Wait` before calling `MPI_Finalize`.
        *
        * The object @p request needs to exist when MPI_Finalize is called, which means the
        * request is typically statically allocated. Note that is is acceptable
