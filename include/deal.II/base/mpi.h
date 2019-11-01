@@ -298,13 +298,14 @@ namespace Utilities
      *
      * Note that the mutex needs to be the same instance between calls to the
      * same critical region. While not required, this can be achieved by making
-     * the instance static (like in the example above). The variable can also be a global
-     * variable, or a member variable of the object to which the executing function belongs.
+     * the instance static (like in the example above). The variable can also be
+     * a global variable, or a member variable of the object to which the
+     * executing function belongs.
      *
      * The implementation uses an MPI barrier in the unlock() function. For MPI
      * version 3 or newer, this barrier is executed in a non-blocking variant
-     * and we wait for completion only in the next call to lock() (which, in the example
-     * above, is called by the constructor of the `lock` object).
+     * and we wait for completion only in the next call to lock() (which, in the
+     * example above, is called by the constructor of the `lock` object).
      */
     class CollectiveMutex
     {
@@ -797,11 +798,16 @@ namespace Utilities
        * on which we need to call `MPI_Wait` before calling `MPI_Finalize`.
        *
        * The object @p request needs to exist when MPI_Finalize is called, which means the
-       * request is typically statically allocated. Note that is is acceptable
-       * for a request to be already waited on (and consequently reset to
-       * MPI_REQUEST_NULL).
+       * request is typically statically allocated. Otherwise, you need to call
+       * unregister_request() before the request goes out of scope. Note that is
+       * is acceptable for a request to be already waited on (and consequently
+       * reset to MPI_REQUEST_NULL).
        *
-       * A typical usage is the following idiom:
+       * It is acceptable to call this function more than once with the same
+       * instance (as it is done in the example below).
+       *
+       * Typically, this function is used by CollectiveMutex and not directly,
+       * but it can also be used directly like this:
        * @code
        * void my_fancy_communication()
        * {
