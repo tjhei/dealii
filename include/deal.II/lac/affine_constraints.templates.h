@@ -185,9 +185,30 @@ AffineConstraints<number>::is_consistent_in_parallel(
             {
               ++inconsistent;
               if (verbose)
+                {
                 std::cout << "Proc " << myid << " got line " << lineit.index
                           << " from " << kv.first << " with wrong values!"
                           << std::endl;
+
+              // using Entries = std::vector<std::pair<size_type, number>>;
+              if (lineit.entries.size()!=reference.entries.size())
+                std::cout << "differing size()!" << std::endl;
+              else
+                std::cout << "same size()!" << std::endl;
+
+              for (unsigned int i=0;i<lineit.entries.size();++i)
+                {
+                  if (lineit.entries[i] != reference.entries[i])
+                    {
+                      std::cout << "entry " << i << ":"
+                               << lineit.entries[i].first << " vs " << reference.entries[i].first
+                               << ", "
+                               << lineit.entries[i].second << " vs " << reference.entries[i].second
+                               << " diff: " << (lineit.entries[i].second - reference.entries[i].second)
+                               << std::endl;
+                    }
+                }
+                }
             }
         }
     }
