@@ -161,7 +161,7 @@ AffineConstraints<number>::is_consistent_in_parallel(
   std::map<unsigned int, std::vector<ConstraintLine>> received =
     Utilities::MPI::some_to_some(mpi_communicator, to_send);
 
-  unsigned int inconsistent = 0;
+  unsigned int n_inconsistent = 0;
 
   // from each processor:
   for (const auto &kv : received)
@@ -171,9 +171,12 @@ AffineConstraints<number>::is_consistent_in_parallel(
         {
           const ConstraintLine reference = get_line(lineit.index);
 
-          if (lineit.inhomogeneity != reference.inhomogeneity)
+          // use eps comparison
+          if (
+              std::abs(lineit.inhomogeneity-reference.inhomogeneity)
+              < 1e-10*std::max(std::abs(lineit.inhomogeneity), std::abs(reference.inhomogeneity)))
             {
-              ++inconsistent;
+              ++n_inconsistent;
 
               if (verbose)
                 std::cout << "Proc " << myid << " got line " << lineit.index
@@ -183,7 +186,7 @@ AffineConstraints<number>::is_consistent_in_parallel(
             }
           else if (lineit.entries != reference.entries)
             {
-              ++inconsistent;
+              ++n_inconsistent;
               if (verbose)
                 {
                 std::cout << "Proc " << myid << " got line " << lineit.index
@@ -214,7 +217,7 @@ AffineConstraints<number>::is_consistent_in_parallel(
     }
 
   const unsigned int total =
-    Utilities::MPI::sum(inconsistent, mpi_communicator);
+    Utilities::MPI::sum(n_inconsistent, mpi_communicator);
   if (verbose && total > 0 && myid == 0)
     std::cout << total << " inconsistent lines discovered!" << std::endl;
   return total == 0;
