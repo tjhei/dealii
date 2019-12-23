@@ -89,7 +89,7 @@ namespace Step71
     class Solution : public Function<dim>
     {
     public:
-      static_assert(dim == 2, "Only dim==2 is implemented");
+      static_assert(dim == 2, "Only dim==2 is implemented.");
 
       virtual double value(const Point<dim> &p,
                            const unsigned int /*component*/ = 0) const override
@@ -241,7 +241,7 @@ namespace Step71
 
 
 
-  // @sect{Assembling the linear system}
+  // @sect4{Assembling the linear system}
   //
   // The following pieces of code are more interesting. They all relate to the
   // assembly of the linear system. While assemling the cell-interior terms
@@ -382,7 +382,7 @@ namespace Step71
     // @f}
     // to the global matrix, and
     // @f{align*}{
-    //    f^K_i = \int_K varphi_i(x) f(x) dx
+    //    f^K_i = \int_K \varphi_i(x) f(x) dx
     // @f}
     // to the right hand side vector.
     //
@@ -485,15 +485,24 @@ namespace Step71
       copy_data_face.cell_matrix.reinit(n_interface_dofs, n_interface_dofs);
 
       // The second part deals with determining what the penalty
-      // parameter should be. The simplest formula for this parameter $\gamma$
-      // is $\frac{p(p+1)}{h_K}$ where $p$ is the polynomial degree of the
-      // finite element used and $h_K$ is the size of cell $K$. But this
-      // is not quite so straightforward: If one uses highly stretched cells,
-      // then a more involved theory says that $h$ should be replaced be the
-      // diameter of cell $K$ normal to the direction of the edge in question.
-      // It turns out that there is a function in deal.II for that. Secondly,
-      // $h_K$ may be different when viewed from the two different sides of
-      // a face.
+      // parameter should be. By looking at the units of the various
+      // terms in the bilinear form, it is clear that the penalty has
+      // to have the form $\frac{\gamma}{h_K}$ (i.e., one over length
+      // scale), but it is not a priori obvious how one should choose
+      // the dimension-less number $\gamma$. From the discontinuous
+      // Galerkin theory for the Laplace equation, one might
+      // conjecture that the right choice is $\gamma=p(p+1)$ is the
+      // right choice, where $p$ is the polynomial degree of the
+      // finite element used. We will discuss this choice in a bit
+      // more detail in the results section of this program.
+      //
+      // In the formula above, $h_K$ is the size of cell $K$. But this
+      // is not quite so straightforward either: If one uses highly
+      // stretched cells, then a more involved theory says that $h$
+      // should be replaced be the diameter of cell $K$ normal to the
+      // direction of the edge in question.  It turns out that there
+      // is a function in deal.II for that. Secondly, $h_K$ may be
+      // different when viewed from the two different sides of a face.
       //
       // To stay on the safe side, we take the maximum of the two values.
       // We will note that it is possible that this computation has to be
@@ -599,7 +608,9 @@ namespace Step71
       // The third piece is the assembly of terms. This is now slightly more
       // involved since these contains both terms for the matrix and for
       // the right hand side. The latter requires us to evaluate the
-      //
+      // boundary conditions $j(\mathbf x)$, which in the current
+      // case (where we know the exact solution) we compute from
+      // $j(\mathbf x) = \frac{\partial u(\mathbf x)}{\partial {\mathbf n}}$:
       for (unsigned int qpoint = 0; qpoint < q_points.size(); ++qpoint)
         {
           const auto &n = normals[qpoint];
@@ -634,18 +645,18 @@ namespace Step71
 
               copy_data.cell_rhs(i) +=
                 (-av_hessian_i_dot_n_dot_n *       // - {grad^2 v n n }
-                   (exact_gradients[qpoint] * n)   //   (grad u_exact n)
+                   (exact_gradients[qpoint] * n)   //   (grad u_exact . n)
                  +                                 // +
                  2.0 * gamma                       // 2 gamma
                    * jump_grad_i_dot_n             // [grad v n]
-                   * (exact_gradients[qpoint] * n) // (grad u_exact n)
+                   * (exact_gradients[qpoint] * n) // (grad u_exact . n)
                  ) *
                 JxW[qpoint]; // dx
             }
         }
     };
 
-    // Part 4 was a small function that copies the data produced by the
+    // Part 4 is a small function that copies the data produced by the
     // cell, interior, and boundary face assemblers above into the
     // global matrix and right hand side vector. There really is not
     // very much to do here: We distribute the cell matrix and right
@@ -704,7 +715,7 @@ namespace Step71
 
 
 
-  // @sect{Solving the linear system and postprocessing}
+  // @sect4{Solving the linear system and postprocessing}
   //
   // The show is essentially over at this point: The remaining functions are
   // not overly interesting or novel. The first one simply uses a direct
