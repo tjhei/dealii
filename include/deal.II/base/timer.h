@@ -824,6 +824,18 @@ public:
   print_summary() const;
 
   /**
+   *
+   */
+  double
+  get_unaccounted_wall_time() const;
+
+  /**
+   *
+   */
+  double
+  get_total_wall_time() const;
+
+  /**
    * By calling this function, all output can be disabled. This function
    * together with enable_output() can be useful if one wants to control the
    * output in a flexible way without putting a lot of <tt>if</tt> clauses in

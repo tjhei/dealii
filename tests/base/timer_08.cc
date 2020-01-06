@@ -53,12 +53,18 @@ test(TimerOutput::OutputType output_type)
     burn(50);
     t.leave_subsection(
       "this is a very long section name that previously did not work");
+
+    const double total = t.get_total_wall_time();
+    const double unaccounted = t.get_unaccounted_wall_time();
+    Assert(0 <
+
   }
 
   std::string s = ss.str();
   std::replace_if(s.begin(), s.end(), ::isdigit, ' ');
   std::replace_if(s.begin(), s.end(), [](char x) { return x == '.'; }, ' ');
   deallog << s << std::endl << std::endl;
+
 }
 
 int

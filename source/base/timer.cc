@@ -861,6 +861,27 @@ TimerOutput::print_summary() const
 
 
 
+double
+TimerOutput::get_unaccounted_wall_time() const
+{
+  double accounted = 0.;
+  for (const auto &i : sections)
+    {
+      accounted += i.second.total_cpu_time;
+    }
+  return get_total_wall_time()-accounted;
+}
+
+
+
+double
+TimerOutput::get_total_wall_time() const
+{
+  return timer_all.wall_time();
+}
+
+
+
 void
 TimerOutput::disable_output()
 {
