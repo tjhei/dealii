@@ -120,13 +120,10 @@ suggestions:
   (here 1e-12) of -1 and 1. Try this immediately after calling
   GridGenerator::hyper_cube(), as before:
   @code
-  for (const auto &cell : dof_handler.active_cell_iterators())
-    {
-        for (auto &face : cell->face_iterators())
-          if ((std::fabs(face->center()(1) - (-1.0)) < 1e-12) ||
-              (std::fabs(face->center()(1) - (1.0)) < 1e-12))
-            face->set_boundary_id(1);
-    }
+  for (auto &face : triangulation.active_face_iterators())
+     if (std::fabs(face->center()(1) - (-1.0)) < 1e-12 || 
+         std::fabs(face->center()(1) - (1.0)) < 1e-12)
+         face->set_boundary_id(1);
   @endcode
   Although this code is significantly longer than before, it is useful for
   complex geometries, as it does not require knowledge of face labels.
@@ -155,7 +152,7 @@ suggestions:
   already here. For example, we could evaluate the value of the solution in a
   single point and compare the value for different %numbers of global
   refinement (the number of global refinement steps is set in
-  <code>LaplaceProblem::make_grid_and_dofs</code> above). To evaluate the
+  <code>LaplaceProblem::make_grid</code> above). To evaluate the
   solution at a point, say at $(\frac 13, \frac 13)$, we could add the
   following code to the <code>LaplaceProblem::output_results</code> function:
   @code
@@ -225,7 +222,7 @@ suggestions:
 <h3>Using the %HDF5 Library to output the solution and additional data</h3>
 %HDF5 is a commonly used format that can be read by many scripting languages (e.g. R or Python). Here are some 
 insights on what is possible.
-<h4> Changing the output from .gnuplot to .h5:</h4>
+<h4> Changing the output from .vtk to .h5:</h4>
 To fully make use of the automation we first need to introduce a private variable for the number of 
 global refinement steps <code>unsigned int n_refinement_steps </code>, which will be used for the output filename. 
 In <code>make_grid()</code> we replace <code>triangulation.refine_global(5);</code> with
