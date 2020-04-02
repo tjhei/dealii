@@ -51,41 +51,6 @@
 #  include <Sacado.hpp>
 #endif
 
-namespace std
-{
-  template <typename Number, std::size_t width>
-  DEAL_II_ALWAYS_INLINE ::dealii::VectorizedArray<Number, width>
-  sqrt(const ::dealii::VectorizedArray<Number, width> &);
-  template <typename Number, std::size_t width>
-  DEAL_II_ALWAYS_INLINE ::dealii::VectorizedArray<Number, width>
-  abs(const ::dealii::VectorizedArray<Number, width> &);
-  template <typename Number, std::size_t width>
-  DEAL_II_ALWAYS_INLINE ::dealii::VectorizedArray<Number, width>
-  max(const ::dealii::VectorizedArray<Number, width> &,
-      const ::dealii::VectorizedArray<Number, width> &);
-  template <typename Number, std::size_t width>
-  DEAL_II_ALWAYS_INLINE ::dealii::VectorizedArray<Number, width>
-  min(const ::dealii::VectorizedArray<Number, width> &,
-      const ::dealii::VectorizedArray<Number, width> &);
-  template <typename Number, size_t width>
-  ::dealii::VectorizedArray<Number, width>
-  pow(const ::dealii::VectorizedArray<Number, width> &, const Number p);
-  template <typename Number, size_t width>
-  ::dealii::VectorizedArray<Number, width>
-  sin(const ::dealii::VectorizedArray<Number, width> &);
-  template <typename Number, size_t width>
-  ::dealii::VectorizedArray<Number, width>
-  cos(const ::dealii::VectorizedArray<Number, width> &);
-  template <typename Number, size_t width>
-  ::dealii::VectorizedArray<Number, width>
-  tan(const ::dealii::VectorizedArray<Number, width> &);
-  template <typename Number, size_t width>
-  ::dealii::VectorizedArray<Number, width>
-  exp(const ::dealii::VectorizedArray<Number, width> &);
-  template <typename Number, size_t width>
-  ::dealii::VectorizedArray<Number, width>
-  log(const ::dealii::VectorizedArray<Number, width> &);
-} // namespace std
 
 DEAL_II_NAMESPACE_OPEN
 
