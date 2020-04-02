@@ -25,6 +25,110 @@
 #include <array>
 #include <cmath>
 
+
+
+DEAL_II_NAMESPACE_OPEN
+
+namespace internal
+{
+  /**
+   * A helper class specifying the maximal vector length of VectorizedArray
+   * for a specified data type Number for the given processor architecture and
+   * optimization level.
+   *
+   * The value of the maximal vector length is used as default template
+   * argument in VectorizedArray, such that VectorizedArray<Number> is
+   * equivalent to VectorizedArray<Number,
+   * VectorizedArrayWidthSpecifier<Number>::max_width>.
+   *
+   * @note This class is the default implementation for data types for which
+   * no vectorization is supported.
+   *
+   * @tparam Number The underlying data type for which one wants to find out
+   *   the maximal length of hardware supported vectors.
+   *
+   * @author Peter Munch, 2019
+   */
+  template <typename Number>
+  struct VectorizedArrayWidthSpecifier
+  {
+    /**
+     * Maximal vector length of VectorizedArray for an arbitrary type.
+     */
+    constexpr static unsigned int max_width = 1;
+  };
+
+  /**
+   * A helper class specifying the maximal vector length of VectorizedArray
+   * for the data type `double` for the given processor architecture and
+   * optimization level. For a detailed description of supported maximal vector
+   * lengths, see the the documentation of VectorizedArray.
+   *
+   * @author Peter Munch, 2019
+   */
+  template <>
+  struct VectorizedArrayWidthSpecifier<double>
+  {
+    /**
+     * Maximal vector length of VectorizedArray for double.
+     */
+    constexpr static unsigned int max_width =
+#if DEAL_II_VECTORIZATION_WIDTH_IN_BITS >= 512
+      8;
+#elif DEAL_II_VECTORIZATION_WIDTH_IN_BITS >= 256
+      4;
+#elif DEAL_II_VECTORIZATION_WIDTH_IN_BITS >= 128
+      2;
+#else
+      1;
+#endif
+  };
+
+  /**
+   * A helper class specifying the maximal vector length of VectorizedArray
+   * for the data type `float` for the given processor architecture and
+   * optimization level. For a detailed description of supported maximal vector
+   * lengths, see the the documentation of VectorizedArray.
+   *
+   * @author Peter Munch, 2019
+   */
+  template <>
+  struct VectorizedArrayWidthSpecifier<float>
+  {
+    /**
+     * Maximal vector length of VectorizedArray for float.
+     */
+    constexpr static unsigned int max_width =
+#if DEAL_II_VECTORIZATION_WIDTH_IN_BITS >= 128 && defined(__ALTIVEC__)
+      4;
+#elif DEAL_II_VECTORIZATION_WIDTH_IN_BITS >= 512 && defined(__AVX512F__)
+      16;
+#elif DEAL_II_VECTORIZATION_WIDTH_IN_BITS >= 256 && defined(__AVX__)
+      8;
+#elif DEAL_II_VECTORIZATION_WIDTH_IN_BITS >= 128 && defined(__SSE2__)
+      4;
+#else
+      1;
+#endif
+  };
+
+
+} // namespace internal
+
+// forward declarations to support abs or sqrt operations on VectorizedArray
+#ifndef DOXYGEN
+template <typename Number,
+          std::size_t width =
+            internal::VectorizedArrayWidthSpecifier<Number>::max_width>
+class VectorizedArray;
+template <typename T>
+struct EnableIfScalar;
+#endif
+
+DEAL_II_NAMESPACE_CLOSE
+
+
+
 // Note:
 // The flag DEAL_II_VECTORIZATION_WIDTH_IN_BITS is essentially constructed
 // according to the following scheme (on x86-based architectures)
