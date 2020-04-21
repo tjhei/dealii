@@ -62,8 +62,10 @@ cmake --build . --target expand_all_instantiations || (echo "make expand_all_ins
 # pipe output to output.txt
 run-clang-tidy.py -p . -quiet -header-filter="$SRC/include/*" 2>error.txt >output.txt
 
-if grep -E -q '(warning|error): ' output.txt; then
-    grep -E '(warning|error): ' output.txt
+grep -E '(warning|error): ' output.txt | sort | uniq >clang-tidy.log
+
+if [ -s clang-tidy.log ]; then
+    cat clang-tidy.log
     exit 4
 fi
 
