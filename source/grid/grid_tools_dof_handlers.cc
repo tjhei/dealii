@@ -861,8 +861,8 @@ namespace GridTools
     std::function<bool(const typename MeshType::active_cell_iterator &)>
       predicate = IteratorFilters::LocallyOwnedCell();
 
-    const std::vector<typename MeshType::active_cell_iterator>
-      active_halo_layer = compute_active_cell_halo_layer(mesh, predicate);
+    std::vector<typename MeshType::active_cell_iterator> active_halo_layer =
+      compute_active_cell_halo_layer(mesh, predicate);
 
     // Check that we never return locally owned or artificial cells
     // What is left should only be the ghost cells
@@ -1031,7 +1031,7 @@ namespace GridTools
     std::function<bool(const typename MeshType::active_cell_iterator &)>
       predicate(locally_owned_cell_predicate);
 
-    const std::vector<typename MeshType::active_cell_iterator>
+    std::vector<typename MeshType::active_cell_iterator>
       ghost_cell_layer_within_distance =
         compute_active_cell_layer_within_distance(mesh,
                                                   predicate,

@@ -130,7 +130,7 @@ AffineConstraints<number>::is_consistent_in_parallel(
     if (line_index >= lines_cache.size() ||
         lines_cache[line_index] == numbers::invalid_size_type)
       {
-        const ConstraintLine empty = {line_n, {}, 0.0};
+        ConstraintLine empty = {line_n, {}, 0.0};
         return empty;
       }
     else

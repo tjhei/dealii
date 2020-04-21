@@ -3789,7 +3789,7 @@ namespace internal
                                       *this->dof_handler,
                                       /*check_validity=*/true);
 
-        const NumberCache number_cache(
+        NumberCache number_cache(
           DoFTools::locally_owned_dofs_per_subdomain(*this->dof_handler),
           this->dof_handler->get_triangulation().locally_owned_subdomain());
 

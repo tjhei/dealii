@@ -7051,7 +7051,7 @@ DataOutInterface<dim, spacedim>::write_vtu_with_pvtu_record(
     }
 
   // write pvtu record
-  const std::string filename_master =
+  std::string filename_master =
     filename_without_extension + "_" +
     Utilities::int_to_string(counter, n_digits_for_counter) + ".pvtu";
 
