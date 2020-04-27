@@ -57,13 +57,22 @@ CC=clang CXX=clang++ cmake "${ARGS[@]}" "$SRC" || (echo "cmake failed!"; false) 
 
 cmake --build . --target expand_all_instantiations || (echo "make expand_all_instantiations failed!"; false) || exit 3
 
-# finally run it:
+# generate allheaders.h
+(cd include; find . -name '*.h'; cd $SRC/include/; find . -name '*.h') | sed 's|^./|#include <|' | sed 's|$|>|' >allheaders.h
+mv allheaders.h include/
+
+
+# finally run it clang-tidy on deal.II
+#
 # pipe away stderr (just contains nonsensical "x warnings generated")
 # pipe output to output.txt
-run-clang-tidy.py -p . -quiet -header-filter="$SRC/include/*" 2>error.txt >output.txt
+run-clang-tidy.py -p . -quiet -header-filter "$SRC/include/*" -extra-arg='-DCLANG_TIDY' 2>error.txt >output.txt
 
-grep -E '(warning|error): ' output.txt | sort | uniq >clang-tidy.log
+# grep interesting errors and make sure we remove duplicates:
+grep -E '(warning|error): ' output.txt output2.txt | sort | uniq >clang-tidy.log
 
+
+# if we have errors, report them and set exit status to failure
 if [ -s clang-tidy.log ]; then
     cat clang-tidy.log
     exit 4
