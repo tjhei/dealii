@@ -55,6 +55,8 @@
 #include <deal.II/base/work_stream.h>
 #include <deal.II/base/multithread_info.h>
 
+#include <deal.II/base/timer.h>
+
 // The next new include file declares a base class <code>TensorFunction</code>
 // not unlike the <code>Function</code> class, but with the difference that
 // TensorFunction::value returns a Tensor instead of a scalar.
@@ -66,6 +68,7 @@
 #include <fstream>
 #include <iostream>
 
+#include <taskflow/taskflow.hpp>
 
 // The last step is as in previous programs:
 namespace Step9
@@ -489,7 +492,251 @@ namespace Step9
     system_rhs.reinit(dof_handler.n_dofs());
   }
 
+  namespace taskflow_v1
+  {
+    template <typename Worker,
+              typename Copier,
+              typename Iterator,
+              typename ScratchData,
+              typename CopyData>
+    void run(const Iterator &                         begin,
+             const typename identity<Iterator>::type &end,
+             Worker                                   worker,
+             Copier                                   copier,
+             const ScratchData &                      sample_scratch_data,
+             const CopyData &                         sample_copy_data,
+             const unsigned int queue_length = 2 * MultithreadInfo::n_threads(),
+             const unsigned int chunk_size   = 8)
+    {
+      tf::Executor &executor = *MultithreadInfo::get_taskflow_executor();
+      tf::Taskflow  taskflow;
 
+      ScratchData scratch_data = sample_scratch_data;
+      CopyData    copy_data    = sample_copy_data; // NOLINT
+
+      tf::Task last_copier;
+
+      std::vector<std::unique_ptr<CopyData>> copy_datas;
+
+      unsigned int idx = 0;
+      for (Iterator i = begin; i != end; ++i, ++idx)
+        {
+          copy_datas.emplace_back();
+
+          auto worker_task = taskflow
+                               .emplace([it = i,
+                                         idx,
+                                         &sample_scratch_data,
+                                         &copy_datas,
+                                         &sample_copy_data,
+                                         &worker]() {
+                                 // std::cout << "worker " << idx << std::endl;
+                                 ScratchData scratch = sample_scratch_data;
+                                 auto &      copy    = copy_datas[idx];
+                                 copy =
+                                   std::make_unique<CopyData>(sample_copy_data);
+
+                                 worker(it, scratch, *copy.get());
+                               })
+                               .name("worker");
+
+          tf::Task copier_task = taskflow
+                                   .emplace([idx, &copy_datas, &copier]() {
+                                     copier(*copy_datas[idx].get());
+                                     copy_datas[idx].reset();
+                                   })
+                                   .name("copy");
+
+          worker_task.precede(copier_task);
+
+          if (!last_copier.empty())
+            last_copier.precede(copier_task);
+          last_copier = copier_task;
+        }
+
+
+      // debugging:
+
+      executor.run(taskflow).wait();
+
+#ifdef DEBUG
+      std::cout << "done" << std::endl;
+      std::ofstream f("graph.dia");
+      taskflow.dump(f);
+      f.close();
+#endif
+    }
+
+
+    template <typename MainClass,
+              typename Iterator,
+              typename ScratchData,
+              typename CopyData>
+    void
+    run(const Iterator &                         begin,
+        const typename identity<Iterator>::type &end,
+        MainClass &                              main_object,
+        void (MainClass::*worker)(const Iterator &, ScratchData &, CopyData &),
+        void (MainClass::*copier)(const CopyData &),
+        const ScratchData &sample_scratch_data,
+        const CopyData &   sample_copy_data,
+        const unsigned int queue_length = 2 * MultithreadInfo::n_threads(),
+        const unsigned int chunk_size   = 8)
+    {
+      // forward to the other function
+      run(begin,
+          end,
+          [&main_object, worker](const Iterator &iterator,
+                                 ScratchData &   scratch_data,
+                                 CopyData &      copy_data) {
+            (main_object.*worker)(iterator, scratch_data, copy_data);
+          },
+          [&main_object, copier](const CopyData &copy_data) {
+            (main_object.*copier)(copy_data);
+          },
+          sample_scratch_data,
+          sample_copy_data,
+          queue_length,
+          chunk_size);
+    }
+  } // namespace taskflow_v1
+
+
+  namespace taskflow_v2
+  {
+    template <typename Worker,
+              typename Copier,
+              typename Iterator,
+              typename ScratchData,
+              typename CopyData>
+    void run(const Iterator &                         begin,
+             const typename identity<Iterator>::type &end,
+             Worker                                   worker,
+             Copier                                   copier,
+             const ScratchData &                      sample_scratch_data,
+             const CopyData &                         sample_copy_data,
+             const unsigned int queue_length = 2 * MultithreadInfo::n_threads(),
+             const unsigned int chunk_size   = 8)
+    {
+      tf::Executor executor;
+      tf::Taskflow taskflow;
+
+      ScratchData scratch_data = sample_scratch_data;
+      CopyData    copy_data    = sample_copy_data; // NOLINT
+
+      tf::Task last_copier;
+
+      std::vector<std::unique_ptr<CopyData>> copy_datas;
+
+      unsigned int idx = 0;
+      for (Iterator i = begin; i != end; ++i, ++idx)
+        {
+          copy_datas.emplace_back();
+
+          auto worker_task = taskflow
+                               .emplace([it = i,
+                                         idx,
+                                         &sample_scratch_data,
+                                         &copy_datas,
+                                         &sample_copy_data,
+                                         &worker]() {
+                                 // std::cout << "worker " << idx << std::endl;
+                                 ScratchData scratch = sample_scratch_data;
+                                 auto &      copy    = copy_datas[idx];
+                                 copy =
+                                   std::make_unique<CopyData>(sample_copy_data);
+
+                                 worker(it, scratch, *copy.get());
+                               })
+                               .name("worker");
+
+
+          tf::Task copier_task = taskflow
+                                   .emplace([idx, &copy_datas, &copier]() {
+                                     //                                     std::cout
+                                     //                                     <<
+                                     //                                     "copying
+                                     //                                     " <<
+                                     //                                     idx
+                                     //                                               << std::endl;
+
+                                     copier(*copy_datas[idx].get());
+                                     copy_datas[idx].reset();
+                                   })
+                                   .name("copy");
+
+
+          worker_task.precede(copier_task);
+
+
+          //                                                 (tf::Subflow&
+          //                                                 subflow) {
+          //             tf::Task work
+          //             = subflow.emplace([&]()
+          //         {
+          //             ScratchData sc_data = sample_scratch_data;
+          //          worker(i,  sc_data, copy_data);
+          //          });
+
+          //           tf::Task B1 = subflow.emplace([](){}).name("B1");
+          //           tf::Task B2 = subflow.emplace([](){}).name("B2");
+          //           tf::Task B3 = subflow.emplace([](){}).name("B3");
+          //           B1.precede(B3);
+          //           B2.precede(B3);
+          //         }).name("B");
+
+          //         tf::Task
+
+
+          if (!last_copier.empty())
+            last_copier.precede(copier_task);
+          last_copier = copier_task;
+        }
+
+
+
+      // debugging:
+      std::ofstream f("graph.dia");
+      taskflow.dump(f);
+      f.close();
+      executor.run(taskflow).wait();
+
+      std::cout << "done" << std::endl;
+    }
+
+
+    template <typename MainClass,
+              typename Iterator,
+              typename ScratchData,
+              typename CopyData>
+    void
+    run(const Iterator &                         begin,
+        const typename identity<Iterator>::type &end,
+        MainClass &                              main_object,
+        void (MainClass::*worker)(const Iterator &, ScratchData &, CopyData &),
+        void (MainClass::*copier)(const CopyData &),
+        const ScratchData &sample_scratch_data,
+        const CopyData &   sample_copy_data,
+        const unsigned int queue_length = 2 * MultithreadInfo::n_threads(),
+        const unsigned int chunk_size   = 8)
+    {
+      // forward to the other function
+      run(begin,
+          end,
+          [&main_object, worker](const Iterator &iterator,
+                                 ScratchData &   scratch_data,
+                                 CopyData &      copy_data) {
+            (main_object.*worker)(iterator, scratch_data, copy_data);
+          },
+          [&main_object, copier](const CopyData &copy_data) {
+            (main_object.*copier)(copy_data);
+          },
+          sample_scratch_data,
+          sample_copy_data,
+          queue_length,
+          chunk_size);
+    }
+  } // namespace taskflow_v2
 
   // In the following function, the matrix and right hand side are
   // assembled. As stated in the documentation of the main class above, it
@@ -507,13 +754,22 @@ namespace Step9
   template <int dim>
   void AdvectionProblem<dim>::assemble_system()
   {
-    WorkStream::run(dof_handler.begin_active(),
-                    dof_handler.end(),
-                    *this,
-                    &AdvectionProblem::local_assemble_system,
-                    &AdvectionProblem::copy_local_to_global,
-                    AssemblyScratchData(fe),
-                    AssemblyCopyData());
+    if (true)
+      taskflow_v1::run(dof_handler.begin_active(),
+                       dof_handler.end(),
+                       *this,
+                       &AdvectionProblem::local_assemble_system,
+                       &AdvectionProblem::copy_local_to_global,
+                       AssemblyScratchData(fe),
+                       AssemblyCopyData());
+    else
+      WorkStream::run(dof_handler.begin_active(),
+                      dof_handler.end(),
+                      *this,
+                      &AdvectionProblem::local_assemble_system,
+                      &AdvectionProblem::copy_local_to_global,
+                      AssemblyScratchData(fe),
+                      AssemblyCopyData());
   }
 
 
@@ -858,14 +1114,14 @@ namespace Step9
   template <int dim>
   void AdvectionProblem<dim>::run()
   {
-    for (unsigned int cycle = 0; cycle < 10; ++cycle)
+    for (unsigned int cycle = 0; cycle < 1; ++cycle)
       {
         std::cout << "Cycle " << cycle << ':' << std::endl;
 
         if (cycle == 0)
           {
             GridGenerator::hyper_cube(triangulation, -1, 1);
-            triangulation.refine_global(3);
+            triangulation.refine_global(7);
           }
         else
           {
@@ -881,9 +1137,48 @@ namespace Step9
         std::cout << "   Number of degrees of freedom:        "
                   << dof_handler.n_dofs() << std::endl;
 
+        Timer timer;
+
+        const unsigned int n_phys_cores = MultithreadInfo::n_cores();
+        std::cout << "MultithreadInfo::n_cores()=" << n_phys_cores << std::endl;
+
+        MultithreadInfo::set_thread_limit();
+
+        for (unsigned int n_cores = 2 * n_phys_cores; n_cores > 0; n_cores /= 2)
+          {
+            if (n_cores <= n_phys_cores)
+              MultithreadInfo::set_thread_limit(n_cores);
+
+            std::cout << "n_cores ";
+            if (n_cores <= n_phys_cores)
+              std::cout << n_cores;
+            else
+              std::cout << "auto";
+            std::cout << ' ' << std::flush;
+            double             avg  = 0.;
+            const unsigned int runs = 5;
+
+            for (unsigned int c = 0; c < runs; ++c)
+              {
+                timer.reset();
+                timer.start();
+
+                assemble_system();
+                timer.stop();
+                const double time = timer.last_wall_time();
+                avg += time;
+                std::cout << time << " " << std::flush;
+              }
+            avg /= runs;
+            std::cout << " avg: " << avg << std::endl;
+          }
+
+
         assemble_system();
-        solve();
-        output_results(cycle);
+
+
+        //        solve();
+        //        output_results(cycle);
       }
   }
 
@@ -1216,7 +1511,7 @@ int main()
   using namespace dealii;
   try
     {
-      MultithreadInfo::set_thread_limit();
+      // MultithreadInfo::set_thread_limit();
 
       Step9::AdvectionProblem<2> advection_problem_2d;
       advection_problem_2d.run();
