@@ -508,7 +508,7 @@ namespace Step9
              const unsigned int queue_length = 2 * MultithreadInfo::n_threads(),
              const unsigned int chunk_size   = 8)
     {
-      tf::Executor &executor = *MultithreadInfo::get_taskflow_executor();
+      tf::Executor &executor = MultithreadInfo::get_taskflow_executor();
       tf::Taskflow  taskflow;
 
       ScratchData scratch_data = sample_scratch_data;
