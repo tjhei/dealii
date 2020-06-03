@@ -1141,6 +1141,12 @@ namespace Step9
 
         const unsigned int n_phys_cores = MultithreadInfo::n_cores();
         std::cout << "MultithreadInfo::n_cores()=" << n_phys_cores << std::endl;
+        std::cout << "MultithreadInfo::n_threads()="
+                  << MultithreadInfo::n_threads() << std::endl;
+
+#ifdef DEAL_II_WITH_CPP_TASKFLOW
+        std::cout << "** TASKFLOW **" << std::endl;
+
 
         MultithreadInfo::set_thread_limit();
 
@@ -1163,7 +1169,15 @@ namespace Step9
                 timer.reset();
                 timer.start();
 
-                assemble_system();
+                taskflow_v1::run(dof_handler.begin_active(),
+                                 dof_handler.end(),
+                                 *this,
+                                 &AdvectionProblem::local_assemble_system,
+                                 &AdvectionProblem::copy_local_to_global,
+                                 AssemblyScratchData(fe),
+                                 AssemblyCopyData());
+
+
                 timer.stop();
                 const double time = timer.last_wall_time();
                 avg += time;
@@ -1172,9 +1186,51 @@ namespace Step9
             avg /= runs;
             std::cout << " avg: " << avg << std::endl;
           }
+#endif
+#ifdef DEAL_II_WITH_TBB
+        std::cout << "** TBB **" << std::endl;
 
 
-        assemble_system();
+        MultithreadInfo::set_thread_limit();
+
+        for (unsigned int n_cores = 2 * n_phys_cores; n_cores > 0; n_cores /= 2)
+          {
+            if (n_cores <= n_phys_cores)
+              MultithreadInfo::set_thread_limit(n_cores);
+
+            std::cout << "n_cores ";
+            if (n_cores <= n_phys_cores)
+              std::cout << n_cores;
+            else
+              std::cout << "auto";
+            std::cout << ' ' << std::flush;
+            double             avg  = 0.;
+            const unsigned int runs = 5;
+
+            for (unsigned int c = 0; c < runs; ++c)
+              {
+                timer.reset();
+                timer.start();
+                WorkStream::run(dof_handler.begin_active(),
+                                dof_handler.end(),
+                                *this,
+                                &AdvectionProblem::local_assemble_system,
+                                &AdvectionProblem::copy_local_to_global,
+                                AssemblyScratchData(fe),
+                                AssemblyCopyData());
+
+
+                timer.stop();
+                const double time = timer.last_wall_time();
+                avg += time;
+                std::cout << time << " " << std::flush;
+              }
+            avg /= runs;
+            std::cout << " avg: " << avg << std::endl;
+          }
+#endif
+
+        //        assemble_system();
 
 
         //        solve();
