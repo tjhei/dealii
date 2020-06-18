@@ -225,7 +225,16 @@ namespace GridTools
     const unsigned int (&vertex_indices)[GeometryInfo<dim>::vertices_per_cell]);
 
   /**
-   * A version of the last function that can accept input for nonzero
+   * A variant of cell_measure() accepting an std::vector instead of an array
+   * for @p vertex_indices.
+   */
+  template <int dim>
+  double
+  cell_measure(const std::vector<Point<dim>> &  all_vertices,
+               const std::vector<unsigned int> &vertex_indices);
+
+  /**
+   * A version of the function above that can accept input for nonzero
    * codimension cases. This function only exists to aid generic programming
    * and calling it will just raise an exception.
    */
@@ -3140,6 +3149,15 @@ namespace GridTools
                   const unsigned int (&)[GeometryInfo<3>::vertices_per_cell]);
 
 
+  template <int dim>
+  double
+  cell_measure(const std::vector<Point<dim>> &  all_vertices,
+               const std::vector<unsigned int> &vertex_indices)
+  {
+    AssertDimension(vertex_indices.size(),
+                    GeometryInfo<dim>::vertices_per_cell);
+    return cell_measure<dim>(all_vertices, vertex_indices.data());
+  }
 
   template <int dim, typename T>
   double
