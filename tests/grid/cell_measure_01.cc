@@ -63,7 +63,7 @@ template <>
 void
 test<3>()
 {
-  std::vector<Point<2>> points;
+  std::vector<Point<3>> points;
   points.emplace_back(0., 0., 0.);
   points.emplace_back(1., 0., 0.);
   points.emplace_back(0., 2., 0.);
