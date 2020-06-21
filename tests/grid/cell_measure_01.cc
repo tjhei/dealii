@@ -84,6 +84,7 @@ test<3>()
 int
 main()
 {
+  initlog();
   test<1>();
   test<2>();
   test<3>();
