@@ -1558,6 +1558,28 @@ namespace Step9
         std::cout << "MultithreadInfo::n_threads()="
                   << MultithreadInfo::n_threads() << std::endl;
 
+
+        using Iterator = typename DoFHandler<dim>::active_cell_iterator;
+        timer.reset();
+        timer.start();
+
+        std::vector<std::vector<Iterator>> graph =
+          GraphColoring::make_graph_coloring(
+            dof_handler.begin_active(),
+            dof_handler.end(),
+            [&](const Iterator &cell) -> std::vector<types::global_dof_index> {
+              std::vector<types::global_dof_index> local_dof_indices(
+                fe.dofs_per_cell);
+              cell->get_dof_indices(local_dof_indices);
+              return local_dof_indices;
+            });
+        timer.stop();
+        {
+          const double time = timer.last_wall_time();
+          std::cout << "building graph coloring in " << time << std::endl;
+        }
+
+
         const unsigned int runs = 5;
 
 #ifdef DEAL_II_WITH_CPP_TASKFLOW
@@ -1759,6 +1781,51 @@ namespace Step9
                                 AssemblyScratchData(fe),
                                 AssemblyCopyData());
 
+
+                timer.stop();
+                const double time = timer.last_wall_time();
+                avg += time;
+                std::cout << time << " " << std::flush;
+              }
+            avg /= runs;
+            std::cout << " avg: " << avg << std::endl;
+          }
+
+        std::cout << "** TBB graph **" << std::endl;
+
+
+        MultithreadInfo::set_thread_limit();
+
+        for (unsigned int n_cores = 2 * n_phys_cores; n_cores > 0; n_cores /= 2)
+          {
+            if (n_cores <= n_phys_cores)
+              MultithreadInfo::set_thread_limit(n_cores);
+
+            std::cout << "n_cores ";
+            if (n_cores <= n_phys_cores)
+              std::cout << n_cores;
+            else
+              std::cout << "auto";
+            std::cout << ' ' << std::flush;
+            double avg = 0.;
+
+            for (unsigned int c = 0; c < runs; ++c)
+              {
+                timer.reset();
+                timer.start();
+                WorkStream::run(graph,
+                                [this](const Iterator &     iterator,
+                                       AssemblyScratchData &scratch_data,
+                                       AssemblyCopyData &   copy_data) {
+                                  this->local_assemble_system(iterator,
+                                                              scratch_data,
+                                                              copy_data);
+                                },
+                                [this](const AssemblyCopyData &copy_data) {
+                                  this->copy_local_to_global(copy_data);
+                                },
+                                AssemblyScratchData(fe),
+                                AssemblyCopyData());
 
                 timer.stop();
                 const double time = timer.last_wall_time();
