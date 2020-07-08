@@ -1729,6 +1729,7 @@ namespace Step9
 
             for (unsigned int c = 0; c < runs; ++c)
               {
+                system_rhs = 0.;
                 timer.reset();
                 timer.start();
 
@@ -1740,11 +1741,12 @@ namespace Step9
                                  AssemblyScratchData(fe),
                                  AssemblyCopyData());
 
-
                 timer.stop();
                 const double time = timer.last_wall_time();
                 avg += time;
                 std::cout << time << " " << std::flush;
+
+                std::cout << "l2:" << system_rhs.l2_norm() << std::flush;
               }
             avg /= runs;
             std::cout << " avg: " << avg << std::endl;
@@ -1771,6 +1773,7 @@ namespace Step9
 
             for (unsigned int c = 0; c < runs; ++c)
               {
+                system_rhs = 0.;
                 timer.reset();
                 timer.start();
                 WorkStream::run(dof_handler.begin_active(),
@@ -1786,6 +1789,7 @@ namespace Step9
                 const double time = timer.last_wall_time();
                 avg += time;
                 std::cout << time << " " << std::flush;
+                std::cout << "l2:" << system_rhs.l2_norm() << " " << std::flush;
               }
             avg /= runs;
             std::cout << " avg: " << avg << std::endl;
