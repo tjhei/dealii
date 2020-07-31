@@ -25,7 +25,7 @@
 // @sect3{Include files}
 
 // The first few include files have already been used in the previous
-// example, so we will not explain their meaning here again. The principal
+// example, so we will not explain their meanings here again. The principal
 // structure of the program is very similar to that of, for example, step-4
 // and so we include many of the same header files.
 
