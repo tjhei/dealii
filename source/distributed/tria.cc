@@ -3516,7 +3516,6 @@ namespace parallel
                 cell->set_coarsen_flag();
               }
 
-            this->prepare_coarsening_and_refinement();
             try
               {
                 dealii::Triangulation<dim, spacedim>::
