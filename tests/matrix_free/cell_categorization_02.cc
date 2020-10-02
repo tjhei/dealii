@@ -50,10 +50,8 @@ test()
       // guarantee that the mesh also does not change by more than
       // refinement level across vertices that might connect two cells:
       Triangulation<dim>::limit_level_difference_at_vertices),
-    typename parallel::distributed::Triangulation<dim>::Settings(
-      // needed for GMG:
-      parallel::distributed::Triangulation<
-        dim>::construct_multigrid_hierarchy));
+    // needed for GMG:
+    parallel::distributed::Triangulation<dim>::construct_multigrid_hierarchy);
 
   // create mesh
   {

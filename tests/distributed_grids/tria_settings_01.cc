@@ -75,8 +75,10 @@ test(std::ostream & /*out*/)
     parallel::distributed::Triangulation<dim> tr(
       MPI_COMM_WORLD,
       dealii::Triangulation<dim>::none,
-      parallel::distributed::Triangulation<
-        dim>::mesh_reconstruction_after_repartitioning);
+      // default is not necessary to specify, but this tests operator|
+      parallel::distributed::Triangulation<dim>::default_setting |
+        parallel::distributed::Triangulation<
+          dim>::mesh_reconstruction_after_repartitioning);
     testit(tr);
   }
 }

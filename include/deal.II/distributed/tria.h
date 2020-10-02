@@ -1222,6 +1222,24 @@ namespace parallel
     };
 
 
+
+    /**
+     * Global operator which returns a bitwise or for values of the
+     * Triangulation<dim,spacedim>::Settings enum. This allows the user to
+     * combine settings flags.
+     *
+     */
+    template <int dim, int spacedim>
+    inline typename Triangulation<dim, spacedim>::Settings
+    operator|(const typename Triangulation<dim, spacedim>::Settings s1,
+              const typename Triangulation<dim, spacedim>::Settings s2)
+    {
+      return static_cast<typename Triangulation<dim, spacedim>::Settings>(
+        static_cast<unsigned int>(s1) | static_cast<unsigned int>(s2));
+    }
+
+
+
     /**
      * Specialization of the general template for the 1d case. There is
      * currently no support for distributing 1d triangulations. Consequently,
