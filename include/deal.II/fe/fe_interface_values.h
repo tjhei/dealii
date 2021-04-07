@@ -119,14 +119,26 @@ namespace FEInterfaceViews
     average_gradient(const unsigned int interface_dof_index,
                      const unsigned int q_point) const
     {
-      const auto pair = this->fe_interface->interface_dof_to_cell_and_dof_index(
-        interface_dof_index);
-      const unsigned int cell_index = pair.first;
-      const unsigned int shape_fct  = pair.second;
-
-      return 0.5 * this->fe_interface->get_fe_face_values(cell_index)[extractor]
-                     .gradient(shape_fct, q_point);
+      return this->fe_interface->average_gradient(interface_dof_index,
+                                                  q_point,
+                                                  extractor.component);
     }
+
+
+    /**
+     * Return the jump of the gradient $\{\nabla u\}$ on the interface for
+     * the shape
+     * function @p interface_dof_index in the quadrature point @p q_point.
+     */
+    gradient_type
+    jump_gradient(const unsigned int interface_dof_index,
+                  const unsigned int q_point) const
+    {
+      return this->fe_interface->jump_gradient(interface_dof_index,
+                                               q_point,
+                                               extractor.component);
+    }
+
 
     /**
      * Return the value of the shape function
@@ -158,6 +170,8 @@ namespace FEInterfaceViews
                                              extractor.component);
     }
 
+
+
   private:
     /**
      * The extractor for this view.
@@ -179,7 +193,7 @@ namespace FEInterfaceViews
 
     /**
      * This is the type returned for gradients, for example from
-     * gradient_average().
+     * average_gradient().
      */
     typedef dealii::Tensor<2, spacedim> gradient_type;
 
@@ -196,47 +210,54 @@ namespace FEInterfaceViews
     jump(const unsigned int interface_dof_index,
          const unsigned int q_point) const
     {
-      const auto pair = this->fe_interface->interface_dof_to_cell_and_dof_index(
-        interface_dof_index);
-      const unsigned int cell_index = pair.first;
-      const unsigned int shape_fct  = pair.second;
+      value_type result;
+      for (int d = 0; d < dim; ++d)
+        result[d] =
+          this->fe_interface->jump(interface_dof_index,
+                                   q_point,
+                                   d + extractor.first_vector_component);
 
-      if (cell_index == 0)
-        return this->fe_interface->get_fe_face_values(0)[extractor].value(
-          shape_fct, q_point);
-      else
-        return -this->fe_interface->get_fe_face_values(1)[extractor].value(
-          shape_fct, q_point);
+      return result;
     }
 
     value_type
     average(const unsigned int interface_dof_index,
             const unsigned int q_point) const
     {
-      const auto pair = this->fe_interface->interface_dof_to_cell_and_dof_index(
-        interface_dof_index);
-      const unsigned int cell_index = pair.first;
-      const unsigned int shape_fct  = pair.second;
+      value_type result;
+      for (int d = 0; d < dim; ++d)
+        result[d] =
+          this->fe_interface->average(interface_dof_index,
+                                      q_point,
+                                      d + extractor.first_vector_component);
 
-      return 0.5 * this->fe_interface->get_fe_face_values(cell_index)[extractor]
-                     .value(shape_fct, q_point);
+      return result;
     }
 
     gradient_type
     average_gradient(const unsigned int interface_dof_index,
                      const unsigned int q_point) const
     {
-      const auto pair = this->fe_interface->interface_dof_to_cell_and_dof_index(
-        interface_dof_index);
-      const unsigned int cell_index = pair.first;
-      const unsigned int shape_fct  = pair.second;
+      gradient_type result;
+      for (int d = 0; d < dim; ++d)
+        result[d] = this->fe_interface->average_gradient(
+          interface_dof_index, q_point, d + extractor.first_vector_component);
 
-      return 0.5 * this->fe_interface->get_fe_face_values(cell_index)[extractor]
-                     .gradient(shape_fct, q_point);
-
-      return 0.5 * this->fe_interface->get_fe_values(cell_index)[extractor]
-                     .gradient(shape_fct, q_point);
+      return result;
     }
+
+    gradient_type
+    jump_gradient(const unsigned int interface_dof_index,
+                  const unsigned int q_point) const
+    {
+      gradient_type result;
+      for (int d = 0; d < dim; ++d)
+        result[d] = this->fe_interface->jump_gradient(
+          interface_dof_index, q_point, d + extractor.first_vector_component);
+
+      return result;
+    }
+
 
     /**
      *
@@ -246,19 +267,17 @@ namespace FEInterfaceViews
           const unsigned int interface_dof_index,
           const unsigned int q_point) const
     {
-      const auto cell_and_dof_idx =
-        this->fe_interface->interface_dof_to_cell_and_dof_index(
-          interface_dof_index);
+      value_type result;
+      for (int d = 0; d < dim; ++d)
+        result[d] =
+          this->fe_interface->shape_value(here_or_there,
+                                          interface_dof_index,
+                                          q_point,
+                                          d + extractor.first_vector_component);
 
-      if (here_or_there && cell_and_dof_idx.first == 0)
-        return this->fe_interface->get_fe_face_values(0)[extractor].value(
-          cell_and_dof_idx.second, q_point);
-      if (!here_or_there && cell_and_dof_idx.first == 1)
-        return this->fe_interface->get_fe_face_values(1)[extractor].value(
-          cell_and_dof_idx.second, q_point);
-
-      return 0.0;
+      return result;
     }
+
 
     //    value_type
     //    gradient_dot_n_average(const unsigned int idx,
@@ -274,10 +293,6 @@ namespace FEInterfaceViews
     //             this->fe_interface->get_fe_values().normal_vector(q_point);
     //    }
 
-    value_type
-    choose(const bool         left,
-           const unsigned int idx,
-           const unsigned int q_point) const;
 
   private:
     FEValuesExtractors::Vector extractor;
