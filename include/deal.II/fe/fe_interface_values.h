@@ -25,6 +25,268 @@
 
 DEAL_II_NAMESPACE_OPEN
 
+#ifndef DOXYGEN
+template <int dim, int spacedim>
+class FEInterfaceValues;
+#endif
+
+/**
+ * Namespace for views you get from accessing FEInterfaceValues using an
+ * extractor.
+ */
+namespace FEInterfaceViews
+{
+  /**
+   * The base class for the views.
+   */
+  template <int dim, int spacedim = dim>
+  class Base
+  {
+  public:
+    typedef double value_type;
+
+    Base(const FEInterfaceValues<dim, spacedim> &fe_interface)
+      : fe_interface(&fe_interface)
+    {}
+
+  protected:
+    /**
+     * Store a pointer to the FEInterfaceValues instance.
+     */
+    const FEInterfaceValues<dim, spacedim> *fe_interface;
+  };
+
+  /**
+   * The view of a scalar variable for FEInterfaceValues.
+   */
+  template <int dim, int spacedim = dim>
+  class Scalar : public Base<dim, spacedim>
+  {
+  public:
+    /**
+     * This is the type returned for values.
+     */
+    typedef double value_type;
+
+    /**
+     * This is the type returned for gradients, for example from
+     * gradient_average().
+     */
+    typedef dealii::Tensor<1, spacedim> gradient_type;
+
+    /**
+     * Constructor for an object that represents a single scalar component
+     */
+    Scalar(const FEInterfaceValues<dim, spacedim> &fe_interface,
+           const unsigned int                      component)
+      : Base<dim, spacedim>(fe_interface)
+      , extractor(component)
+    {}
+
+    /**
+     * Return the jump $[u]=u_1 - u_2$ on the interface for the shape function
+     * @p interface_dof_index in the quadrature point @p q_point.
+     */
+    value_type
+    jump(const unsigned int interface_dof_index,
+         const unsigned int q_point) const
+    {
+      return this->fe_interface->jump(interface_dof_index,
+                                      q_point,
+                                      extractor.component);
+    }
+
+    /**
+     * Return the average value $\{u\}=\frac{1}{2}(u_1 + u_2)$ on the interface
+     * for the shape
+     * function @p interface_dof_index in the quadrature point @p q_point.
+     */
+    value_type
+    average(const unsigned int interface_dof_index,
+            const unsigned int q_point) const
+    {
+      return this->fe_interface->average(interface_dof_index,
+                                         q_point,
+                                         extractor.component);
+    }
+
+    /**
+     * Return the average of the gradient $\{\nabla u\}$ on the interface for
+     * the shape
+     * function @p interface_dof_index in the quadrature point @p q_point.
+     */
+    gradient_type
+    average_gradient(const unsigned int interface_dof_index,
+                     const unsigned int q_point) const
+    {
+      const auto pair = this->fe_interface->interface_dof_to_cell_and_dof_index(
+        interface_dof_index);
+      const unsigned int cell_index = pair.first;
+      const unsigned int shape_fct  = pair.second;
+
+      return 0.5 * this->fe_interface->get_fe_face_values(cell_index)[extractor]
+                     .gradient(shape_fct, q_point);
+    }
+
+    /**
+     * Return the value of the shape function
+     * with interface dof index @p interface_dof_index in
+     * quadrature point @p q_point.
+     *
+     * The argument @p use_upstream_value selects between the upstream value and
+     * the downstream value as defined by the direction of the normal vector
+     * in this quadrature point. If @p use_upstream_value is true, the shape
+     * functions from the first cell of the interface is used.
+     *
+     * In other words, this function returns the limit of the value of the shape
+     * function in the given quadrature point when approaching it from one of
+     * the two cells of the interface.
+     *
+     * @note This function is typically used to pick the upstream or downstream
+     * value based on a direction. This can be achieved by using
+     * <code>(direction * normal)>0</code> as the first argument of this
+     * function.
+     */
+    value_type
+    value(const bool         here_or_there,
+          const unsigned int interface_dof_index,
+          const unsigned int q_point) const
+    {
+      return this->fe_interface->shape_value(here_or_there,
+                                             interface_dof_index,
+                                             q_point,
+                                             extractor.component);
+    }
+
+  private:
+    /**
+     * The extractor for this view.
+     */
+    FEValuesExtractors::Scalar extractor;
+  };
+
+  /**
+   * The view of a vector-valued variable for FEInterfaceValues.
+   */
+  template <int dim, int spacedim = dim>
+  class Vector : public Base<dim, spacedim>
+  {
+  public:
+    /**
+     * This is the type returned for values.
+     */
+    typedef dealii::Tensor<1, spacedim> value_type;
+
+    /**
+     * This is the type returned for gradients, for example from
+     * gradient_average().
+     */
+    typedef dealii::Tensor<2, spacedim> gradient_type;
+
+    /**
+     * Constructor for an object that represents a vector component
+     */
+    Vector(const FEInterfaceValues<dim, spacedim> &fe_interface,
+           const unsigned int                      first_vector_component)
+      : Base<dim, spacedim>(fe_interface)
+      , extractor(first_vector_component)
+    {}
+
+    value_type
+    jump(const unsigned int interface_dof_index,
+         const unsigned int q_point) const
+    {
+      const auto pair = this->fe_interface->interface_dof_to_cell_and_dof_index(
+        interface_dof_index);
+      const unsigned int cell_index = pair.first;
+      const unsigned int shape_fct  = pair.second;
+
+      if (cell_index == 0)
+        return this->fe_interface->get_fe_face_values(0)[extractor].value(
+          shape_fct, q_point);
+      else
+        return -this->fe_interface->get_fe_face_values(1)[extractor].value(
+          shape_fct, q_point);
+    }
+
+    value_type
+    average(const unsigned int interface_dof_index,
+            const unsigned int q_point) const
+    {
+      const auto pair = this->fe_interface->interface_dof_to_cell_and_dof_index(
+        interface_dof_index);
+      const unsigned int cell_index = pair.first;
+      const unsigned int shape_fct  = pair.second;
+
+      return 0.5 * this->fe_interface->get_fe_face_values(cell_index)[extractor]
+                     .value(shape_fct, q_point);
+    }
+
+    gradient_type
+    average_gradient(const unsigned int interface_dof_index,
+                     const unsigned int q_point) const
+    {
+      const auto pair = this->fe_interface->interface_dof_to_cell_and_dof_index(
+        interface_dof_index);
+      const unsigned int cell_index = pair.first;
+      const unsigned int shape_fct  = pair.second;
+
+      return 0.5 * this->fe_interface->get_fe_face_values(cell_index)[extractor]
+                     .gradient(shape_fct, q_point);
+
+      return 0.5 * this->fe_interface->get_fe_values(cell_index)[extractor]
+                     .gradient(shape_fct, q_point);
+    }
+
+    /**
+     *
+     */
+    value_type
+    value(const bool         here_or_there,
+          const unsigned int interface_dof_index,
+          const unsigned int q_point) const
+    {
+      const auto cell_and_dof_idx =
+        this->fe_interface->interface_dof_to_cell_and_dof_index(
+          interface_dof_index);
+
+      if (here_or_there && cell_and_dof_idx.first == 0)
+        return this->fe_interface->get_fe_face_values(0)[extractor].value(
+          cell_and_dof_idx.second, q_point);
+      if (!here_or_there && cell_and_dof_idx.first == 1)
+        return this->fe_interface->get_fe_face_values(1)[extractor].value(
+          cell_and_dof_idx.second, q_point);
+
+      return 0.0;
+    }
+
+    //    value_type
+    //    gradient_dot_n_average(const unsigned int idx,
+    //                           const unsigned int q_point) const
+    //    {
+    //      const unsigned int shape_fct =
+    //        this->fe_interface->interface_dof_index_to_fe_dof_index(idx);
+    //      const unsigned int fe_idx =
+    //        this->fe_interface->interface_dof_index_to_fe_index(idx);
+    //      return 0.5 *
+    //             this->fe_interface->get_fe_values(fe_idx)[extractor].gradient(
+    //               shape_fct, q_point) *
+    //             this->fe_interface->get_fe_values().normal_vector(q_point);
+    //    }
+
+    value_type
+    choose(const bool         left,
+           const unsigned int idx,
+           const unsigned int q_point) const;
+
+  private:
+    FEValuesExtractors::Vector extractor;
+  };
+
+} // namespace FEInterfaceViews
+
+
+
 /**
  * FEInterfaceValues is a data structure to access and assemble finite element
  * data on interfaces between two cells of a mesh.
