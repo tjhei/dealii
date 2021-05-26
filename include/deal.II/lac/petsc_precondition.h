@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------
 //
-// Copyright (C) 2004 - 2020 by the deal.II authors
+// Copyright (C) 2004 - 2021 by the deal.II authors
 //
 // This file is part of the deal.II library.
 //
@@ -1027,7 +1027,7 @@ namespace PETScWrappers
    * Alias for backwards-compatibility.
    * @deprecated Use PETScWrappers::PreconditionBase instead.
    */
-  using PreconditionerBase DEAL_II_DEPRECATED_EARLY = PreconditionBase;
+  using PreconditionerBase DEAL_II_DEPRECATED = PreconditionBase;
 } // namespace PETScWrappers
 
 

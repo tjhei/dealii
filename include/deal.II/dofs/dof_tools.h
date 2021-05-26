@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------
 //
-// Copyright (C) 1999 - 2020 by the deal.II authors
+// Copyright (C) 1999 - 2021 by the deal.II authors
 //
 // This file is part of the deal.II library.
 //
@@ -1455,7 +1455,7 @@ namespace DoFTools
    * @ref GlossBoundaryIndicator "Glossary entry on boundary indicators"
    */
   template <int dim, int spacedim>
-  DEAL_II_DEPRECATED_EARLY void
+  DEAL_II_DEPRECATED void
   extract_boundary_dofs(const DoFHandler<dim, spacedim> &   dof_handler,
                         const ComponentMask &               component_mask,
                         std::vector<bool> &                 selected_dofs,
@@ -1472,6 +1472,8 @@ namespace DoFTools
    * indicators the faces have to have on which the degrees of freedom are
    * located that shall be extracted. If it is an empty list (the default), then
    * all boundary indicators are accepted.
+   *
+   * This function is used in step-11 and step-15, for example.
    *
    * @note If the DoFHandler object is defined on a
    * parallel Triangulation object, then the computed index set
@@ -1514,7 +1516,7 @@ namespace DoFTools
    * @deprecated Use the previous function instead.
    */
   template <int dim, int spacedim>
-  DEAL_II_DEPRECATED_EARLY void
+  DEAL_II_DEPRECATED void
   extract_boundary_dofs(const DoFHandler<dim, spacedim> &   dof_handler,
                         const ComponentMask &               component_mask,
                         IndexSet &                          selected_dofs,

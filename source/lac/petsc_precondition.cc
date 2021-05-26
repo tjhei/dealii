@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------
 //
-// Copyright (C) 2004 - 2020 by the deal.II authors
+// Copyright (C) 2004 - 2021 by the deal.II authors
 //
 // This file is part of the deal.II library.
 //
@@ -463,6 +463,7 @@ namespace PETScWrappers
 
 
 
+#  ifdef DEAL_II_PETSC_WITH_HYPRE
   namespace
   {
     /**
@@ -537,6 +538,7 @@ namespace PETScWrappers
       return string_type;
     }
   } // namespace
+#  endif
 
   PreconditionBoomerAMG::PreconditionBoomerAMG(
     const MPI_Comm &      comm,

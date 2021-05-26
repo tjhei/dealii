@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2020 by the deal.II authors
+// Copyright (C) 2011 - 2021 by the deal.II authors
 //
 // This file is part of the deal.II library.
 //
@@ -977,7 +977,7 @@ public:
    * (including the MPI data exchange), allowing to execute some vector update
    * that the `src` vector depends upon. The `operation_after_loop` is similar
    * - it starts to execute on a range of DoFs once all DoFs in that range
-   * have been touched for the last time time by the `cell_operation`
+   * have been touched for the last time by the `cell_operation`
    * (including the MPI data exchange), allowing e.g. to compute some vector
    * operations that depend on the result of the current cell loop in `dst` or
    * want to modify `src`. The efficiency of caching depends on the numbering
@@ -3741,7 +3741,11 @@ namespace internal
             }
 
           if (Utilities::MPI::job_supports_mpi())
-            MPI_Barrier(matrix_free.get_task_info().communicator_sm);
+            {
+              const int ierr =
+                MPI_Barrier(matrix_free.get_task_info().communicator_sm);
+              AssertThrowMPI(ierr);
+            }
 #  endif
         }
     }

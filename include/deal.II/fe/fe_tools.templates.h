@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------
 //
-// Copyright (C) 2000 - 2020 by the deal.II authors
+// Copyright (C) 2000 - 2021 by the deal.II authors
 //
 // This file is part of the deal.II library.
 //
@@ -1030,115 +1030,6 @@ namespace FETools
     return nullptr;
   }
 
-  // Specializations for FE_Q.
-  template <>
-  std::unique_ptr<FiniteElement<1, 1>>
-  FEFactory<FE_Q<1, 1>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_Q<1>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<2, 2>>
-  FEFactory<FE_Q<2, 2>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_Q<2>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<3, 3>>
-  FEFactory<FE_Q<3, 3>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_Q<3>>(quad);
-  }
-
-  // Specializations for FE_Q_DG0.
-  template <>
-  std::unique_ptr<FiniteElement<1, 1>>
-  FEFactory<FE_Q_DG0<1, 1>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_Q_DG0<1>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<2, 2>>
-  FEFactory<FE_Q_DG0<2, 2>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_Q_DG0<2>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<3, 3>>
-  FEFactory<FE_Q_DG0<3, 3>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_Q_DG0<3>>(quad);
-  }
-
-  // Specializations for FE_Q_Bubbles.
-  template <>
-  std::unique_ptr<FiniteElement<1, 1>>
-  FEFactory<FE_Q_Bubbles<1, 1>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_Q_Bubbles<1>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<2, 2>>
-  FEFactory<FE_Q_Bubbles<2, 2>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_Q_Bubbles<2>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<3, 3>>
-  FEFactory<FE_Q_Bubbles<3, 3>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_Q_Bubbles<3>>(quad);
-  }
-
-  // Specializations for FE_DGQArbitraryNodes.
-  template <>
-  std::unique_ptr<FiniteElement<1, 1>>
-  FEFactory<FE_DGQ<1>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_DGQArbitraryNodes<1>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<1, 2>>
-  FEFactory<FE_DGQ<1, 2>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_DGQArbitraryNodes<1, 2>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<1, 3>>
-  FEFactory<FE_DGQ<1, 3>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_DGQArbitraryNodes<1, 3>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<2, 2>>
-  FEFactory<FE_DGQ<2>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_DGQArbitraryNodes<2>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<2, 3>>
-  FEFactory<FE_DGQ<2, 3>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_DGQArbitraryNodes<2, 3>>(quad);
-  }
-
-  template <>
-  std::unique_ptr<FiniteElement<3, 3>>
-  FEFactory<FE_DGQ<3>>::get(const Quadrature<1> &quad) const
-  {
-    return std::make_unique<FE_DGQArbitraryNodes<3>>(quad);
-  }
-
 
 
   namespace internal
@@ -1249,8 +1140,7 @@ namespace FETools
       std::array<
         std::array<std::map<std::string, std::unique_ptr<const Subscriptor>>,
                    4>,
-        4>
-      fill_default_map()
+        4> inline fill_default_map()
       {
         std::array<
           std::array<std::map<std::string, std::unique_ptr<const Subscriptor>>,
@@ -1584,7 +1474,7 @@ namespace FETools
 
     // First, create a local mass matrix for the unit cell
     Triangulation<dim, spacedim> tr;
-    GridGenerator::reference_cell(reference_cell, tr);
+    GridGenerator::reference_cell(tr, reference_cell);
 
     const auto &mapping =
       reference_cell.template get_default_linear_mapping<dim, spacedim>();
@@ -1792,7 +1682,7 @@ namespace FETools
         // Set up meshes, one with a single
         // reference cell and refine it once
         Triangulation<dim, spacedim> tria;
-        GridGenerator::reference_cell(reference_cell, tria);
+        GridGenerator::reference_cell(tria, reference_cell);
         tria.begin_active()->set_refine_flag(RefinementCase<dim>(ref_case));
         tria.execute_coarsening_and_refinement();
 
@@ -2183,7 +2073,7 @@ namespace FETools
     {
       // set up a triangulation for coarse cell
       Triangulation<dim, spacedim> tr;
-      GridGenerator::reference_cell(reference_cell, tr);
+      GridGenerator::reference_cell(tr, reference_cell);
 
       FEValues<dim, spacedim> coarse(mapping,
                                      fe,
@@ -2239,7 +2129,7 @@ namespace FETools
 
         // create a respective refinement on the triangulation
         Triangulation<dim, spacedim> tr;
-        GridGenerator::reference_cell(reference_cell, tr);
+        GridGenerator::reference_cell(tr, reference_cell);
         tr.begin_active()->set_refine_flag(RefinementCase<dim>(ref_case));
         tr.execute_coarsening_and_refinement();
 

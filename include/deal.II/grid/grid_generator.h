@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------
 //
-// Copyright (C) 1999 - 2020 by the deal.II authors
+// Copyright (C) 1999 - 2021 by the deal.II authors
 //
 // This file is part of the deal.II library.
 //
@@ -136,8 +136,8 @@ namespace GridGenerator
    */
   template <int dim, int spacedim>
   void
-  reference_cell(const ReferenceCell &         reference_cell,
-                 Triangulation<dim, spacedim> &tria);
+  reference_cell(Triangulation<dim, spacedim> &tria,
+                 const ReferenceCell &         reference_cell);
 
 
   /**
@@ -395,7 +395,7 @@ namespace GridGenerator
                     const double             pad_top           = 2.,
                     const double             pad_left          = 1.,
                     const double             pad_right         = 1.,
-                    const Point<dim>         center            = Point<dim>(),
+                    const Point<dim> &       center            = Point<dim>(),
                     const types::manifold_id polar_manifold_id = 0,
                     const types::manifold_id tfi_manifold_id   = 1,
                     const double             L                 = 1.,
@@ -1114,6 +1114,8 @@ namespace GridGenerator
    * the y-direction, and front to back in the z-direction. A negative number
    * denotes cutting away cells in the reverse direction, so right to left,
    * top to bottom, and back to front.
+   *
+   * A demonstration of this grid can be found in step-75.
    *
    * This function may be used to generate a mesh for a backward
    * facing step, a useful domain for benchmark problems in fluid dynamics.
