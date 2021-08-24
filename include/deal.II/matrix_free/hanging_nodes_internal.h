@@ -659,18 +659,16 @@ namespace internal
                                   ExcInternalError();
 
                                 // Copy the unconstrained values
-                                neighbor_dofs.resize(n_dofs_1d * n_dofs_1d *
-                                                     n_dofs_1d);
                                 DoFCellAccessor<dim, dim, false>(
                                   &neighbor_cell->get_triangulation(),
                                   neighbor_cell->level(),
                                   neighbor_cell->index(),
                                   &cell->get_dof_handler())
-                                  .get_dof_indices(neighbor_dofs);
+                                  .get_dof_indices(neighbor_dofs_all);
                                 // If the vector is distributed, we need to
                                 // transform the global indices to local ones.
                                 if (partitioner)
-                                  for (auto &index : neighbor_dofs)
+                                  for (auto &index : neighbor_dofs_all)
                                     index = partitioner->global_to_local(index);
 
                                 for (unsigned int i = 0; i < n_dofs_1d; ++i)
@@ -680,7 +678,7 @@ namespace internal
                                       line_dof_idx(local_line, i, n_dofs_1d);
 
                                     dof_indices[idx + idx_offset[comp]] =
-                                      neighbor_dofs
+                                      neighbor_dofs_all
                                         [lexicographic_mapping
                                            [fe.component_to_system_index(
                                              comp,
