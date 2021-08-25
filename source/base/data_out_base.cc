@@ -34,6 +34,7 @@
 #include <deal.II/base/data_out_base.h>
 #include <deal.II/base/memory_consumption.h>
 #include <deal.II/base/mpi.h>
+#include <deal.II/base/timer.h>
 #include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/thread_management.h>
 #include <deal.II/base/utilities.h>
@@ -7266,6 +7267,9 @@ DataOutInterface<dim, spacedim>::write_vtu_in_parallel(
 
   const int myrank = Utilities::MPI::this_mpi_process(comm);
 
+  Timer timer;
+  timer.start();
+
   MPI_Info info;
   int ierr = MPI_Info_create(&info);
   AssertThrowMPI(ierr);
@@ -7346,8 +7350,20 @@ DataOutInterface<dim, spacedim>::write_vtu_in_parallel(
                                    MPI_STATUS_IGNORE);
       AssertThrowMPI(ierr);
     }
+
+  MPI_Offset size;
+  ierr = MPI_File_get_size(fh, &size);
+  AssertThrowMPI(ierr);
+
   ierr = MPI_File_close(&fh);
   AssertThrowMPI(ierr);
+
+  timer.stop();
+  if (myrank == 0)
+    {
+      std::cout << "MPI-IO: " << size << " bytes in " << timer.wall_time()
+                << " seconds." << std::endl;
+    }
 #endif
 }
 
