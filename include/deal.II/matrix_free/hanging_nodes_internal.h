@@ -348,10 +348,10 @@ namespace internal
 
             const auto &fe = cell->get_fe().base_element(base_element_index);
 
-            if (dim == 1 || dynamic_cast<const FE_Q<dim> *>(&fe) == nullptr)
+            if (dim == 1 || dynamic_cast<const FE_Q<dim> *>(&fe_base) == nullptr)
               continue;
 
-            const unsigned int fe_degree = fe.tensor_degree();
+            const unsigned int fe_degree = fe_base.tensor_degree();
             const unsigned int n_dofs_1d = fe_degree + 1;
             const unsigned int dofs_per_face =
               Utilities::fixed_power<dim - 1>(n_dofs_1d);
