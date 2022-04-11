@@ -7988,7 +7988,19 @@ DataOutInterface<dim, spacedim>::write_xdmf_file(
 
       // Write out all the entries indented
       const auto &patches = get_patches();
+      // Old stuff
       Assert(patches.size() > 0, DataOutBase::ExcNoPatches());
+
+      // New stuff, added because we need to be able to write these xdmf files
+      // regardless of the number of cells in a particular rank
+      /*
+      #ifndef DEAL_II_WITH_MPI
+          Assert(patches.size() > 0, ExcNoPatches());
+      #else
+          if (patches.size() == 0)
+            return;
+      #endif
+      */
 
       for (it = entries.begin(); it != entries.end(); ++it)
         {
@@ -8220,7 +8232,16 @@ DataOutBase::write_hdf5_parallel(
   // since then it can happen that on the coarsest mesh, a processor simply has
   // no cells it actually owns, and in that case it is legit if there are no
   // patches
+  // Assert(patches.size() > 0, ExcNoPatches()); //"Uncomment this to get back
+  // to the original code
+  //
+  // Changes
+#  ifndef DEAL_II_WITH_MPI
   Assert(patches.size() > 0, ExcNoPatches());
+#  else
+  if (patches.size() == 0)
+    return;
+#  endif
 
   hid_t h5_mesh_file_id = -1, h5_solution_file_id, file_plist_id, plist_id;
   hid_t node_dataspace, node_dataset, node_file_dataspace,
@@ -8230,7 +8251,7 @@ DataOutBase::write_hdf5_parallel(
   hid_t pt_data_dataspace, pt_data_dataset, pt_data_file_dataspace,
     pt_data_memory_dataspace;
   herr_t status;
-  unsigned int local_node_cell_count[2];
+  std::uint64_t local_node_cell_count[2];
   hsize_t count[2], offset[2], node_ds_dim[2], cell_ds_dim[2];
   std::vector<double> node_data_vec;
   std::vector<unsigned int> cell_data_vec;
@@ -8264,21 +8285,21 @@ DataOutBase::write_hdf5_parallel(
   // Compute the global total number of nodes/cells and determine the offset of
   // the data for this process
 
-  unsigned int global_node_cell_count[2] = {0, 0};
-  unsigned int global_node_cell_offsets[2] = {0, 0};
+  std::uint64_t global_node_cell_count[2] = {0, 0};
+  std::uint64_t global_node_cell_offsets[2] = {0, 0};
 
 #  ifdef DEAL_II_WITH_MPI
   ierr = MPI_Allreduce(local_node_cell_count,
                        global_node_cell_count,
                        2,
-                       MPI_UNSIGNED,
+                       MPI_UINT64_T,
                        MPI_SUM,
                        comm);
   AssertThrowMPI(ierr);
   ierr = MPI_Exscan(local_node_cell_count,
                     global_node_cell_offsets,
                     2,
-                    MPI_UNSIGNED,
+                    MPI_UINT64_T,
                     MPI_SUM,
                     comm);
   AssertThrowMPI(ierr);
