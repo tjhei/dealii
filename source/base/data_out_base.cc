@@ -8220,16 +8220,7 @@ DataOutBase::write_hdf5_parallel(
   // since then it can happen that on the coarsest mesh, a processor simply has
   // no cells it actually owns, and in that case it is legit if there are no
   // patches
-  // Assert(patches.size() > 0, ExcNoPatches()); //"Uncomment this to get back
-  // to the original code
-  //
-  // Changes
-#  ifndef DEAL_II_WITH_MPI
   Assert(patches.size() > 0, ExcNoPatches());
-#  else
-  if (patches.size() == 0)
-    return;
-#  endif
 
   hid_t h5_mesh_file_id = -1, h5_solution_file_id, file_plist_id, plist_id;
   hid_t node_dataspace, node_dataset, node_file_dataspace,
