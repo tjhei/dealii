@@ -7988,19 +7988,7 @@ DataOutInterface<dim, spacedim>::write_xdmf_file(
 
       // Write out all the entries indented
       const auto &patches = get_patches();
-      // Old stuff
       Assert(patches.size() > 0, DataOutBase::ExcNoPatches());
-
-      // New stuff, added because we need to be able to write these xdmf files
-      // regardless of the number of cells in a particular rank
-      /*
-      #ifndef DEAL_II_WITH_MPI
-          Assert(patches.size() > 0, ExcNoPatches());
-      #else
-          if (patches.size() == 0)
-            return;
-      #endif
-      */
 
       for (it = entries.begin(); it != entries.end(); ++it)
         {
