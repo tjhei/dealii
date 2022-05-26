@@ -7768,7 +7768,7 @@ DataOutInterface<dim, spacedim>::write_vtu_in_parallel(
     // Sending the offset for writing the footer to rank 0.
     if (myrank == n_ranks - 1)
       {
-        const std::uint64_t footer_offset = size_on_proc + offset;
+        footer_offset = size_on_proc + offset;
         AssertThrowMPI(ierr);
       }
   }
@@ -7784,6 +7784,7 @@ DataOutInterface<dim, spacedim>::write_vtu_in_parallel(
                                   0,
                                   comm,
                                   MPI_STATUS_IGNORE);
+      AssertThrowMPI(ierr);
     }
 
   // write footer
