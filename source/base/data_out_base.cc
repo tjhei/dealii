@@ -7711,6 +7711,7 @@ DataOutInterface<dim, spacedim>::write_vtu_in_parallel(
 
   // Define header size so we can broadcast later.
   unsigned int header_size;
+  std::uint64_t footer_offset;
 
   // write header
   if (myrank == 0)
@@ -7768,10 +7769,22 @@ DataOutInterface<dim, spacedim>::write_vtu_in_parallel(
     if (myrank == n_ranks - 1)
       {
         const std::uint64_t footer_offset = size_on_proc + offset;
-        ierr = MPI_Send(&footer_offset, 1, MPI_UINT64_T, 0, 0, comm);
         AssertThrowMPI(ierr);
       }
   }
+
+  if (myrank == 0 || myrank == n_ranks - 1)
+    {
+      ierr = MPI_Sendrecv_replace(&footer_offset,
+                                  1,
+                                  MPI_UINT64_T,
+                                  n_ranks - 1,
+                                  0,
+                                  0,
+                                  0,
+                                  comm,
+                                  MPI_STATUS_IGNORE);
+    }
 
   // write footer
   if (myrank == 0)
@@ -7779,16 +7792,6 @@ DataOutInterface<dim, spacedim>::write_vtu_in_parallel(
       std::stringstream ss;
       DataOutBase::write_vtu_footer(ss);
       const unsigned int footer_size = ss.str().size();
-
-      std::uint64_t footer_offset;
-      ierr = MPI_Recv(&footer_offset,
-                      1,
-                      MPI_UINT64_T,
-                      n_ranks - 1,
-                      0,
-                      comm,
-                      MPI_STATUS_IGNORE);
-      AssertThrowMPI(ierr);
 
       // Writing Footer.
       ierr = Utilities::MPI::LargeCount::MPI_File_write_at_c(fh,
