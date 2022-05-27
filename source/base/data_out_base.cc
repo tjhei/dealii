@@ -7711,7 +7711,6 @@ DataOutInterface<dim, spacedim>::write_vtu_in_parallel(
 
   // Define header size so we can broadcast later.
   unsigned int header_size;
-  std::uint64_t footer_offset;
 
   // write header
   if (myrank == 0)
@@ -7728,6 +7727,7 @@ DataOutInterface<dim, spacedim>::write_vtu_in_parallel(
   ierr = MPI_Bcast(&header_size, 1, MPI_UNSIGNED, 0, comm);
   AssertThrowMPI(ierr);
 
+  std::uint64_t footer_offset;
   {
     const auto &patches = get_patches();
     const types::global_dof_index my_n_patches = patches.size();
@@ -7756,45 +7756,23 @@ DataOutInterface<dim, spacedim>::write_vtu_in_parallel(
     // Locate specific offset for each processor.
     const MPI_Offset offset = static_cast<MPI_Offset>(header_size) + prefix_sum;
 
-    ierr =
-      Utilities::MPI::LargeCount::MPI_File_write_at_all_c(fh,
-                                                          offset,
-                                                          ss.str().c_str(),
-                                                          ss.str().size(),
-                                                          MPI_CHAR,
-                                                          MPI_STATUS_IGNORE);
+    ierr = Utilities::MPI::LargeCount::MPI_File_write_at_all_c(
+      fh, offset, ss.str().c_str(), size_on_proc, MPI_CHAR, MPI_STATUS_IGNORE);
     AssertThrowMPI(ierr);
 
-    // Sending the offset for writing the footer to rank 0.
     if (myrank == n_ranks - 1)
       {
-        footer_offset = size_on_proc + offset;
-        AssertThrowMPI(ierr);
+        footer_offset = offset + size_on_proc;
       }
   }
 
-  if (myrank == 0 || myrank == n_ranks - 1)
-    {
-      ierr = MPI_Sendrecv_replace(&footer_offset,
-                                  1,
-                                  MPI_UINT64_T,
-                                  n_ranks - 1,
-                                  0,
-                                  0,
-                                  0,
-                                  comm,
-                                  MPI_STATUS_IGNORE);
-      AssertThrowMPI(ierr);
-    }
-
   // write footer
-  if (myrank == 0)
+  if (myrank == n_ranks - 1)
     {
       std::stringstream ss;
       DataOutBase::write_vtu_footer(ss);
       const unsigned int footer_size = ss.str().size();
 
-      // Writing Footer.
       ierr = Utilities::MPI::LargeCount::MPI_File_write_at_c(fh,
                                                              footer_offset,
                                                              ss.str().c_str(),
