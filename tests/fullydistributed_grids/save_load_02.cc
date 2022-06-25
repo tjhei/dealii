@@ -63,7 +63,7 @@ main(int argc, char **argv)
 {
   Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
-  MPILogInitAll all;
+  MPILogInitAll all(true);
 
   deallog.push("2d");
   if (false)  {
@@ -90,8 +90,13 @@ main(int argc, char **argv)
 
     parallel::distributed::Triangulation<dim> triangulation(MPI_COMM_WORLD);
     GridGenerator::hyper_cube(triangulation);
-    triangulation.refine_global((run_big)?6:2);
-
+    //    triangulation.refine_global((run_big)?6:2);
+    for (unsigned int ref=0;ref<10;++ref)
+      {
+    triangulation.refine_global(1);
+    deallog << "**** levels=" << triangulation.n_global_levels()
+	    << " cells=" << triangulation.n_global_active_cells() << std::endl;
+    
     const auto description = TriangulationDescription::Utilities::
       create_description_from_triangulation(triangulation, MPI_COMM_WORLD);
 
@@ -100,6 +105,7 @@ main(int argc, char **argv)
     triangulation_pft.create_triangulation(description);
 
     test<dim>(triangulation_pft);
+      }
   }
   deallog.pop();
 }
