@@ -3434,6 +3434,7 @@ namespace parallel
     bool
     Triangulation<dim, spacedim>::prepare_coarsening_and_refinement()
     {
+      std::cout << "prepare_coarsening_and_refinement..." << std::endl;
       std::vector<bool> flags_before[2];
       this->save_coarsen_flags(flags_before[0]);
       this->save_refine_flags(flags_before[1]);
@@ -3442,11 +3443,49 @@ namespace parallel
       unsigned int loop_counter = 0;
       do
         {
+          std::cout << "smoothing loop..." << std::endl;
           this->dealii::Triangulation<dim, spacedim>::
             prepare_coarsening_and_refinement();
-          this->update_periodic_face_map();
+          // this->update_periodic_face_map();
           // enforce 2:1 mesh balance over periodic boundaries
-          mesh_changed = enforce_mesh_balance_over_periodic_boundaries(*this);
+
+          if (true)
+            mesh_changed = enforce_mesh_balance_over_periodic_boundaries(*this);
+
+          if (false)
+            {
+              for (auto &cell : this->active_cell_iterators())
+                if (cell->is_locally_owned())
+                  {
+                    bool refine = false;
+                    for (unsigned int f = 0;
+                         f < GeometryInfo<dim>::faces_per_cell;
+                         ++f)
+                      if (cell->has_periodic_neighbor(f))
+                        {
+                          const int neighbor_level =
+                            cell->periodic_neighbor_level(f) +
+                            (cell->periodic_neighbor(f)->refine_flag_set() ? 1 :
+                                                                             0);
+
+                          // std::cout << "n:" << neighbor_level << " me:" <<
+                          // cell->level() << std::endl;
+                          if (neighbor_level > cell->level())
+                            {
+                              refine = true;
+                              break;
+                            }
+                        }
+
+                    if (refine && !cell->refine_flag_set())
+                      {
+                        std::cout << "flagging " << cell->center() << std::endl;
+                        cell->clear_coarsen_flag();
+                        cell->set_refine_flag();
+                        mesh_changed = true;
+                      }
+                  }
+            }
 
           // We can't be sure that we won't run into a situation where we can
           // not reconcile mesh smoothing and balancing of periodic faces. As we
@@ -3509,13 +3548,30 @@ namespace parallel
       // ordering of the cells (useful for snapshot/resume).
       // TODO: is there a more efficient way to do this?
       if (settings & mesh_reconstruction_after_repartitioning)
-        while (this->begin_active()->level() > 0)
+        while (this->n_levels() > 1)
           {
-            for (const auto &cell : this->active_cell_iterators())
+            // remove one level at a time:
+//            for (const auto &cell : this->active_cell_iterators())
+                          for (const auto &cell :
+                          this->active_cell_iterators_on_level(
+                                 this->n_levels()-1))
               {
                 cell->set_coarsen_flag();
               }
 
+            dealii::Triangulation<dim, spacedim>::
+              prepare_coarsening_and_refinement();
+            for (const auto &cell : this->active_cell_iterators())
+              //            for (const auto &cell :
+              //            this->active_cell_iterators_on_level(
+              //                   this->n_levels()-1))
+              {
+                if (!cell->coarsen_flag_set() && cell->level() > 0)
+                  {
+                    std::cout << "not coarsening " << cell->center()
+                              << std::endl;
+                  }
+              }
             try
               {
                 dealii::Triangulation<dim, spacedim>::
@@ -3629,7 +3685,9 @@ namespace parallel
             }
 
           // fix all the flags to make sure we have a consistent mesh
-          this->prepare_coarsening_and_refinement();
+          // note:  sequential version
+          dealii::Triangulation<dim,
+                                spacedim>::prepare_coarsening_and_refinement();
 
           // see if any flags are still set
           mesh_changed =
@@ -3852,6 +3910,7 @@ namespace parallel
             }
         }
 
+      // run our parallel version of prepare_coarsening_and_refinement:
       this->prepare_coarsening_and_refinement();
 
       // signal that refinement is going to happen

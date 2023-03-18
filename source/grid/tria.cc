@@ -12467,11 +12467,11 @@ template <int dim, int spacedim>
 void
 Triangulation<dim, spacedim>::execute_coarsening_and_refinement()
 {
-  // Call our version of prepare_coarsening_and_refinement() even if a derived class like
-  // parallel::distributed::Triangulation overrides it. Their function will be called in
-  // their execute_coarsening_and_refinement() function. Even in a distributed computation
-  // our job here is to reconstruct the local part of the mesh and as such checking our
-  // flags is enough.
+  // Call our version of prepare_coarsening_and_refinement() even if a derived
+  // class like parallel::distributed::Triangulation overrides it. Their
+  // function will be called in their execute_coarsening_and_refinement()
+  // function. Even in a distributed computation our job here is to reconstruct
+  // the local part of the mesh and as such checking our flags is enough.
   Triangulation<dim, spacedim>::prepare_coarsening_and_refinement();
 
   // verify a case with which we have had
@@ -13521,6 +13521,40 @@ Triangulation<dim, spacedim>::prepare_coarsening_and_refinement()
                 RefinementCase<dim>::isotropic_refinement)
               possibly_refine_unrefined_island<dim, spacedim>(
                 cell, (smooth_grid & allow_anisotropic_smoothing) != 0);
+        }
+
+
+
+      // step4b: periodic no hanging
+      if (false)
+        {
+          for (auto &cell : active_cell_iterators())
+            if (cell->is_locally_owned())
+              {
+                bool refine = false;
+                for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell;
+                     ++f)
+                  if (cell->has_periodic_neighbor(f))
+                    {
+                      const int neighbor_level =
+                        cell->periodic_neighbor_level(f) +
+                            cell->periodic_neighbor(f)->refine_flag_set() ?
+                          1 :
+                          0;
+
+                      if (neighbor_level > cell->level())
+                        {
+                          refine = true;
+                          break;
+                        }
+                    }
+                if (refine)
+                  {
+                    std::cout << "flagging " << cell->center() << std::endl;
+                    cell->clear_coarsen_flag();
+                    cell->set_refine_flag();
+                  }
+              }
         }
 
       /////////////////////////////////
