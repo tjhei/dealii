@@ -26,12 +26,9 @@
 // Included from step-40
 #include <deal.II/lac/generic_linear_algebra.h>
 
-#define FORCE_USE_OF_TRILINOS
-
 namespace LA
 {
-#if defined(DEAL_II_WITH_PETSC) && !defined(DEAL_II_PETSC_WITH_COMPLEX) && \
-  !(defined(DEAL_II_WITH_TRILINOS) && defined(FORCE_USE_OF_TRILINOS))
+#if defined(DEAL_II_WITH_PETSC) && (!defined(DEAL_II_WITH_TRILINOS) || defined(FORCE_USE_OF_PETSC))
   using namespace dealii::LinearAlgebraPETSc;
 #  define USE_PETSC_LA
 #elif defined(DEAL_II_WITH_TRILINOS)
