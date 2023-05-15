@@ -15,8 +15,8 @@
 
 
 
-// Tests the NonlinearSolverSelector class using an examplebased on the
-// step-77 tutorial program. This test checks the compatability of the
+// Tests the NonlinearSolverSelector class using an example based on the
+// step-77 tutorial program. This test checks the compatibility of the
 // class with MPI.
 
 #include <deal.II/base/function.h>

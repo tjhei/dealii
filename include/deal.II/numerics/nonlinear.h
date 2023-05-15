@@ -173,7 +173,7 @@ public:
      *
      * If set to zero, default values provided by KINSOL will be used.
      */
-    double step_tolerance = 0.0;
+    double step_tolerance;
 
     /**
      * Relative $l_2$ tolerance of the residual to be reached.
@@ -381,7 +381,6 @@ NonlinearSolverSelector<VectorType>::data_transfer(
 
 // Do the same thing we did above but with NOX
 #ifdef DEAL_II_WITH_TRILINOS
-  // Some default settings for parameters.
   parameters_nox->set("Nonlinear Solver", "Line Search Based");
   Teuchos::ParameterList &Line_Search = parameters_nox->sublist("Line Search");
   Line_Search.set("Method", "Full Step");
