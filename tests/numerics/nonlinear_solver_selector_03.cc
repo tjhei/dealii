@@ -28,7 +28,8 @@
 
 namespace LA
 {
-#if defined(DEAL_II_WITH_PETSC) && (!defined(DEAL_II_WITH_TRILINOS) || defined(FORCE_USE_OF_PETSC))
+#if defined(DEAL_II_WITH_PETSC) && \
+  (!defined(DEAL_II_WITH_TRILINOS) || defined(FORCE_USE_OF_PETSC))
   using namespace dealii::LinearAlgebraPETSc;
 #  define USE_PETSC_LA
 #elif defined(DEAL_II_WITH_TRILINOS)
@@ -187,6 +188,8 @@ namespace MPI_nonlinear_solver_selector_test
 
           for (const auto &boundary_value : boundary_values)
             current_solution(boundary_value.first) = boundary_value.second;
+
+          current_solution.compress(VectorOperation::insert);
         }
 
         {
@@ -313,6 +316,7 @@ namespace MPI_nonlinear_solver_selector_test
     LA::MPI::Vector &      residual)
   {
     deallog << "  Computing residual vector..." << std::flush;
+    residual = 0.;
 
     LA::MPI::Vector evaluation_point_1;
     evaluation_point_1.reinit(locally_owned_dofs,
@@ -367,8 +371,8 @@ namespace MPI_nonlinear_solver_selector_test
           }
       }
 
-    zero_constraints.set_zero(residual);
     residual.compress(VectorOperation::add);
+    zero_constraints.set_zero(residual);
 
     deallog << " norm=" << residual.l2_norm() << std::endl;
   }
