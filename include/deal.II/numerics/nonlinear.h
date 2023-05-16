@@ -17,6 +17,8 @@
 
 #include <deal.II/base/exceptions.h>
 
+#include <deal.II/lac/petsc_snes.h>
+
 #include <deal.II/sundials/kinsol.h>
 
 #include <deal.II/trilinos/nox.h>
@@ -116,12 +118,16 @@ public:
        * NOX nonlinear solver, part of the TRILINOS package.
        */
       nox,
+      /*
+       * Use the PETSc SNES solver.
+       */
+      petsc_snes
     };
 
     /**
      * Initialization parameters for NonlinearSolverSelector.
      *
-     * @param solver_type Nonlinear solver type, can be 'auto', 'kinsol', or 'nox'.
+     * @param solver_type Nonlinear solver type.
      * @param strategy Method of solving nonlinear problem, can be 'newton',
      * 'linesearch', or 'picard'.
      * @param maximum_non_linear_iterations Maximum number of nonlinear
@@ -168,20 +174,20 @@ public:
     double function_tolerance;
 
     /**
-     * A scalar used as a stopping tolerance on the minimum
-     * scaled step length.
-     *
-     * If set to zero, default values provided by KINSOL will be used.
-     */
-    double step_tolerance;
-
-    /**
      * Relative $l_2$ tolerance of the residual to be reached.
      *
      * @note Solver terminates successfully if either the absolute or
      * the relative tolerance has been reached.
      */
     const double relative_tolerance;
+
+    /**
+     * A scalar used as a stopping tolerance on the minimum
+     * scaled step length.
+     *
+     * If set to zero, default values provided by KINSOL will be used.
+     */
+    double step_tolerance;
 
     /**
      * The size of the subspace used with Anderson acceleration
@@ -239,6 +245,11 @@ public:
   void
   set_data(const typename SUNDIALS::KINSOL<VectorType>::AdditionalData
              &additional_data);
+#endif
+
+#ifdef DEAL_II_WITH_PETSC
+  void
+  set_data(const typename PETScWrappers::NonlinearSolverData &additional_data);
 #endif
 
   /**
@@ -341,11 +352,25 @@ private:
     Teuchos::rcp(new Teuchos::ParameterList);
 #endif
 
+/**
+ * PETSc SNES configuration data
+ */
+#ifdef DEAL_II_WITH_PETSC
+  typename PETScWrappers::NonlinearSolverData additional_data_petsc_snes;
+#endif
+
   /**
    * Data transfer function
    */
   void
   data_transfer(const AdditionalData &additional_data);
+
+  /**
+   * Solve with PETSc SNES. Internal functions specialized for PETSc
+   * Vectors.
+   */
+  void
+  solve_with_petsc(VectorType &initial_guess_and_solution);
 };
 
 template <typename VectorType>
@@ -388,6 +413,43 @@ NonlinearSolverSelector<VectorType>::data_transfer(
   additional_data_nox.max_iter = additional_data.maximum_non_linear_iterations;
   additional_data_nox.abs_tol  = additional_data.function_tolerance;
   additional_data_nox.rel_tol  = additional_data.relative_tolerance;
+#endif
+
+#ifdef DEAL_II_WITH_PETSC
+  additional_data_petsc_snes.options_prefix = "";
+
+  if (additional_data.anderson_subspace_size > 0 &&
+      additional_data.strategy ==
+        NonlinearSolverSelector<VectorType>::AdditionalData::picard)
+    {
+      additional_data_petsc_snes.snes_type = "anderson";
+      // TODO additional_data.anderson_subspace_size;
+    }
+  else if (additional_data.strategy ==
+           NonlinearSolverSelector<VectorType>::AdditionalData::linesearch)
+    {
+      additional_data_petsc_snes.snes_type            = "newtonls";
+      additional_data_petsc_snes.snes_linesearch_type = "bt";
+    }
+  else if (additional_data.strategy ==
+           NonlinearSolverSelector<VectorType>::AdditionalData::newton)
+    {
+      additional_data_petsc_snes.snes_linesearch_type = "newtonls";
+      additional_data_petsc_snes.snes_linesearch_type = "basic";
+    }
+  else if (additional_data.strategy ==
+           NonlinearSolverSelector<VectorType>::AdditionalData::picard)
+    additional_data_petsc_snes.snes_type = "nrichardson";
+
+  additional_data_petsc_snes.absolute_tolerance =
+    additional_data.function_tolerance;
+  additional_data_petsc_snes.relative_tolerance =
+    additional_data.relative_tolerance;
+  additional_data_petsc_snes.step_tolerance = additional_data.step_tolerance;
+  additional_data_petsc_snes.maximum_non_linear_iterations =
+    additional_data.maximum_non_linear_iterations;
+  additional_data_petsc_snes.max_n_function_evaluations = -1;
+
 #endif
 }
 
@@ -462,6 +524,44 @@ NonlinearSolverSelector<VectorType>::set_data(
 }
 #endif
 
+
+template <typename VectorType>
+void
+NonlinearSolverSelector<VectorType>::solve_with_petsc(
+  VectorType & /*initial_guess_and_solution*/)
+{
+  AssertThrow(false,
+              ExcMessage("PETSc SNES requires you to use PETSc vectors."));
+}
+
+
+
+#ifdef DEAL_II_WITH_PETSC
+template <>
+void
+NonlinearSolverSelector<PETScWrappers::MPI::Vector>::solve_with_petsc(
+  PETScWrappers::MPI::Vector &initial_guess_and_solution)
+{
+  PETScWrappers::NonlinearSolver<PETScWrappers::MPI::Vector> nonlinear_solver(
+    additional_data_petsc_snes, mpi_communicator);
+
+  nonlinear_solver.residual = residual;
+
+  nonlinear_solver.setup_jacobian = setup_jacobian;
+
+  nonlinear_solver.solve_with_jacobian =
+    [&](const PETScWrappers::MPI::Vector &src,
+        PETScWrappers::MPI::Vector &      dst) -> int {
+    const double tolerance = 1e-5;
+    return solve_with_jacobian(src, dst, tolerance);
+  };
+
+  nonlinear_solver.solve(initial_guess_and_solution);
+}
+#endif
+
+
+
 template <typename VectorType>
 void
 NonlinearSolverSelector<VectorType>::solve(
@@ -471,6 +571,9 @@ NonlinearSolverSelector<VectorType>::solve(
   // available then we will use NOX.
   if (additional_data.solver_type == AdditionalData::SolverType::automatic)
     {
+#ifdef DEAL_II_WITH_PETSC
+      additional_data.solver_type = AdditionalData::SolverType::petsc_snes;
+#endif
 #ifdef DEAL_II_WITH_TRILINOS
       additional_data.solver_type = AdditionalData::SolverType::nox;
 #endif
@@ -530,6 +633,11 @@ NonlinearSolverSelector<VectorType>::solve(
       AssertThrow(
         false, ExcMessage("You do not have Trilinos configured with deal.II"));
 #endif
+    }
+  else if (additional_data.solver_type ==
+           AdditionalData::SolverType::petsc_snes)
+    {
+      solve_with_petsc(initial_guess_and_solution);
     }
   else
     {
