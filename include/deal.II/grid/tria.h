@@ -2221,9 +2221,6 @@ public:
    *
    * The function returns whether some cells' flagging has been changed in the
    * process.
-   *
-   * This function uses the user flags, so store them if you still need them
-   * afterwards.
    */
   virtual bool
   prepare_coarsening_and_refinement();
