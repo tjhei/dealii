@@ -88,32 +88,35 @@ namespace Utilities
       const Triangulation<dim, spacedim> &tria,
       const Mapping<dim, spacedim>       &mapping)
     {
+      const GridTools::Cache<dim, spacedim> cache(tria, mapping);
+
+      this->reinit(cache, points);
+    }
+
+
+
+    template <int dim, int spacedim>
+    void
+    RemotePointEvaluation<dim, spacedim>::reinit(
+      const GridTools::Cache<dim, spacedim> &cache,
+      const std::vector<Point<spacedim>>    &points)
+    {
 #ifndef DEAL_II_WITH_MPI
       Assert(false, ExcNeedsMPI());
+      (void)cache;
       (void)points;
-      (void)tria;
-      (void)mapping;
 #else
       if (tria_signal.connected())
         tria_signal.disconnect();
 
-      tria_signal =
-        tria.signals.any_change.connect([&]() { this->ready_flag = false; });
-
-      std::vector<BoundingBox<spacedim>> local_boxes;
-      for (const auto &cell :
-           tria.active_cell_iterators() | IteratorFilters::LocallyOwnedCell())
-        local_boxes.push_back(mapping.get_bounding_box(cell));
-
-      // create r-tree of bounding boxes
-      const auto local_tree = pack_rtree(local_boxes);
+      tria_signal = cache.get_triangulation().signals.any_change.connect(
+        [&]() { this->ready_flag = false; });
 
       // compress r-tree to a minimal set of bounding boxes
-      std::vector<std::vector<BoundingBox<spacedim>>> global_bboxes(1);
-      global_bboxes[0] =
-        extract_rtree_level(local_tree, additional_data.rtree_level);
-
-      const GridTools::Cache<dim, spacedim> cache(tria, mapping);
+      std::vector<std::vector<BoundingBox<spacedim>>> global_bboxes;
+      global_bboxes.emplace_back(
+        extract_rtree_level(cache.get_locally_owned_cell_bounding_boxes_rtree(),
+                            additional_data.rtree_level));
 
       const auto data =
         GridTools::internal::distributed_compute_point_locations(
@@ -126,7 +129,7 @@ namespace Utilities
           true,
           additional_data.enforce_unique_mapping);
 
-      this->reinit(data, tria, mapping);
+      this->reinit(data, cache.get_triangulation(), cache.get_mapping());
 #endif
     }
 
@@ -232,6 +235,31 @@ namespace Utilities
 
       cell_data->reference_point_ptrs.emplace_back(
         cell_data->reference_point_values.size());
+
+      unsigned int max_size_recv = 0;
+      for (unsigned int i = 0; i < recv_ranks.size(); ++i)
+        max_size_recv =
+          std::max(max_size_recv, recv_ptrs[i + 1] - recv_ptrs[i]);
+
+      unsigned int max_size_send = 0;
+      for (unsigned int i = 0; i < send_ranks.size(); ++i)
+        max_size_send =
+          std::max(max_size_send, send_ptrs[i + 1] - send_ptrs[i]);
+
+      this->buffer_size_with_sorting =
+        std::max(send_permutation.size() * 2 + max_size_recv,
+                 point_ptrs.back() + send_permutation.size() + max_size_send);
+
+      this->buffer_size_without_sorting = send_permutation.size();
+
+      // invert permutation matrices
+      recv_permutation_inv.resize(recv_permutation.size());
+      for (unsigned int c = 0; c < recv_permutation.size(); ++c)
+        recv_permutation_inv[recv_permutation[c]] = c;
+
+      send_permutation_inv.resize(send_permutation.size());
+      for (unsigned int c = 0; c < send_permutation.size(); ++c)
+        send_permutation_inv[send_permutation[c]] = c;
 
       this->ready_flag = true;
     }
@@ -352,6 +380,24 @@ namespace Utilities
     RemotePointEvaluation<dim, spacedim>::is_ready() const
     {
       return ready_flag;
+    }
+
+
+
+    template <int dim, int spacedim>
+    const std::vector<unsigned int> &
+    RemotePointEvaluation<dim, spacedim>::get_send_permutation() const
+    {
+      return send_permutation;
+    }
+
+
+
+    template <int dim, int spacedim>
+    const std::vector<unsigned int> &
+    RemotePointEvaluation<dim, spacedim>::get_inverse_recv_permutation() const
+    {
+      return recv_permutation_inv;
     }
 
   } // end of namespace MPI
