@@ -169,7 +169,7 @@ namespace WorkStream
      * along with a flag that indicates whether this object is currently
      * in use.
      */
-    template <typename Iterator, typename ScratchData, typename CopyData>
+    template <typename ScratchData>
     struct ScratchDataObject
     {
       std::unique_ptr<ScratchData> scratch_data;
@@ -238,8 +238,7 @@ namespace WorkStream
            * Typedef to a list of scratch data objects. The rationale for this
            * list is provided in the variables that use these lists.
            */
-          using ScratchDataList =
-            std::list<ScratchDataObject<Iterator, ScratchData, CopyData>>;
+          using ScratchDataList = std::list<ScratchDataObject<ScratchData>>;
 
           /**
            * A list of iterators that need to be worked on. Only the first
@@ -706,8 +705,7 @@ namespace WorkStream
         tf::Executor &executor = MultithreadInfo::get_taskflow_executor();
         tf::Taskflow  taskflow;
 
-        using ScratchDataList =
-          std::list<ScratchDataObject<Iterator, ScratchData, CopyData>>;
+        using ScratchDataList = std::list<ScratchDataObject<ScratchData>>;
 
         Threads::ThreadLocalStorage<ScratchDataList>
           thread_safe_scratch_data_list;
@@ -725,13 +723,13 @@ namespace WorkStream
         // Generate a static task graph. Here we generate a task for each cell
         // that will be worked on. The tasks are not executed until all of them
         // are created, this code runs sequentially.
-        for (Iterator i = begin; i != end; ++i, ++idx)
+        for (Iterator it = begin; it != end; ++it, ++idx)
           {
             copy_datas.emplace_back();
             // Create a worker task.
             auto worker_task =
               taskflow
-                .emplace([it = i,
+                .emplace([it,
                           idx,
                           &thread_safe_scratch_data_list,
                           &sample_scratch_data,
@@ -801,6 +799,10 @@ namespace WorkStream
             // before it can start
             if (!last_copier.empty())
               last_copier.precede(copier_task);
+
+            // Keep a handle to the last copier. Tasks in taskflow are
+            // basically handles to internally stored data, so this does not
+            // perform a copy:
             last_copier = copier_task;
           }
 
