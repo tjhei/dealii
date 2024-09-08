@@ -275,6 +275,7 @@ namespace Step40
                                      locally_relevant_dofs,
                                      mpi_communicator);
     system_rhs.reinit(locally_owned_dofs, mpi_communicator);
+    VecSetType(system_rhs, VECKOKKOS);
 
     // The next step is to compute hanging node and boundary value
     // constraints, which we combine into a single object storing all
@@ -345,6 +346,7 @@ namespace Step40
                          locally_owned_dofs,
                          dsp,
                          mpi_communicator);
+    MatSetType(system_matrix, MATMPIAIJKOKKOS);
   }
 
 
@@ -492,6 +494,7 @@ namespace Step40
 
     LA::MPI::Vector completely_distributed_solution(locally_owned_dofs,
                                                     mpi_communicator);
+    VecSetType(completely_distributed_solution, VECKOKKOS);
 
     SolverControl solver_control(dof_handler.n_dofs(),
                                  1e-6 * system_rhs.l2_norm());
