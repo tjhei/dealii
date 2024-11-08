@@ -27,6 +27,7 @@
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
+#include <deal.II/lac/linear_operator_tools.h>
 
 // This program can use either PETSc or Trilinos for its parallel
 // algebra needs. By default, if deal.II has been configured with
@@ -153,162 +154,222 @@ namespace Step40
   //   that correspond to "locally relevant" degrees of freedom (i.e. all
   //   those that live on locally owned cells or the layer of ghost cells that
   //   surround it).
-      template <int dim>
-class RightHandSide : public Function<dim>
-{
-public:
+  template <int dim>
+  class RightHandSide : public Function<dim>
+  {
+  public:
     RightHandSide();
 
-    virtual void vector_value(const Point<dim> &p,
-                              Vector<double> &  value) const override;
+    virtual void   vector_value(const Point<dim> &p,
+                                Vector<double>   &value) const override;
     virtual double inside_out_factor(const Point<dim> &p) const;
 
     double viscosity(const Point<dim> &p);
 
-private:
-    double dynamic_viscosity_ratio;
-    unsigned int n_sinkers;
-    std::vector<Point<3> > centers;
-    double delta;
-    double omega;
-    double beta;
+  private:
+    double                dynamic_viscosity_ratio;
+    unsigned int          n_sinkers;
+    std::vector<Point<3>> centers;
+    double                delta;
+    double                omega;
+    double                beta;
+  };
 
-};
-
-template <int dim>
-RightHandSide<dim>::RightHandSide()
-    :
-      n_sinkers(8)
+  template <int dim>
+  RightHandSide<dim>::RightHandSide()
+    : n_sinkers(8)
     , delta(200.0)
     , omega(0.1)
     , beta(10)
-    ,dynamic_viscosity_ratio(1e4)
-{
-     
+    , dynamic_viscosity_ratio(1e4)
+  {
+    centers.resize(75);
+    centers[0] = Point<3>(2.4257829890e-01, 1.3469574514e-02, 3.8313885004e-01);
+    centers[1] = Point<3>(4.1465269048e-01, 6.7768972864e-02, 9.9312692973e-01);
+    centers[2] = Point<3>(4.8430804651e-01, 7.6533776604e-01, 3.1833815403e-02);
+    centers[3] = Point<3>(3.0935481671e-02, 9.3264044027e-01, 8.8787953411e-01);
+    centers[4] = Point<3>(5.9132973039e-01, 4.7877868473e-01, 8.3335433660e-01);
+    centers[5] = Point<3>(1.8633519681e-01, 7.3565270739e-01, 1.1505317181e-01);
+    centers[6] = Point<3>(6.9865863058e-01, 3.5560411138e-01, 6.3830000658e-01);
+    centers[7] = Point<3>(9.0821050755e-01, 2.9400041480e-01, 2.6497158886e-01);
+    centers[8] = Point<3>(3.7749399775e-01, 5.4162011554e-01, 9.2818150340e-03);
+    centers[9] = Point<3>(8.5247022139e-01, 4.6701098395e-01, 5.3607231962e-02);
+    centers[10] =
+      Point<3>(9.7674759057e-01, 1.9675474344e-01, 8.5697294067e-01);
+    centers[11] =
+      Point<3>(1.4421375987e-01, 8.0066218823e-01, 7.2939761948e-01);
+    centers[12] =
+      Point<3>(9.8579064709e-01, 1.8340570954e-01, 4.9976021075e-01);
+    centers[13] =
+      Point<3>(4.6986202126e-01, 9.7099129947e-01, 4.5077026191e-01);
+    centers[14] =
+      Point<3>(9.5791877292e-02, 9.7408164664e-01, 3.9023506101e-01);
+    centers[15] =
+      Point<3>(6.8067035576e-01, 2.6669318800e-02, 2.3124107450e-01);
+    centers[16] =
+      Point<3>(4.6873909443e-01, 9.7960100555e-02, 4.1541002524e-01);
+    centers[17] =
+      Point<3>(7.9629418710e-01, 3.1640260216e-01, 7.7853444953e-01);
+    centers[18] =
+      Point<3>(8.2849331472e-01, 4.8714042059e-01, 3.6904878000e-01);
+    centers[19] =
+      Point<3>(6.0284549678e-01, 2.4264360789e-02, 8.1111178631e-01);
+    centers[20] =
+      Point<3>(3.5579259291e-01, 8.0610905439e-01, 2.7487712366e-01);
+    centers[21] =
+      Point<3>(8.5981739865e-01, 9.5101905612e-01, 7.7727618477e-01);
+    centers[22] =
+      Point<3>(6.8083745971e-01, 8.3518540665e-01, 9.6112961413e-01);
+    centers[23] =
+      Point<3>(7.0542474869e-01, 7.3751226102e-02, 5.3685709440e-01);
+    centers[24] =
+      Point<3>(9.5718558131e-01, 4.1806501915e-01, 4.1877679639e-01);
+    centers[25] =
+      Point<3>(3.8161700050e-01, 8.3692747440e-01, 2.4006224854e-01);
+    centers[26] =
+      Point<3>(7.2621119848e-01, 4.3161282150e-01, 1.1669089744e-01);
+    centers[27] =
+      Point<3>(2.2391322592e-01, 3.0958795748e-01, 2.4480139429e-01);
+    centers[28] =
+      Point<3>(3.7703382754e-01, 8.0753940242e-01, 3.1473643301e-01);
+    centers[29] =
+      Point<3>(7.7522956709e-01, 2.8333410774e-01, 9.9634871585e-01);
+    centers[30] =
+      Point<3>(6.3286731189e-01, 6.0091089904e-01, 5.0948022423e-01);
+    centers[31] =
+      Point<3>(8.3412860373e-01, 1.9944285005e-01, 3.5980841627e-02);
+    centers[32] =
+      Point<3>(7.3000523063e-01, 1.9791117972e-01, 2.9319749786e-01);
+    centers[33] =
+      Point<3>(7.7034656693e-01, 2.1475035521e-01, 3.0922000730e-01);
+    centers[34] =
+      Point<3>(6.0662675677e-02, 5.5759010630e-01, 4.1691651960e-01);
+    centers[35] =
+      Point<3>(1.1594487686e-01, 6.8554530558e-01, 9.5995079957e-01);
+    centers[36] =
+      Point<3>(2.7973348288e-02, 1.4806467395e-01, 5.2297503060e-01);
+    centers[37] =
+      Point<3>(6.4133927209e-01, 9.8914607800e-01, 5.7813295237e-01);
+    centers[38] =
+      Point<3>(6.8053043246e-01, 6.7497840462e-01, 3.6204645148e-01);
+    centers[39] =
+      Point<3>(9.1470996426e-01, 5.3036934674e-01, 9.1761070439e-01);
+    centers[40] =
+      Point<3>(2.8310876353e-01, 2.0898862472e-01, 4.7181570645e-01);
+    centers[41] =
+      Point<3>(8.0657831198e-01, 1.6168943288e-01, 5.1429839456e-01);
+    centers[42] =
+      Point<3>(8.1311740159e-01, 6.4168478858e-02, 4.7962416312e-01);
+    centers[43] =
+      Point<3>(4.3309508843e-02, 9.0291512474e-01, 2.9450144167e-01);
+    centers[44] =
+      Point<3>(6.8573011443e-01, 6.6033273035e-02, 8.2121989495e-01);
+    centers[45] =
+      Point<3>(2.4277445452e-01, 3.1025718772e-01, 4.9255406554e-01);
+    centers[46] =
+      Point<3>(3.5617944848e-01, 3.0799053857e-01, 3.9698166931e-01);
+    centers[47] =
+      Point<3>(7.0916077621e-02, 8.8651657239e-01, 6.8403214295e-01);
+    centers[48] =
+      Point<3>(5.2822650202e-01, 9.0281945043e-01, 6.8650344000e-01);
+    centers[49] =
+      Point<3>(6.3316007640e-02, 1.5214040370e-01, 2.3765034985e-02);
+    centers[50] =
+      Point<3>(4.1894298765e-01, 1.7479340461e-01, 7.5275125343e-01);
+    centers[51] =
+      Point<3>(4.9031640053e-01, 7.4774375406e-01, 3.2927456281e-01);
+    centers[52] =
+      Point<3>(1.1757708859e-01, 1.1812786251e-01, 3.7498524244e-01);
+    centers[53] =
+      Point<3>(3.7696964032e-01, 7.2874483733e-01, 1.4480990830e-02);
+    centers[54] =
+      Point<3>(3.8201288152e-01, 4.9049964756e-01, 8.2757658503e-01);
+    centers[55] =
+      Point<3>(7.9664661586e-02, 9.2396727806e-01, 1.1804237828e-01);
+    centers[56] =
+      Point<3>(9.3825167927e-01, 1.9597347043e-01, 7.2611756191e-01);
+    centers[57] =
+      Point<3>(8.5786301170e-01, 1.0363770514e-01, 8.3891028205e-01);
+    centers[58] =
+      Point<3>(5.6511039453e-01, 8.1040084307e-01, 4.0696941614e-01);
+    centers[59] =
+      Point<3>(9.3497714490e-01, 1.6087440083e-01, 8.1605472361e-01);
+    centers[60] =
+      Point<3>(4.3173963829e-01, 2.4810082244e-01, 8.3052277138e-01);
+    centers[61] =
+      Point<3>(5.9621858625e-01, 6.4577903070e-01, 6.0816894547e-01);
+    centers[62] =
+      Point<3>(4.9546643556e-01, 3.0438243752e-01, 7.5562733447e-01);
+    centers[63] =
+      Point<3>(8.2861043319e-01, 4.5555055302e-01, 4.3814466774e-01);
+    centers[64] =
+      Point<3>(8.9743076959e-01, 1.1894442752e-01, 9.8993320995e-02);
+    centers[65] =
+      Point<3>(6.9884936497e-01, 5.6127713367e-01, 3.8478565932e-01);
+    centers[66] =
+      Point<3>(9.2576270966e-02, 9.2938612771e-01, 1.9264837596e-01);
+    centers[67] =
+      Point<3>(8.4125479722e-01, 9.6937695284e-01, 3.1844636161e-01);
+    centers[68] =
+      Point<3>(1.2799954700e-01, 2.8838638276e-01, 9.0993508972e-01);
+    centers[69] =
+      Point<3>(2.7905288352e-01, 4.1813262758e-02, 7.5550716964e-01);
+    centers[70] =
+      Point<3>(8.0900019305e-01, 8.6624463269e-01, 9.7354159503e-01);
+    centers[71] =
+      Point<3>(3.1358765965e-01, 4.6779574243e-01, 2.4304298462e-01);
+    centers[72] =
+      Point<3>(8.2344259034e-01, 5.9961585635e-01, 7.4369772512e-01);
+    centers[73] =
+      Point<3>(3.2766604253e-01, 8.3176720460e-02, 9.5114077951e-01);
+    centers[74] =
+      Point<3>(8.2308128282e-01, 5.2712029523e-01, 3.1080186614e-01);
+  }
+  template <>
+  double RightHandSide<3>::inside_out_factor(const Point<3> &p) const
+  {
+    double chi = 1.0;
 
-      centers.resize(75);
-      centers[0] = Point<3>(2.4257829890e-01, 1.3469574514e-02, 3.8313885004e-01);
-      centers[1] = Point<3>(4.1465269048e-01, 6.7768972864e-02, 9.9312692973e-01);
-      centers[2] = Point<3>(4.8430804651e-01, 7.6533776604e-01, 3.1833815403e-02);
-      centers[3] = Point<3>(3.0935481671e-02, 9.3264044027e-01, 8.8787953411e-01);
-      centers[4] = Point<3>(5.9132973039e-01, 4.7877868473e-01, 8.3335433660e-01);
-      centers[5] = Point<3>(1.8633519681e-01, 7.3565270739e-01, 1.1505317181e-01);
-      centers[6] = Point<3>(6.9865863058e-01, 3.5560411138e-01, 6.3830000658e-01);
-      centers[7] = Point<3>(9.0821050755e-01, 2.9400041480e-01, 2.6497158886e-01);
-      centers[8] = Point<3>(3.7749399775e-01, 5.4162011554e-01, 9.2818150340e-03);
-      centers[9] = Point<3>(8.5247022139e-01, 4.6701098395e-01, 5.3607231962e-02);
-      centers[10] = Point<3>(9.7674759057e-01, 1.9675474344e-01, 8.5697294067e-01);
-      centers[11] = Point<3>(1.4421375987e-01, 8.0066218823e-01, 7.2939761948e-01);
-      centers[12] = Point<3>(9.8579064709e-01, 1.8340570954e-01, 4.9976021075e-01);
-      centers[13] = Point<3>(4.6986202126e-01, 9.7099129947e-01, 4.5077026191e-01);
-      centers[14] = Point<3>(9.5791877292e-02, 9.7408164664e-01, 3.9023506101e-01);
-      centers[15] = Point<3>(6.8067035576e-01, 2.6669318800e-02, 2.3124107450e-01);
-      centers[16] = Point<3>(4.6873909443e-01, 9.7960100555e-02, 4.1541002524e-01);
-      centers[17] = Point<3>(7.9629418710e-01, 3.1640260216e-01, 7.7853444953e-01);
-      centers[18] = Point<3>(8.2849331472e-01, 4.8714042059e-01, 3.6904878000e-01);
-      centers[19] = Point<3>(6.0284549678e-01, 2.4264360789e-02, 8.1111178631e-01);
-      centers[20] = Point<3>(3.5579259291e-01, 8.0610905439e-01, 2.7487712366e-01);
-      centers[21] = Point<3>(8.5981739865e-01, 9.5101905612e-01, 7.7727618477e-01);
-      centers[22] = Point<3>(6.8083745971e-01, 8.3518540665e-01, 9.6112961413e-01);
-      centers[23] = Point<3>(7.0542474869e-01, 7.3751226102e-02, 5.3685709440e-01);
-      centers[24] = Point<3>(9.5718558131e-01, 4.1806501915e-01, 4.1877679639e-01);
-      centers[25] = Point<3>(3.8161700050e-01, 8.3692747440e-01, 2.4006224854e-01);
-      centers[26] = Point<3>(7.2621119848e-01, 4.3161282150e-01, 1.1669089744e-01);
-      centers[27] = Point<3>(2.2391322592e-01, 3.0958795748e-01, 2.4480139429e-01);
-      centers[28] = Point<3>(3.7703382754e-01, 8.0753940242e-01, 3.1473643301e-01);
-      centers[29] = Point<3>(7.7522956709e-01, 2.8333410774e-01, 9.9634871585e-01);
-      centers[30] = Point<3>(6.3286731189e-01, 6.0091089904e-01, 5.0948022423e-01);
-      centers[31] = Point<3>(8.3412860373e-01, 1.9944285005e-01, 3.5980841627e-02);
-      centers[32] = Point<3>(7.3000523063e-01, 1.9791117972e-01, 2.9319749786e-01);
-      centers[33] = Point<3>(7.7034656693e-01, 2.1475035521e-01, 3.0922000730e-01);
-      centers[34] = Point<3>(6.0662675677e-02, 5.5759010630e-01, 4.1691651960e-01);
-      centers[35] = Point<3>(1.1594487686e-01, 6.8554530558e-01, 9.5995079957e-01);
-      centers[36] = Point<3>(2.7973348288e-02, 1.4806467395e-01, 5.2297503060e-01);
-      centers[37] = Point<3>(6.4133927209e-01, 9.8914607800e-01, 5.7813295237e-01);
-      centers[38] = Point<3>(6.8053043246e-01, 6.7497840462e-01, 3.6204645148e-01);
-      centers[39] = Point<3>(9.1470996426e-01, 5.3036934674e-01, 9.1761070439e-01);
-      centers[40] = Point<3>(2.8310876353e-01, 2.0898862472e-01, 4.7181570645e-01);
-      centers[41] = Point<3>(8.0657831198e-01, 1.6168943288e-01, 5.1429839456e-01);
-      centers[42] = Point<3>(8.1311740159e-01, 6.4168478858e-02, 4.7962416312e-01);
-      centers[43] = Point<3>(4.3309508843e-02, 9.0291512474e-01, 2.9450144167e-01);
-      centers[44] = Point<3>(6.8573011443e-01, 6.6033273035e-02, 8.2121989495e-01);
-      centers[45] = Point<3>(2.4277445452e-01, 3.1025718772e-01, 4.9255406554e-01);
-      centers[46] = Point<3>(3.5617944848e-01, 3.0799053857e-01, 3.9698166931e-01);
-      centers[47] = Point<3>(7.0916077621e-02, 8.8651657239e-01, 6.8403214295e-01);
-      centers[48] = Point<3>(5.2822650202e-01, 9.0281945043e-01, 6.8650344000e-01);
-      centers[49] = Point<3>(6.3316007640e-02, 1.5214040370e-01, 2.3765034985e-02);
-      centers[50] = Point<3>(4.1894298765e-01, 1.7479340461e-01, 7.5275125343e-01);
-      centers[51] = Point<3>(4.9031640053e-01, 7.4774375406e-01, 3.2927456281e-01);
-      centers[52] = Point<3>(1.1757708859e-01, 1.1812786251e-01, 3.7498524244e-01);
-      centers[53] = Point<3>(3.7696964032e-01, 7.2874483733e-01, 1.4480990830e-02);
-      centers[54] = Point<3>(3.8201288152e-01, 4.9049964756e-01, 8.2757658503e-01);
-      centers[55] = Point<3>(7.9664661586e-02, 9.2396727806e-01, 1.1804237828e-01);
-      centers[56] = Point<3>(9.3825167927e-01, 1.9597347043e-01, 7.2611756191e-01);
-      centers[57] = Point<3>(8.5786301170e-01, 1.0363770514e-01, 8.3891028205e-01);
-      centers[58] = Point<3>(5.6511039453e-01, 8.1040084307e-01, 4.0696941614e-01);
-      centers[59] = Point<3>(9.3497714490e-01, 1.6087440083e-01, 8.1605472361e-01);
-      centers[60] = Point<3>(4.3173963829e-01, 2.4810082244e-01, 8.3052277138e-01);
-      centers[61] = Point<3>(5.9621858625e-01, 6.4577903070e-01, 6.0816894547e-01);
-      centers[62] = Point<3>(4.9546643556e-01, 3.0438243752e-01, 7.5562733447e-01);
-      centers[63] = Point<3>(8.2861043319e-01, 4.5555055302e-01, 4.3814466774e-01);
-      centers[64] = Point<3>(8.9743076959e-01, 1.1894442752e-01, 9.8993320995e-02);
-      centers[65] = Point<3>(6.9884936497e-01, 5.6127713367e-01, 3.8478565932e-01);
-      centers[66] = Point<3>(9.2576270966e-02, 9.2938612771e-01, 1.9264837596e-01);
-      centers[67] = Point<3>(8.4125479722e-01, 9.6937695284e-01, 3.1844636161e-01);
-      centers[68] = Point<3>(1.2799954700e-01, 2.8838638276e-01, 9.0993508972e-01);
-      centers[69] = Point<3>(2.7905288352e-01, 4.1813262758e-02, 7.5550716964e-01);
-      centers[70] = Point<3>(8.0900019305e-01, 8.6624463269e-01, 9.7354159503e-01);
-      centers[71] = Point<3>(3.1358765965e-01, 4.6779574243e-01, 2.4304298462e-01);
-      centers[72] = Point<3>(8.2344259034e-01, 5.9961585635e-01, 7.4369772512e-01);
-      centers[73] = Point<3>(3.2766604253e-01, 8.3176720460e-02, 9.5114077951e-01);
-      centers[74] = Point<3>(8.2308128282e-01, 5.2712029523e-01, 3.1080186614e-01);
-}
-template<>
-double RightHandSide<3>::inside_out_factor (const Point<3> &p) const
-    {
-      double chi = 1.0;
-
-      for (unsigned int s=0; s<n_sinkers; ++s)
-        {
-          double dist = p.distance(centers[s]);
-          double temp = 1-std::exp(-delta*
-                                   std::pow(std::max(0.0,dist-omega/2.0),2));
-          chi *= temp;
-        }
-      return chi;
-    }
-  
-
-template <int dim>
-double RightHandSide<dim>::viscosity(const Point<dim> &p)
-{
-  double mu_min=pow(dynamic_viscosity_ratio,-1.0/2);
-  double mu_max=pow(dynamic_viscosity_ratio,1.0/2);
-  return inside_out_factor(p)*mu_min+(1-inside_out_factor(p))*mu_max; // TODO fix me
-}
-
-template <int dim>
-void RightHandSide<dim>::vector_value(const Point<dim> &p,
-                                      Vector<double> &  values) const
-{
-    
-    
-    double Chi = 1.0;
-    for (unsigned int s=0; s<n_sinkers; ++s)
-    {
+    for (unsigned int s = 0; s < n_sinkers; ++s)
+      {
         double dist = p.distance(centers[s]);
-        double temp = 1-std::exp(-delta*
-                                 std::pow(std::max(0.0,dist-omega/2.0),2));
+        double temp =
+          1 - std::exp(-delta * std::pow(std::max(0.0, dist - omega / 2.0), 2));
+        chi *= temp;
+      }
+    return chi;
+  }
+
+
+  template <int dim>
+  double RightHandSide<dim>::viscosity(const Point<dim> &p)
+  {
+    double mu_min = pow(dynamic_viscosity_ratio, -1.0 / 2);
+    double mu_max = pow(dynamic_viscosity_ratio, 1.0 / 2);
+    return inside_out_factor(p) * mu_min +
+           (1 - inside_out_factor(p)) * mu_max; // TODO fix me
+  }
+
+  template <int dim>
+  void RightHandSide<dim>::vector_value(const Point<dim> &p,
+                                        Vector<double>   &values) const
+  {
+    double Chi = 1.0;
+    for (unsigned int s = 0; s < n_sinkers; ++s)
+      {
+        double dist = p.distance(centers[s]);
+        double temp =
+          1 - std::exp(-delta * std::pow(std::max(0.0, dist - omega / 2.0), 2));
         Chi *= temp;
-    }
+      }
 
     values[0] = 0.0;
     values[1] = 0.0;
-    values[2] = beta*(Chi-1);
+    values[2] = beta * (Chi - 1);
     // values[3] = 0.0;
 
     return;
-}
+  }
   template <int dim>
   class LaplaceProblem
   {
@@ -318,13 +379,13 @@ void RightHandSide<dim>::vector_value(const Point<dim> &p,
     void run();
 
   private:
-    void setup_system();
-    void assemble_system();
-    void solve();
-    void refine_grid();
-    void output_results(const unsigned int cycle);
+    void               setup_system();
+    void               assemble_system();
+    void               solve();
+    void               refine_grid();
+    void               output_results(const unsigned int cycle);
     RightHandSide<dim> right_hand_side;
-    MPI_Comm mpi_communicator;
+    MPI_Comm           mpi_communicator;
 
     parallel::distributed::Triangulation<dim> triangulation;
 
@@ -461,11 +522,15 @@ void RightHandSide<dim>::vector_value(const Point<dim> &p,
     constraints.clear();
     constraints.reinit(locally_owned_dofs, locally_relevant_dofs);
     DoFTools::make_hanging_node_constraints(dof_handler, constraints);
-    std::cout<<"no interpolation";
-    VectorTools::interpolate_boundary_values(dof_handler,
-                                             0,
-                                             Functions::ZeroFunction<dim>(),
-                                             constraints);
+
+    if (false)
+      VectorTools::interpolate_boundary_values(dof_handler,
+                                               0,
+                                               Functions::ZeroFunction<dim>(),
+                                               constraints);
+    else
+      std::cout << "not setting boundary values" << std::endl;
+
     constraints.close();
 
     // The last part of this function deals with initializing the matrix with
@@ -562,24 +627,27 @@ void RightHandSide<dim>::vector_value(const Point<dim> &p,
 
           for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
             {
-              double eta=right_hand_side.viscosity(fe_values.quadrature_point(q_point));
+              double eta =
+                right_hand_side.viscosity(fe_values.quadrature_point(q_point));
               Vector<double> rhs_vector(3);
-              right_hand_side.vector_value(fe_values.quadrature_point(q_point),rhs_vector);
-              const double rhs_value=rhs_vector[2];
+              right_hand_side.vector_value(fe_values.quadrature_point(q_point),
+                                           rhs_vector);
+              const double rhs_value = rhs_vector[2];
               // const double rhs_value =
               //   (fe_values.quadrature_point(q_point)[1] >
               //        0.5 +
               //          0.25 * std::sin(4.0 * numbers::PI *
-              //                          fe_values.quadrature_point(q_point)[0]) ?
+              //                          fe_values.quadrature_point(q_point)[0])
+              //                          ?
               //      1. :
               //      -1.);
 
               for (unsigned int i = 0; i < dofs_per_cell; ++i)
                 {
                   for (unsigned int j = 0; j < dofs_per_cell; ++j)
-                    cell_matrix(i, j) += eta*fe_values.shape_grad(i, q_point) *
-                                         fe_values.shape_grad(j, q_point) *
-                                         fe_values.JxW(q_point);
+                    cell_matrix(i, j) +=
+                      eta * fe_values.shape_grad(i, q_point) *
+                      fe_values.shape_grad(j, q_point) * fe_values.JxW(q_point);
 
                   cell_rhs(i) += rhs_value *                         //
                                  fe_values.shape_value(i, q_point) * //
@@ -615,6 +683,62 @@ void RightHandSide<dim>::vector_value(const Point<dim> &p,
   }
 
 
+  template <class VectorType>
+  struct Nullspace
+  {
+    std::vector<VectorType> basis;
+  };
+
+
+  template <typename Range,
+            typename Domain,
+            typename Payload,
+            class Op,
+            class VectorType>
+  LinearOperator<Range, Domain, Payload>
+  my_operator(Op                                     &op,
+              LinearOperator<Range, Domain, Payload> &exemplar,
+              Nullspace<VectorType>                  &nullspace)
+  {
+    LinearOperator<Range, Domain, Payload> return_op;
+
+    return_op.reinit_range_vector  = exemplar.reinit_range_vector;
+    return_op.reinit_domain_vector = exemplar.reinit_domain_vector;
+
+    return_op.vmult = [&](Range &dest, const Domain &src) {
+      // std::cout << "before vmult" << std::endl;
+      op.vmult(dest, src); // dest = Phi(src)
+
+      // std::cout << "projection" << std::endl;
+      //  Projection.
+      for (unsigned int i = 0; i < nullspace.basis.size(); ++i)
+        {
+          double inner_product = nullspace.basis[i] * dest;
+          dest.add(-1.0 * inner_product, nullspace.basis[i]);
+        }
+      //  std::cout << "ok" << std::endl;
+    };
+
+    // return_op.vmult_add = [&](Range &dest, const Domain &src) {
+    //     std::cout << "before vmult_add" << std::endl;
+    //     op.vmult_add(dest, src);  // dest += Phi(src)
+    //     std::cout << "after vmult_add" << std::endl;
+    // };
+
+    // return_op.Tvmult = [&](Domain &dest, const Range &src) {
+    //     std::cout << "before Tvmult" << std::endl;
+    //     op.Tvmult(dest, src);
+    //     std::cout << "after Tvmult" << std::endl;
+    // };
+
+    // return_op.Tvmult_add = [&](Domain &dest, const Range &src) {
+    //     std::cout << "before Tvmult_add" << std::endl;
+    //     op.Tvmult_add(dest, src);
+    //     std::cout << "after Tvmult_add" << std::endl;
+    // };
+
+    return return_op;
+  }
 
   // @sect4{LaplaceProblem::solve}
 
@@ -648,14 +772,76 @@ void RightHandSide<dim>::vector_value(const Point<dim> &p,
   template <int dim>
   void LaplaceProblem<dim>::solve()
   {
+    Nullspace<LA::MPI::Vector> nullspace;
+
+    nullspace.basis.emplace_back(locally_owned_dofs, mpi_communicator);
+    LA::MPI::Vector &vec = nullspace.basis[0];
+    if (false)
+      {
+        // use the constant vector 1
+        vec = 0.0;
+        vec.add(1.0);
+      }
+    else
+      {
+        // use the vector f(x)=1
+
+        AffineConstraints<double> c;
+        c.close();
+
+        const unsigned int gauss_degree = fe.degree + 1;
+
+        QGauss<dim>                          quadrature_formula(gauss_degree);
+        std::vector<types::global_dof_index> local_dof_indices(
+          fe.n_dofs_per_cell());
+
+        FEValues<dim, dim> fe_values(fe,
+                                     quadrature_formula,
+                                     update_JxW_values | update_values);
+        Vector<double>     local_constraint(fe_values.dofs_per_cell);
+
+        for (const auto &cell : dof_handler.active_cell_iterators())
+
+          if (cell->is_locally_owned())
+            {
+              local_constraint = 0;
+              fe_values.reinit(cell);
+              for (unsigned int q_point = 0;
+                   q_point < fe_values.n_quadrature_points;
+                   ++q_point)
+                for (unsigned int i = 0; i < fe_values.dofs_per_cell; ++i)
+                  local_constraint(i) +=
+                    fe_values.shape_value(i, q_point) * fe_values.JxW(q_point);
+
+
+              cell->get_dof_indices(local_dof_indices);
+              if (true)
+                {
+                  // no hanging node constraints:
+                  c.distribute_local_to_global(local_constraint,
+                                               local_dof_indices,
+                                               vec);
+                }
+              else
+                {
+                  // with constraints:
+                  constraints.distribute_local_to_global(local_constraint,
+                                                         local_dof_indices,
+                                                         vec);
+                }
+            }
+        vec.compress(VectorOperation::add);
+      }
+    vec /= vec.l2_norm();
+
     TimerOutput::Scope t(computing_timer, "solve");
 
     LA::MPI::Vector completely_distributed_solution(locally_owned_dofs,
                                                     mpi_communicator);
 
-    SolverControl solver_control(dof_handler.n_dofs(),
+    SolverControl                     solver_control(dof_handler.n_dofs(),
                                  1e-6 * system_rhs.l2_norm());
-    LA::SolverCG  solver(solver_control);
+    dealii::SolverCG<LA::MPI::Vector> solver(solver_control);
 
 
     LA::MPI::PreconditionAMG::AdditionalData data;
@@ -667,10 +853,21 @@ void RightHandSide<dim>::vector_value(const Point<dim> &p,
     LA::MPI::PreconditionAMG preconditioner;
     preconditioner.initialize(system_matrix, data);
 
-    solver.solve(system_matrix,
+    auto matrix_op  = linear_operator<LA::MPI::Vector>(system_matrix);
+    auto pmatrix_op = my_operator(system_matrix, matrix_op, nullspace);
+    auto prec_op    = my_operator(preconditioner, matrix_op, nullspace);
+
+
+    double r = system_rhs * nullspace.basis[0];
+    std::cout << "before project RHS: " << r << std::endl;
+    system_rhs.add(-r, nullspace.basis[0]);
+    r = system_rhs * nullspace.basis[0];
+    std::cout << "project RHS after:" << r << std::endl;
+
+    solver.solve(pmatrix_op,
                  completely_distributed_solution,
                  system_rhs,
-                 preconditioner);
+                 prec_op);
 
     pcout << "   Solved in " << solver_control.last_step() << " iterations."
           << std::endl;
@@ -759,18 +956,21 @@ void RightHandSide<dim>::vector_value(const Point<dim> &p,
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
     data_out.add_data_vector(locally_relevant_solution, "u");
-    
+
     Vector<float> subdomain(triangulation.n_active_cells());
     for (unsigned int i = 0; i < subdomain.size(); ++i)
       subdomain(i) = triangulation.locally_owned_subdomain();
     data_out.add_data_vector(subdomain, "subdomain");
     Vector<float> viscosity(triangulation.n_active_cells());
-    for(const auto &cell :dof_handler.active_cell_iterators()){
-      if(cell -> is_locally_owned()){
-        viscosity[cell->active_cell_index()]=right_hand_side.viscosity(cell->center());
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      {
+        if (cell->is_locally_owned())
+          {
+            viscosity[cell->active_cell_index()] =
+              right_hand_side.viscosity(cell->center());
+          }
       }
-    }
-    data_out.add_data_vector(viscosity,"eta");
+    data_out.add_data_vector(viscosity, "eta");
     data_out.build_patches();
 
     // The final step is to write this data to disk. We write up to 8 VTU files
@@ -806,7 +1006,7 @@ void RightHandSide<dim>::vector_value(const Point<dim> &p,
           << " on " << Utilities::MPI::n_mpi_processes(mpi_communicator)
           << " MPI rank(s)..." << std::endl;
 
-    const unsigned int n_cycles = 2;
+    const unsigned int n_cycles = 5;
     for (unsigned int cycle = 0; cycle < n_cycles; ++cycle)
       {
         pcout << "Cycle " << cycle << ':' << std::endl;
@@ -814,7 +1014,7 @@ void RightHandSide<dim>::vector_value(const Point<dim> &p,
         if (cycle == 0)
           {
             GridGenerator::hyper_cube(triangulation);
-            triangulation.refine_global(5);
+            triangulation.refine_global(3);
           }
         else
           refine_grid();
