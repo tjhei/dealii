@@ -2746,7 +2746,7 @@ namespace internal
 
 
 template <typename VectorType>
-MGTwoLevelTransferBase<VectorType>::MGTwoLevelTransferBase()
+internal::MGTwoLevelTransferCore<VectorType>::MGTwoLevelTransferCore()
   : vec_fine_needs_ghost_update(true)
 {}
 
@@ -2754,7 +2754,7 @@ MGTwoLevelTransferBase<VectorType>::MGTwoLevelTransferBase()
 
 template <typename VectorType>
 void
-MGTwoLevelTransferBase<VectorType>::prolongate_and_add(
+internal::MGTwoLevelTransferCore<VectorType>::prolongate_and_add(
   VectorType       &dst,
   const VectorType &src) const
 {
@@ -2791,7 +2791,6 @@ MGTwoLevelTransferBase<VectorType>::prolongate_and_add(
   if (use_src_inplace && (src_ghosts_have_been_set == false))
     this->zero_out_ghost_values(*vec_coarse_ptr);
 }
-
 
 
 namespace internal
@@ -3038,7 +3037,7 @@ MGTwoLevelTransfer<dim, VectorType>::prolongate_and_add_internal(
 
 template <typename VectorType>
 void
-MGTwoLevelTransferBase<VectorType>::restrict_and_add(
+internal::MGTwoLevelTransferCore<VectorType>::restrict_and_add(
   VectorType       &dst,
   const VectorType &src) const
 {
@@ -3524,7 +3523,7 @@ namespace internal
 template <typename VectorType>
 template <int dim, std::size_t width, typename IndexType>
 std::pair<bool, bool>
-MGTwoLevelTransferBase<VectorType>::
+internal::MGTwoLevelTransferCore<VectorType>::
   internal_enable_inplace_operations_if_possible(
     const std::shared_ptr<const Utilities::MPI::Partitioner>
       &external_partitioner_coarse,
@@ -3949,7 +3948,7 @@ MGTwoLevelTransfer<dim, VectorType>::memory_consumption() const
 
 template <typename VectorType>
 void
-MGTwoLevelTransferBase<VectorType>::update_ghost_values(
+internal::MGTwoLevelTransferCore<VectorType>::update_ghost_values(
   const VectorType &vec) const
 {
   if ((vec.get_partitioner().get() == this->partitioner_coarse.get()) &&
@@ -3970,7 +3969,7 @@ MGTwoLevelTransferBase<VectorType>::update_ghost_values(
 
 template <typename VectorType>
 void
-MGTwoLevelTransferBase<VectorType>::compress(
+internal::MGTwoLevelTransferCore<VectorType>::compress(
   VectorType                   &vec,
   const VectorOperation::values op) const
 {
@@ -3994,7 +3993,7 @@ MGTwoLevelTransferBase<VectorType>::compress(
 
 template <typename VectorType>
 void
-MGTwoLevelTransferBase<VectorType>::zero_out_ghost_values(
+internal::MGTwoLevelTransferCore<VectorType>::zero_out_ghost_values(
   const VectorType &vec) const
 {
   if ((vec.get_partitioner().get() == this->partitioner_coarse.get()) &&
@@ -4091,6 +4090,7 @@ MGTransferMatrixFree<dim, Number, MemorySpace>::get_dof_handler_fine() const
       return {t->dof_handler_fine, t->mg_level_fine};
     }
 
+
   if constexpr (std::is_same_v<MemorySpace, ::dealii::MemorySpace::Host>)
     {
       // MGTwoLevelTransferNonNested transfer is only instantiated for Host
@@ -4104,6 +4104,19 @@ MGTransferMatrixFree<dim, Number, MemorySpace>::get_dof_handler_fine() const
         }
     }
 
+  if constexpr (std::is_same_v<MemorySpace, ::dealii::MemorySpace::Default>)
+    {
+      // MGTwoLevelTransferCopyToHost should only be instantiated on device
+      // memory:
+      if (const auto t = dynamic_cast<const MGTwoLevelTransferCopyToHost<
+            dim,
+            LinearAlgebra::distributed::Vector<Number, MemorySpace>> *>(
+            this->transfer[this->transfer.max_level()].get()))
+        {
+          return {(t->host_transfer).dof_handler_fine,
+                  (t->host_transfer).mg_level_fine};
+        }
+    }
   {
     DEAL_II_NOT_IMPLEMENTED();
     return {nullptr, numbers::invalid_unsigned_int};
@@ -4297,22 +4310,35 @@ MGTransferMatrixFree<dim, Number, MemorySpace>::build(
   const std::vector<std::shared_ptr<const Utilities::MPI::Partitioner>>
     &external_partitioners)
 {
-  const bool use_local_smoothing =
-    this->transfer.n_levels() == 0 || this->internal_transfer.n_levels() > 0;
-
-  if (use_local_smoothing)
+  // Local smoothing is not supported on the device
+  if constexpr (std::is_same_v<MemorySpace, dealii::MemorySpace::Host>)
     {
-      this->initialize_internal_transfer(dof_handler,
-                                         this->mg_constrained_dofs);
-      this->initialize_transfer_references(internal_transfer);
+      bool use_local_smoothing = this->transfer.n_levels() == 0 ||
+                                 this->internal_transfer.n_levels() > 0;
+
+      if (use_local_smoothing)
+        {
+          this->initialize_internal_transfer(dof_handler,
+                                             this->mg_constrained_dofs);
+          this->initialize_transfer_references(internal_transfer);
+        }
+
+      this->build(external_partitioners);
+
+      {
+        if (use_local_smoothing)
+          this->fill_and_communicate_copy_indices(dof_handler);
+        else
+          this->fill_and_communicate_copy_indices_global_coarsening(
+            dof_handler);
+      }
     }
-
-  this->build(external_partitioners);
-
-  if (use_local_smoothing)
-    this->fill_and_communicate_copy_indices(dof_handler);
   else
-    this->fill_and_communicate_copy_indices_global_coarsening(dof_handler);
+    {
+      this->build(external_partitioners);
+
+      this->fill_and_communicate_copy_indices_global_coarsening(dof_handler);
+    }
 }
 
 
@@ -4324,22 +4350,35 @@ MGTransferMatrixFree<dim, Number, MemorySpace>::build(
   const std::function<void(const unsigned int, VectorType &)>
     &initialize_dof_vector)
 {
-  const bool use_local_smoothing =
-    this->transfer.n_levels() == 0 || this->internal_transfer.n_levels() > 0;
-
-  if (use_local_smoothing)
+  // Local smoothing is not supported on the device
+  if constexpr (std::is_same_v<MemorySpace, dealii::MemorySpace::Host>)
     {
-      this->initialize_internal_transfer(dof_handler,
-                                         this->mg_constrained_dofs);
-      this->initialize_transfer_references(internal_transfer);
+      bool use_local_smoothing = this->transfer.n_levels() == 0 ||
+                                 this->internal_transfer.n_levels() > 0;
+
+      if (use_local_smoothing)
+        {
+          this->initialize_internal_transfer(dof_handler,
+                                             this->mg_constrained_dofs);
+          this->initialize_transfer_references(internal_transfer);
+        }
+
+      this->build(initialize_dof_vector);
+
+      {
+        if (use_local_smoothing)
+          this->fill_and_communicate_copy_indices(dof_handler);
+        else
+          this->fill_and_communicate_copy_indices_global_coarsening(
+            dof_handler);
+      }
     }
-
-  this->build(initialize_dof_vector);
-
-  if (use_local_smoothing)
-    this->fill_and_communicate_copy_indices(dof_handler);
   else
-    this->fill_and_communicate_copy_indices_global_coarsening(dof_handler);
+    {
+      this->build(initialize_dof_vector);
+
+      this->fill_and_communicate_copy_indices_global_coarsening(dof_handler);
+    }
 }
 
 
