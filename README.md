@@ -5,6 +5,7 @@
 [![jenkins/dealii-mpi](https://ci.tjhei.info/job/dealii-mpi/job/master/badge/icon?style=plastic&subject=jenkins-MPI)](https://ci.tjhei.info/job/dealii-mpi/job/master/)
 [![jenkins/dealii-osx](https://ci.tjhei.info/job/dealii-osx/job/master/badge/icon?style=plastic&subject=jenkins-OSX)](https://ci.tjhei.info/job/dealii-osx/job/master/)
 [![jenkins/dealii-ampere](https://ci.tjhei.info/job/dealii-ampere/job/master/badge/icon?style=plastic&subject=jenkins-ampere)](https://ci.tjhei.info/job/dealii-ampere/job/master/)
+[![jenkins/dealii-cuda](https://ci.tjhei.info/job/dealii-cuda/job/master/badge/icon?style=plastic&subject=jenkins-cuda)](https://ci.tjhei.info/job/dealii-cuda/job/master/)
 [![workflows/indent](https://github.com/dealii/dealii/actions/workflows/indent.yml/badge.svg?branch=master)](https://github.com/dealii/dealii/actions/workflows/indent.yml?query=branch%3Amaster)
 [![workflows/tidy](https://github.com/dealii/dealii/actions/workflows/tidy.yml/badge.svg?branch=master)](https://github.com/dealii/dealii/actions/workflows/tidy.yml?query=branch%3Amaster)
 [![workflows/github-linux](https://github.com/dealii/dealii/actions/workflows/linux.yml/badge.svg?branch=master)](https://github.com/dealii/dealii/actions/workflows/linux.yml?query=branch%3Amaster)
