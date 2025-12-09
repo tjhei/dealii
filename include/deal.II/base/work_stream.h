@@ -18,6 +18,7 @@
 
 #  include <deal.II/base/config.h>
 
+#  include <deal.II/base/array_view.h>
 #  include <deal.II/base/graph_coloring.h>
 #  include <deal.II/base/iterator_range.h>
 #  include <deal.II/base/multithread_info.h>
@@ -1242,7 +1243,7 @@ namespace WorkStream
          * range of items denoted by the two arguments.
          */
         void
-        operator()(const std::vector<Iterator> &range)
+        operator()(const ArrayView<const Iterator> &range)
         {
           // we need to find an unused scratch and corresponding copy
           // data object in the list that corresponds to the current
@@ -1291,26 +1292,26 @@ namespace WorkStream
 
           // then call the worker and copier functions on each
           // element of the chunk we were given.
-          for (typename std::vector<Iterator>::const_iterator p = range.begin();
-               p != range.end();
-               ++p)
+
+          try
             {
-              try
+              for (auto it : range)
                 {
                   if (worker)
-                    worker(*p, *scratch_data, *copy_data);
+                    worker(it, *scratch_data, *copy_data);
                   if (copier)
                     copier(*copy_data);
                 }
-              catch (const std::exception &exc)
-                {
-                  Threads::internal::handle_std_exception(exc);
-                }
-              catch (...)
-                {
-                  Threads::internal::handle_unknown_exception();
-                }
             }
+          catch (const std::exception &exc)
+            {
+              Threads::internal::handle_std_exception(exc);
+            }
+          catch (...)
+            {
+              Threads::internal::handle_unknown_exception();
+            }
+
 
 
           // finally mark the scratch object as unused again. as above, there
@@ -1379,14 +1380,6 @@ namespace WorkStream
           const CopyData                           &sample_copy_data,
           const unsigned int                        chunk_size)
       {
-        std::vector<std::vector<Iterator>> chunk_vector;
-
-        std::vector<Iterator> chunk;
-        chunk.reserve(chunk_size);
-
-
-        unsigned int chunk_counter = 0;
-
         using WorkerAndCopier = internal::taskflow_colored::
           WorkerAndCopier<Iterator, ScratchData, CopyData>;
 
@@ -1396,37 +1389,25 @@ namespace WorkStream
                                           sample_copy_data);
 
         tf::Executor &executor = MultithreadInfo::get_taskflow_executor();
-        for (unsigned int color = 0; color < colored_iterators.size(); ++color)
-          if (colored_iterators[color].size() > 0)
+        for (auto &color : colored_iterators)
+          if (color.size() > 0)
             {
-              for (auto it = colored_iterators[color].begin();
-                   it != colored_iterators[color].end();)
-                {
-                  for (; (chunk_counter < chunk_size) &&
-                         (it != colored_iterators[color].end());
-                       ++it, ++chunk_counter)
-                    chunk.emplace_back(*it);
-
-                  chunk_vector.emplace_back(chunk);
-
-                  chunk.clear();
-                  chunk_counter = 0;
-                }
-
               tf::Taskflow taskflow;
 
-
-              taskflow.for_each_index(
-                0,
-                chunk_vector.size(),
-                1,
-                [&](const auto &index) {
-                  worker_and_copier(chunk_vector[index]);
+              tf::IndexRange<int> range(0, color.size(), 1);
+              taskflow.for_each_by_index(
+                range,
+                [&](tf::IndexRange<int> subrange) {
+                  ArrayView<const Iterator> chunk(&color[subrange.begin()],
+                                                  subrange.size());
+                  worker_and_copier(chunk);
                 },
-                tf::DynamicPartitioner(chunk_size));
-              executor.run(taskflow).wait();
+                tf::GuidedPartitioner(chunk_size)
+                //, tf::StaticPartitioner(chunk_size)
+                //  , tf::DynamicPartitioner(chunk_size)
+              );
 
-              chunk_vector.clear();
+              executor.run(taskflow).wait();
             }
       }
 
