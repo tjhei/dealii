@@ -379,6 +379,7 @@ public:
                           "should be zero"));
         raw_diagonal[i] = 1. / raw_diagonal[i];
       });
+    Kokkos::fence();
   }
 
 private:
@@ -532,6 +533,7 @@ public:
                           "should be zero"));
         raw_diagonal[i] = 1. / raw_diagonal[i];
       });
+    Kokkos::fence();
   }
 
 private:
