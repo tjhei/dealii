@@ -980,7 +980,9 @@ test(unsigned int n_refinements)
     {
       VectorType vec;
       mg_matrices[level].initialize_dof_vector(vec);
-      mg_smoother.smoothers[level].estimate_eigenvalues(vec);
+      auto info = mg_smoother.smoothers[level].estimate_eigenvalues(vec);
+      deallog << "level: " << level << ", eigenvalues: " << info.min_eigenvalue_estimate
+              << " " << info.max_eigenvalue_estimate << std::endl;
     }
 
   // coarse-grid solver
