@@ -876,13 +876,13 @@ test(unsigned int n_refinements)
   rhs.block(0).import_elements(rhs_host.block(0), VectorOperation::insert);
   rhs.block(1).import_elements(rhs_host.block(1), VectorOperation::insert);
 
-  SolverControl solver_control(100, 1e-6 * rhs.l2_norm());
+  SolverControl solver_control(500, 1e-6 * rhs.l2_norm());
 
   using BlockVectorType =
     LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Default>;
   SolverGMRES<BlockVectorType> solver(
     solver_control,
-    typename SolverGMRES<BlockVectorType>::AdditionalData(30, true));
+    typename SolverGMRES<BlockVectorType>::AdditionalData(50, true));
 
   using VectorType =
     LinearAlgebra::distributed::Vector<Number, MemorySpace::Default>;
@@ -981,8 +981,9 @@ test(unsigned int n_refinements)
       VectorType vec;
       mg_matrices[level].initialize_dof_vector(vec);
       auto info = mg_smoother.smoothers[level].estimate_eigenvalues(vec);
-      deallog << "level: " << level << ", eigenvalues: " << info.min_eigenvalue_estimate
-              << " " << info.max_eigenvalue_estimate << std::endl;
+      deallog << "level: " << level
+              << ", eigenvalues: " << info.min_eigenvalue_estimate << " "
+              << info.max_eigenvalue_estimate << std::endl;
     }
 
   // coarse-grid solver
