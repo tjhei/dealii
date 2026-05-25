@@ -1,14 +1,23 @@
 
 DEAL::refinement: 1, n_dofs: 59
+DEAL::level: 0, eigenvalues: 1.00000 1.00000
+DEAL::level: 1, eigenvalues: 0.302617 1.64465
 DEAL::converged in 4 iterations.
 DEAL::velocity error: 0.19 pressure error: 0.092
 DEAL::refinement: 2, n_dofs: 187
+DEAL::level: 1, eigenvalues: 0.30 1.6
+DEAL::level: 2, eigenvalues: 0.077 1.8
 DEAL::converged in 8 iterations.
 DEAL::velocity error: 0.039 pressure error: 0.14
 DEAL::refinement: 3, n_dofs: 659
+DEAL::level: 2, eigenvalues: 0.077 1.8
+DEAL::level: 3, eigenvalues: 0.020 1.8
 DEAL::converged in 16 iterations.
 DEAL::velocity error: 0.0051 pressure error: 0.011
 DEAL::refinement: 4, n_dofs: 2467
+DEAL::level: 2, eigenvalues: 0.077 1.8
+DEAL::level: 3, eigenvalues: 0.020 1.8
+DEAL::level: 4, eigenvalues: 0.017 1.8
 DEAL::converged in 20 iterations.
 DEAL::velocity error: 0.00065 pressure error: 0.0013
 DEAL::OK
