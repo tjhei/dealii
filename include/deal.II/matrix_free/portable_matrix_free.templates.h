@@ -736,9 +736,9 @@ namespace Portable
 
     Kokkos::parallel_for(
       "dealii::copy_constrained_values",
-      Kokkos::RangePolicy<typename MemorySpace::Default::kokkos_space::execution_space>(
-        exec,
-        0, dof_handler_data[dof_handler_index].n_constrained_dofs),
+      Kokkos::RangePolicy<
+        typename MemorySpace::Default::kokkos_space::execution_space>(
+        exec, 0, dof_handler_data[dof_handler_index].n_constrained_dofs),
       KOKKOS_LAMBDA(int dof) {
         // When working with distributed vectors, the constrained dofs are
         // computed for ghosted vectors but we want to copy the values of the
@@ -806,9 +806,9 @@ namespace Portable
 
     Kokkos::parallel_for(
       "dealii::set_constrained_values",
-      Kokkos::RangePolicy<typename MemorySpace::Default::kokkos_space::execution_space>(
-        exec,
-        0, dof_handler_data[dof_handler_index].n_constrained_dofs),
+      Kokkos::RangePolicy<
+        typename MemorySpace::Default::kokkos_space::execution_space>(
+        exec, 0, dof_handler_data[dof_handler_index].n_constrained_dofs),
       KOKKOS_LAMBDA(int dof) {
         if (constr_dofs[dof] < size)
           dst_ptr[constr_dofs[dof]] = value;
