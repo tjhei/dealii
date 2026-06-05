@@ -1,0 +1,160 @@
+  <i>
+This program was contributed by Quang Hoang and Timo Heister, Clemson University.
+</i>
+
+<a name="step_104-Intro"></a>
+  <h1>Introduction</h1>
+
+  This tutorial utilizes Kokkos to implement a matrix-free method on the GPU
+  to solve the Stokes problem
+
+  @f{align}{
+    -\Delta \mathbf{u} + \nabla p &= \mathbf{f} \quad \text{in } \Omega, \\
+    \nabla \cdot \mathbf{u} &= 0 \quad \text{in } \Omega, \\
+    \mathbf{u} &= \mathbf{0} \quad \text{on } \partial\Omega,
+  @f}
+
+  where we want to solve for velocity $\mathbf{u}$ and pressure $p$.
+  The Stokes equations model the behavior of slow moving, viscous fluids.
+
+  Writing finite element code for GPUs confers several benefits when it comes
+  to performance, namely improved computing capabilities and memory bandwidth
+  over CPUs for a specified power budget as discussed in step-64, which solves
+  the Helmholtz equation. Just as in that tutorial, we use Kokkos for a
+  portable implementation.
+
+  Unlike step-64, this tutorial solves for velocity $\mathbf{u}$ and
+  pressure $p$, meaning we will need two DoFHandlers and FEEvaluation
+  objects, and the solution will be stored in a block vector with two blocks.
+
+  This tutorial is matrix-free, meaning we use no assembled matrices.
+  Matrix-free methods have been instrumental in speeding up finite element
+  computations, as memory is often a massive bottleneck when using
+  matrix-based methods. Matrix-free methods exploit the fact that simple
+  computations such as addition and multiplication are relatively quick, so
+  instead of storing data in a matrix, values are computed on the fly. This
+  is discussed in detail in step-37.
+
+  <h3>Weak form</h3>
+
+  Multiplying the first equation by $v \in H_0^1 = \{t \in H^1(\Omega)^d :
+  t = 0 \text{ on } \partial\Omega\}$ and integrating by parts we get
+
+  @f{eqnarray*}{
+    (\nabla \mathbf{u}, \nabla v)_{\Omega} - (p, \nabla \cdot v)_{\Omega}
+    = (f, v)_{\Omega}.
+  @f}
+
+  Multiplying the second equation by $q \in L^2(\Omega)$ we get
+
+  @f{eqnarray*}{
+    (q, \nabla \cdot \mathbf{u})_{\Omega} = 0.
+  @f}
+
+  In order to perform numerical computations, we discretize the weak form and
+  choose finite-dimensional finite element spaces to work with. We want to
+  choose a pair of discrete velocity and pressure spaces such that we are
+  guaranteed the existence of a unique computed solution. In this tutorial, we
+  use $Q_{\text{degree}+1}^d$ for velocity and $Q_{\text{degree}}$
+  for pressure, where degree $\geq 1$ and $d$ is the spatial
+  dimension. These pairs are known as Taylor-Hood elements, which satisfy the
+  LBB conditions and therefore guarantee existence and uniqueness of a
+  numerical solution. Our code implements the $Q_2^d \times Q_1$ pair in
+  particular. Of course, the Taylor-Hood pair can be changed by modifying
+  <code>degree_p</code> in the code, which also changes the velocity degree
+  which is set to <code>degree_p + 1</code>. This is also discussed in
+  step-22, though that tutorial differs slightly in that a deformation tensor
+  is used in place of $\Delta \mathbf{u}$.
+
+  <h3>Linear system and preconditioning</h3>
+
+  The discretized linear system is of the form
+
+  @f{eqnarray*}{
+    Mx :=
+    \begin{bmatrix} A & B^T \\ B & 0 \end{bmatrix}
+    \begin{pmatrix} \mathbf{u} \\ p \end{pmatrix}
+    =
+    \begin{pmatrix} f \\ 0 \end{pmatrix}.
+  @f}
+
+  The eigenvalues of $M$ are not distributed such that an iterative
+  solver would converge in a reasonable number of iterations. To address this
+  issue, we use a block triangular right preconditioner of the form
+
+  @f{align}{
+    P^{-1}
+    &= \begin{bmatrix} \widetilde{A} & B^T \\ 0 & -\widetilde{S}
+       \end{bmatrix}^{-1} \\
+    &= \begin{bmatrix} \widetilde{A}^{-1} & \widetilde{A}^{-1} B^T
+      \widetilde{S}^{-1} \\ 0 & -\widetilde{S}^{-1} \end{bmatrix},
+  @f}
+
+  where $\widetilde{A} \approx A$ and $\widetilde{S} \approx S =
+  BA^{-1}B^T$, which is known as the Schur complement. Note that some texts
+  define the Schur complement to be $S = -BA^{-1}B^T$, but in this
+  tutorial as well as step-32 we define $S$ to be a positive operator.
+
+  Notice that
+
+  @f{eqnarray*}{
+    \begin{bmatrix} A & B^T \\ B & 0 \end{bmatrix}
+    \begin{bmatrix} \widetilde{A}^{-1} & \widetilde{A}^{-1} B^T \widetilde{S}^{-1} \\
+    0 & -\widetilde{S}^{-1} \end{bmatrix}
+    =
+    \begin{bmatrix} A\widetilde{A}^{-1} &
+    (A\widetilde{A}^{-1})B^T\widetilde{S}^{-1} - B^T\widetilde{S}^{-1} \\
+    B\widetilde{A}^{-1} & B\widetilde{A}^{-1}B^T\widetilde{S}^{-1}
+    \end{bmatrix}.
+  @f}
+
+  We see that if $\widetilde{A}^{-1} = A^{-1}$ and
+  $\widetilde{S}^{-1} = (BA^{-1}B^T)^{-1}$ this is equal to
+
+  @f{eqnarray*}{
+    \begin{bmatrix} I & 0 \\ BA^{-1} & I \end{bmatrix}.
+  @f}
+
+  In other words, with perfect approximations of the inverse of $A$ and
+  inverse of $BA^{-1}B^T$, the preconditioned system only has $1$ as
+  an eigenvalue and therefore GMRES should converge in at most two iterations.
+
+  Of course, it is more computationally efficient to choose
+  $\widetilde{A}^{-1}$ and $\widetilde{S}^{-1}$ to be rough
+  approximations of $A^{-1}$ and $(BA^{-1}B^T)^{-1}$. In
+  particular, we approximate $A$ with a GMG V-cycle and $S$ with the
+  inverse pressure mass matrix $M_p$. This approximation of the Schur
+  complement is standard in earth modeling and is implemented in the ASPECT
+  geodynamics code. These approximations have been shown to be highly
+  effective for problems without extremely high viscosity contrasts.
+
+  Letting $y = Px$, we can use an iterative solver to find $y$
+  and deduce that $x = P^{-1}y$.
+
+  For the actual preconditioner implementation, we require matrix-free
+  operators for the Stokes system, the $A$ block, the Schur complement
+  $S = BA^{-1}B^T$, and $B^T$.
+
+  <h3>Test case</h3>
+
+  Our test problem features a unit hypercube with the manufactured solution
+
+  @f{align}{
+    u &= \pi \sin^2(\pi x) \sin(2\pi y), \\
+    v &= -\pi \sin(2\pi x) \sin^2(\pi y), \\
+    p &= \cos(\pi x) \cos(\pi y)
+  @f}
+
+  in two dimensions and
+
+   @f{align}{
+   u &= \pi  \sin^2(\pi x)(\sin^2(\pi z)\sin(2\pi y)-\sin^2(\pi y)\sin(2\pi
+   z)), \\
+   v &= \pi  \sin^2(\pi y)  (\sin^2(\pi x)  \sin(2\pi z) - \sin^2(\pi
+   z)\sin(2\pi x)), \\
+   w &= \pi \sin^2(\pi z)  (\sin^2(\pi y)  \sin(2\pi x) -
+   \sin^2(\pi x)\sin(2\pi y)), \\
+   p &= \cos(\pi x)\cos(\pi y)\cos(\pi z)
+   @f}
+
+  in three dimensions.

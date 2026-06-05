@@ -1,0 +1,17 @@
+Running on 1 MPI ranks and DEBUG mode
+dim: 3
+Element: Q2-Q1
+
+refinement: 0, n_dofs: 2312 = 2187 + 125
+  velocity block:
+    level: 1 n_dofs: 375, eigenvalue spectrum: [ 0.374809, 1.43201 ]
+    level: 2 n_dofs: 2187, eigenvalue spectrum: [ 0.0960698, 1.53415 ]
+converged in 14 iterations in 0 seconds
+velocity error: 0.045 pressure error: 0.15
+
+refinement: 1, n_dofs: 15468 = 14739 + 729
+  velocity block:
+    level: 2 n_dofs: 2187, eigenvalue spectrum: [ 0.096, 1.5 ]
+    level: 3 n_dofs: 14739, eigenvalue spectrum: [ 0.027, 1.6 ]
+converged in 32 iterations in 0 seconds
+velocity error: 0.006 pressure error: 0.012
