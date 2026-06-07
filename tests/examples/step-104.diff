@@ -1,0 +1,12 @@
+1063c1063
+<   double time = t.seconds();
+---
+>   double time = 0.;
+1118c1118
+<         << " MPI ranks and " << MultithreadInfo::n_threads() << " threads in "
+---
+>         << " MPI ranks and " // << MultithreadInfo::n_threads() << " threads in "
+1127c1127
+<   unsigned int n_refinements = 10;
+---
+>   unsigned int n_refinements = 2;
