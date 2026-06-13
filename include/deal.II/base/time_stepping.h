@@ -24,9 +24,11 @@
 DEAL_II_NAMESPACE_OPEN
 
 /**
- * Namespace containing the time stepping methods.
+ * Namespace containing support for time stepping methods. The functionality of
+ * this namespace is used in step-67 and step-76, for example. For
+ * more advanced time stepping methods, see also the SUNDIALS namespace and the
+ * PETScWrappers::TimeStepper class as well as the step-86 tutorial program.
  */
-
 namespace TimeStepping
 {
   /**
@@ -59,6 +61,7 @@ namespace TimeStepping
    * ode45 in MATLAB)
    *   - FEHLBERG (fifth order)
    *   - CASH_KARP (fifth order)
+   *   - TSITOURAS5 (fifth order)
    */
   enum runge_kutta_method
   {
@@ -148,6 +151,10 @@ namespace TimeStepping
      * Cash–Karp method, fifth order.
      */
     CASH_KARP,
+    /**
+     * Tsitouras method, fifth order.
+     */
+    TSITOURAS5,
     /**
      * Invalid.
      */
@@ -417,6 +424,8 @@ namespace TimeStepping
    * The LowStorageRungeKutta class is derived from RungeKutta and implements a
    * specific class of explicit methods. The main advantages of low-storage
    * methods are the reduced memory consumption and the reduced memory access.
+   *
+   * This class is used in step-67 and step-76.
    */
   template <typename VectorType>
   class LowStorageRungeKutta : public RungeKutta<VectorType>

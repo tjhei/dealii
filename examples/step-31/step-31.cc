@@ -1083,6 +1083,8 @@ namespace Step31
         stokes_constraints.distribute_local_to_global(
           local_matrix, local_dof_indices, stokes_preconditioner_matrix);
       }
+
+    stokes_preconditioner_matrix.compress(VectorOperation::add);
   }
 
 
@@ -1160,8 +1162,10 @@ namespace Step31
     // pointer, which makes it easier to recreate the preconditioner next time
     // around since we do not have to care about destroying the previously
     // used object.
-    amg_data.elliptic              = true;
+    amg_data.elliptic = true;
+#ifdef DEAL_II_TRILINOS_WITH_EPETRA
     amg_data.higher_order_elements = true;
+#endif
     amg_data.smoother_sweeps       = 2;
     amg_data.aggregation_threshold = 0.02;
     Amg_preconditioner->initialize(stokes_preconditioner_matrix.block(0, 0),
@@ -1359,6 +1363,9 @@ namespace Step31
                                                         stokes_rhs);
       }
 
+    stokes_matrix.compress(VectorOperation::add);
+    stokes_rhs.compress(VectorOperation::add);
+
     rebuild_stokes_matrix = false;
 
     std::cout << std::endl;
@@ -1456,6 +1463,8 @@ namespace Step31
           temperature_stiffness_matrix);
       }
 
+    temperature_mass_matrix.compress(VectorOperation::add);
+    temperature_stiffness_matrix.compress(VectorOperation::add);
     rebuild_temperature_matrices = false;
   }
 

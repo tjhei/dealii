@@ -29,7 +29,11 @@ module;
 #ifdef DEAL_II_WITH_SUNDIALS
 #  include <arkode/arkode.h>
 #  include <arkode/arkode_arkstep.h>
+#  include <arkode/arkode_erkstep.h>
 #  include <arkode/arkode_ls.h>
+#  if DEAL_II_SUNDIALS_VERSION_GTE(7, 2, 0)
+#    include <arkode/arkode_lsrkstep.h>
+#  endif
 #  include <ida/ida.h>
 #  include <idas/idas.h>
 #  include <idas/idas_ls.h>
@@ -71,6 +75,14 @@ export
   using ::ARKLsMassPrecSetupFn;
   using ::ARKLsMassTimesSetupFn;
   using ::ARKLsPrecSetupFn;
+#  if DEAL_II_SUNDIALS_VERSION_GTE(7, 1, 0)
+  using ::ARKodeFree;
+  using ::ARKodeSetOrder;
+  using ::ARKodeSetUserData;
+#  else
+  using ::ARKStepSetOrder;
+  using ::ERKStepSetOrder;
+#  endif
   using ::ARKRhsFn;
   using ::ARKStepCreate;
   using ::ARKStepEvolve;
@@ -85,7 +97,6 @@ export
   using ::ARKStepSetMassTimes;
   using ::ARKStepSetMaxNonlinIters;
   using ::ARKStepSetNonlinearSolver;
-  using ::ARKStepSetOrder;
   using ::ARKStepSetPreconditioner;
   using ::ARKStepSetStopTime;
 #  if DEAL_II_SUNDIALS_VERSION_GTE(6, 4, 0)
@@ -94,6 +105,12 @@ export
   using ::ARKStepSetUserData;
   using ::ARKStepSStolerances;
   using ::ARKStepSVtolerances;
+  using ::ERKStepCreate;
+  using ::ERKStepFree;
+#  if DEAL_II_SUNDIALS_VERSION_GTE(6, 4, 0)
+  using ::ERKStepSetTableName;
+#  endif
+  using ::ERKStepSetUserData;
   using ::IDACalcIC;
   using ::IDACreate;
   using ::IDAFree;
@@ -135,6 +152,16 @@ export
   using ::KINSetScaledStepTol;
   using ::KINSetUserData;
   using ::KINSol;
+#  if DEAL_II_SUNDIALS_VERSION_GTE(7, 2, 0)
+  using ::LSRKStepCreateSSP;
+  using ::LSRKStepCreateSTS;
+  using ::LSRKStepSetDomEigFn;
+  using ::LSRKStepSetDomEigFrequency;
+  using ::LSRKStepSetMaxNumStages;
+  using ::LSRKStepSetNumSSPStages;
+  using ::LSRKStepSetSSPMethodByName;
+  using ::LSRKStepSetSTSMethodByName;
+#  endif
   using ::N_VCopyOps;
   using ::N_VDestroy;
   using ::N_Vector;
@@ -277,5 +304,12 @@ CREATE_EXPORTABLE_PREPROCESSOR_SYMBOL(SUN_PREC_NONE)
 EXPORT_PREPROCESSOR_SYMBOL(SUN_PREC_NONE)
 #  endif
 
+CREATE_EXPORTABLE_PREPROCESSOR_SYMBOL(SUNLS_PSOLVE_FAIL_REC)
+#  undef SUNLS_PSOLVE_FAIL_REC
+EXPORT_PREPROCESSOR_SYMBOL(SUNLS_PSOLVE_FAIL_REC)
+
+CREATE_EXPORTABLE_PREPROCESSOR_SYMBOL(SUNLS_PSOLVE_FAIL_UNREC)
+#  undef SUNLS_PSOLVE_FAIL_UNREC
+EXPORT_PREPROCESSOR_SYMBOL(SUNLS_PSOLVE_FAIL_UNREC)
 
 #endif
