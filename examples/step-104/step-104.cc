@@ -59,18 +59,18 @@ namespace Step104
   // the manufactured solution in 2 and 3 dimensions. In 2D the exact solution
   // is given by
   // @f{align*}{
-  // u = \pi  \sin^2(\pi x)  \sin(2  \pi  y)\\
-  // v = -\pi  \sin(2 \pi  x)  \sin^2(\pi y)\\
-  // p = \cos(\pi  x)  \cos(\pi  y)
+  // u &= \pi  \sin^2(\pi x)  \sin(2  \pi  y)
+  // \\ v &= -\pi  \sin(2 \pi  x)  \sin^2(\pi y)
+  // \\ p &= \cos(\pi  x)  \cos(\pi  y)
   // @f}
   // and in 3D by:
   // @f{align*}{
-  // u = \pi  \sin^2(\pi x)(\sin^2(\pi z)\sin(2\pi y)-\sin^2(\pi y)\sin(2\pi
-  // z))\\
-  // v = \pi  \sin^2(\pi y)  (\sin^2(\pi x)  \sin(2\pi z) - \sin^2(\pi
-  // z)\sin(2\pi x)) \\ w = \pi \sin^2(\pi z)  (\sin^2(\pi y)  \sin(2\pi x) -
-  // \sin^2(\pi x)\sin(2\pi y))\\
-  // p = \cos(\pi x)\cos(\pi y)\cos(\pi z)
+  // u &= \pi  \sin^2(\pi x)(\sin^2(\pi z)\sin(2\pi y)-\sin^2(\pi y)\sin(2\pi
+  // z))
+  // \\ v &= \pi  \sin^2(\pi y)  (\sin^2(\pi x)  \sin(2\pi z) - \sin^2(\pi
+  // z)\sin(2\pi x)) \\ w &= \pi \sin^2(\pi z)  (\sin^2(\pi y)  \sin(2\pi x) -
+  // \sin^2(\pi x)\sin(2\pi y))
+  // \\ p &= \cos(\pi x)\cos(\pi y)\cos(\pi z)
   // @f}
   //
   // The following classes define these in code.
