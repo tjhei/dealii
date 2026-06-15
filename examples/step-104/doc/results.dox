@@ -88,4 +88,3 @@ the one hand, we also have some reduction in time to solution, at least for the 
 On the other hand, notice that time to solution does not scale linearly. This is likely
 due to additional communication overhead and something we will investigate and improve
 in the future.
-
