@@ -26,7 +26,7 @@ future GPU vendors without any porting required. Note that step-104 also
 runs on the CPU as Kokkos has a default CPU backend. This is perfect for
 code development and debugging, but of course significantly slower. By default,
 the Kokkos serial backend does not use multiple cores or SIMD instructions. As such,
-the CPU-based matrix free deal.II code will be significantly faster.
+the CPU-based matrix free deal.II code as in step-37 will be significantly faster.
 
 As an example, here is a quick comparison between different workstation and
 server GPUs and the time to solution for the 53 million DoF problem size:
