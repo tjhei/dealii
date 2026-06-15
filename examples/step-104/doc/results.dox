@@ -1,11 +1,91 @@
 <h1>Results</h1>
 
+<h3>Validation</h3>
+
+When running the program on a single GPU (here an H100), we can produce the following
+table of results:
+
+| Refinement |       DoFs | Iterations |    Time (s) | Velocity Error | Pressure Error |
+|-----------:|-----------:|-----------:|------------:|---------------:|---------------:|
+|          0 |      2,312 |         14 |     6.5e-02 |       4.5e-02  |       1.5e-01  |
+|          1 |     15,468 |         32 |     1.6e-01 |       6.0e-03  |       1.2e-02  |
+|          2 |    112,724 |         37 |     4.9e-01 |       7.6e-04  |       1.2e-03  |
+|          3 |    859,812 |         38 |     2.9e+00 |       9.6e-05  |       2.3e-04  |
+|          4 |  6,714,692 |         39 |     2.5e+01 |       1.2e-05  |       5.5e-05  |
+|          5 | 53,070,468 |         39 |     2.1e+02 |       1.5e-06  |       1.4e-05  |
+
+We see optimal convergence rates for L2 errors of velocity and pressure and
+decent linear scaling with problem size: A factor 8 in increase in unknowns leads to
+a factor of 8 in solve time.
+
+<h3>Performance Portability</h3>
+
+The advantage of using Kokkos instead of writing a code in one of the vendor
+languages like CUDA, is that we can run on AMD, NVIDIA, Intel or other
+future GPU vendors without any porting required. Note that step-104 also
+runs on the CPU as Kokkos has a default CPU backend. This is perfect for
+code development and debugging, but of course significantly slower. By default,
+the Kokkos serial backend does not use multiple cores or SIMD instructions. As such,
+the CPU-based matrix free deal.II code will be significantly faster.
+
+As an example, here is a quick comparison between different workstation and
+server GPUs and the time to solution for the 53 million DoF problem size:
+
+| Name            | FP64 (TFLOPS) |  VRAM | Solve Time |
+| --------------- | ------------: | ----: | ---------: |
+| AMD W7800       |          1.41 | 32 GB |     1400 s |
+| NVIDIA RTX 6000 |          1.97 | 96 GB |      420 s |
+| NVIDIA H100     |          25.6 | 80 GB |      210 s |
+
+
+<h3>Multiple GPUs</h3>
+
+This example program can also be run on more than one GPU, which allows us to
+solve larger problems before running out of VRAM and to, at least ideally,
+achieve a faster time to solution.
+
+The way one can use more than one GPU involves running with more than one MPI
+rank, like in step-40. This can be done by allocating one MPI rank per GPU.
+As an example, if you have single node or a workstation with 4 GPUs, you would
+run
+@code
+  mpirun -n 4 ./step-104
+@endcode
+This is typically enough for Kokkos to automatically pick a different GPU for
+each MPI rank. Kokkos has an API and command line options to control job
+placement manually, but this should not be necessary. Note that you can
+also oversubscribe A GPU cluster by running more MPI ranks than GPUs on a
+system. This will result in more than one rank sharing a GPU, which will typically
+degrade performance due to scheduling overhead and work imbalance.
+
+Note that the typical rule of using one MPI rank per physical CPU core, is
+not applicable for a GPU enabled code. Part of the code that runs on the CPU
+(matrix-free setup, error estimation, etc.) can make use of multiple threads.
+This means you will need to allocate several threads per MPI ranks if you are
+running on a GPU cluster. For example, on the
+<a href="https://docs.rcd.clemson.edu/palmetto/">Clemson Palmetto Cluster</a> a
+job submission of
+@code
+  salloc --gpus h100:8 --ntasks 8 --cpus-per-task 10  --mem-per-cpu 2gb --time 4:00:00
+@endcode
+would allocate a node with 8 H100 GPUs, 8 MPI ranks, and 10 threads per rank.
+
+As an example, here is a table with solve times running one one of these nodes
+with up to 8 H100 GPUs:
+
 | Refinement | DoFs        | 1 GPU (s) | 2 GPU (s) | 4 GPU (s) | 8 GPU (s) |
-|------------|-------------|-----------|-----------|-----------|-----------|
+|----------: |-----------: |---------: |---------: |---------: |---------: |
 | 0          | 2,312       | .065      | .074      | .078      | .077      |
 | 1          | 15,468      | .16       | .21       | .21       | .21       |
-| 2          | 112,724     | .49       | 1\.10      | .98       | .81       |
-| 3          | 859,812     | 2\.9       | 4\.1       | 3\.4       | 3\.3       |
+| 2          | 112,724     | .49       | 1.10      | .98       | .81       |
+| 3          | 859,812     | 2.9       | 4.1       | 3.4       | 3.3       |
 | 4          | 6,714,692   | 25        | 30        | 18        | 14        |
 | 5          | 53,070,468  | 210       | 280       | 160       | 100       |
 | 6          | 421,991,684 | -         | -         | 1500      | 970       |
+
+Notice that we can solve larger problems with 4 or more GPUs compared to a single GPU. On
+the one hand, we also have some reduction in time to solution, at least for the larger problem sizes.
+On the other hand, notice that time to solution does not scale linearly. This is likely
+due to additional communication overhead and something we will investigate and improve
+in the future.
+
