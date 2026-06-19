@@ -32,7 +32,8 @@ This program was contributed by Quang Hoang and Timo Heister, Clemson University
   computations, as memory is often a massive bottleneck when using
   matrix-based methods. Matrix-free methods exploit the fact that simple
   computations such as addition and multiplication are relatively quick, so
-  instead of storing data in a matrix, values are computed on the fly. This
+  instead of storing data in a matrix, matrix vector products
+  are computed on the fly. This
   is discussed in detail in step-37.
 
   <h3>Weak form</h3>
@@ -42,7 +43,7 @@ This program was contributed by Quang Hoang and Timo Heister, Clemson University
 
   @f{eqnarray*}{
     (\nabla \mathbf{u}, \nabla v)_{\Omega} - (p, \nabla \cdot v)_{\Omega}
-    = (f, v)_{\Omega}.
+    = (\mathbf{f}, \mathbf{v})_{\Omega}.
   @f}
 
   Multiplying the second equation by $q \in L^2(\Omega)$ we get
@@ -53,11 +54,11 @@ This program was contributed by Quang Hoang and Timo Heister, Clemson University
 
   In order to perform numerical computations, we discretize the weak form and
   choose finite-dimensional finite element spaces to work with. We want to
-  choose a pair of discrete velocity and pressure spaces such that we are
-  guaranteed the existence of a unique computed solution. In this tutorial, we
+  choose a pair of discrete velocity and pressure spaces that
+  guarantee the existence of a unique computed solution. In this tutorial, we
   use $Q_{\text{degree}+1}^d$ for velocity and $Q_{\text{degree}}$
-  for pressure, where degree $\geq 1$ and $d$ is the spatial
-  dimension. These pairs are known as Taylor-Hood elements, which satisfy the
+  for pressure, where degree $\geq 1$ and $d$ is the number of spatial
+  dimensions. These pairs are known as Taylor-Hood elements, which satisfy the
   LBB conditions and therefore guarantee existence and uniqueness of a
   numerical solution. Our code implements the $Q_2^d \times Q_1$ pair in
   particular. Of course, the Taylor-Hood pair can be changed by modifying
@@ -78,8 +79,8 @@ This program was contributed by Quang Hoang and Timo Heister, Clemson University
     \begin{pmatrix} f \\ 0 \end{pmatrix}.
   @f}
 
-  The eigenvalues of $M$ are not distributed such that an iterative
-  solver would converge in a reasonable number of iterations. To address this
+  The eigenvalues of $M$ are not clustered favorably. Consequently, an iterative
+  solver would not converge in a reasonable number of iterations. To address this
   issue, we use a block triangular right preconditioner of the form
 
   @f{align}{

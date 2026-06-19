@@ -54,14 +54,14 @@ run
 This is typically enough for Kokkos to automatically pick a different GPU for
 each MPI rank. Kokkos has an API and command line options to control job
 placement manually, but this should not be necessary. Note that you can
-also oversubscribe A GPU cluster by running more MPI ranks than GPUs on a
+also oversubscribe a GPU cluster by running more MPI ranks than GPUs on a
 system. This will result in more than one rank sharing a GPU, which will typically
-degrade performance due to scheduling overhead and work imbalance.
+degrade performance due to scheduling overhead and workload imbalance.
 
-Note that the typical rule of using one MPI rank per physical CPU core, is
+Note that the typical rule of using one MPI rank per physical CPU core is
 not applicable for a GPU enabled code. Part of the code that runs on the CPU
 (matrix-free setup, error estimation, etc.) can make use of multiple threads.
-This means you will need to allocate several threads per MPI ranks if you are
+This means you will need to allocate several threads per MPI rank if you are
 running on a GPU cluster. For example, on the
 <a href="https://docs.rcd.clemson.edu/palmetto/">Clemson Palmetto Cluster</a> a
 job submission of
@@ -70,7 +70,7 @@ job submission of
 @endcode
 would allocate a node with 8 H100 GPUs, 8 MPI ranks, and 10 threads per rank.
 
-As an example, here is a table with solve times running one one of these nodes
+As an example, here is a table with solve times running one of these nodes
 with up to 8 H100 GPUs:
 
 | Refinement | DoFs        | 1 GPU (s) | 2 GPU (s) | 4 GPU (s) | 8 GPU (s) |
