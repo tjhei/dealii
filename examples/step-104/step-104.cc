@@ -1177,6 +1177,9 @@ namespace Step104
     constraints_u.distribute(solution_host.block(0));
     constraints_p.distribute(solution_host.block(1));
     solution_host.update_ghost_values();
+    const double mean_pressure = VectorTools::compute_mean_value(
+      dof_p, QGauss<dim>(degree_p + 2), solution_host.block(1), 0);
+    solution_host.block(1).add(-mean_pressure);
 
     const QGauss<dim> quadrature_formula(degree_u + 1);
 
