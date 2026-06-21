@@ -1205,8 +1205,8 @@ namespace Step104
                                                           cellwise_errors_pl2,
                                                           VectorTools::L2_norm);
 
-    pcout << "velocity error: " << std::setprecision(2) << u_l2
-          << " pressure error: " << p_l2 << std::endl;
+    pcout << "velocity error: " << u_l2 << " pressure error: " << p_l2
+          << std::endl;
   }
 
 
@@ -1216,6 +1216,7 @@ namespace Step104
   template <int dim, int degree_p, typename Number>
   void StokesProblem<dim, degree_p, Number>::run()
   {
+    pcout << std::setprecision(10);
     pcout << "Running on " << Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)
           << " MPI ranks and " << MultithreadInfo::n_threads() << " threads in "
 #ifdef DEBUG
