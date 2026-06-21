@@ -672,6 +672,10 @@ namespace Step104
         stokes_operator;
       data.cell_loop(stokes_operator, src, dst);
 
+      const double mean = dst.block(1).mean_value();
+      std::cout << "Mean pressure: " << mean << std::endl;
+      dst.block(1).add(-mean);
+
       data.copy_constrained_values(src, dst);
     }
 
@@ -837,6 +841,9 @@ namespace Step104
     {
       S_inverse_operator.vmult(dst.block(1), src.block(1));
       dst.block(1) *= -1.0;
+      const double mean = dst.block(1).mean_value();
+      std::cout << "preconditioner Mean pressure: " << mean << std::endl;
+      // dst.block(1).add(-mean);
     }
 
     // Apply the top right block:
