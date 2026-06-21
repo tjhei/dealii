@@ -313,7 +313,6 @@ namespace Step104
               LinearAlgebra::distributed::Vector<double, MemorySpace::Default>,
             int n_q_points_1d = degree_u + 1>
   class PortableMFVelocityOperator : public EnableObserverPointer
-
   {
   public:
     PortableMFVelocityOperator() = default;
@@ -581,7 +580,7 @@ namespace Step104
 
   //@sect3{The Stokes operator}
 
-  // The following set of class provides the whole Stokes Operator
+  // The following set of classes provides the whole Stokes Operator
   // @f{eqnarray*}{
   // \begin{bmatrix} A & B^T \\ B & 0 \end{bmatrix}.
   // @f}

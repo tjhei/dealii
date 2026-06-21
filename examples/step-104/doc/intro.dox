@@ -17,34 +17,38 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   @f}
 
   where we want to solve for velocity $\mathbf{u}$ and pressure $p$.
-  The Stokes equations model the behavior of slow moving, viscous fluids.
+  The Stokes equations model the behavior of slow-moving, viscous flow,
+  which is often relevant in applications of biofluid dynamics, microfluidics,
+  and flow of geomaterials like ice or rock.
 
-  Writing finite element code for GPUs confers several benefits when it comes
-  to performance, namely improved computing capabilities and memory bandwidth
-  over CPUs for a specified power budget as discussed in step-64, which solves
-  the Helmholtz equation. Just as in that tutorial, we use Kokkos for a
-  portable implementation.
+  Finite element simulations on GPUs offer several benefits compared to traditional CPU calculations,
+  for example a higher compute performance and memory bandwidth
+  for a specified power budget as discussed in step-64.
+  Just as in that tutorial, which solves the Helmholtz equation instead of the Stokes equations,
+  we again make use of the Kokkos library to implement a portable algorithm that works well on
+  both GPUs and CPUs.
 
-  Unlike step-64, this tutorial solves for velocity $\mathbf{u}$ and
-  pressure $p$, meaning we will need two DoFHandlers and FEEvaluation
+  Unlike step-64, this tutorial solves for two solution variables, namely velocity $\mathbf{u}$ and
+  pressure $p$, which means we will need two DoFHandlers and FEEvaluation
   objects, and the solution will be stored in a block vector with two blocks.
 
-  This tutorial is matrix-free, meaning we use no assembled matrices.
+  The algorithm that is implemented in this tutorial is matrix-free, meaning we use no assembled matrices.
   Matrix-free methods have been instrumental in speeding up finite element
-  computations, as memory is often a massive bottleneck when using
+  computations, as memory benadwitdth is often a massive bottleneck when using
   matrix-based methods. Matrix-free methods exploit the fact that simple
   computations such as addition and multiplication are relatively quick, so
-  instead of storing data in a matrix, matrix vector products
+  instead of storing data in a matrix and using them to
+  apply the action of the linear operator, matrix vector products
   are computed on the fly. This
   is discussed in detail in step-37.
 
   <h3>Weak form</h3>
 
-  Multiplying the first equation by $v \in H_0^1 = \{t \in H^1(\Omega)^d :
+  Multiplying the first equation by $\mathbf{v} \in H_0^1 = \{t \in H^1(\Omega)^d :
   t = 0 \text{ on } \partial\Omega\}$ and integrating by parts we get
 
   @f{eqnarray*}{
-    (\nabla \mathbf{u}, \nabla v)_{\Omega} - (p, \nabla \cdot v)_{\Omega}
+    (\nabla \mathbf{u}, \nabla \mathbf{v})_{\Omega} - (p, \nabla \cdot \mathbf{v})_{\Omega}
     = (\mathbf{f}, \mathbf{v})_{\Omega}.
   @f}
 
@@ -61,13 +65,13 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   use $Q_{\text{degree}+1}^d$ for velocity and $Q_{\text{degree}}$
   for pressure, where degree $\geq 1$ and $d$ is the number of spatial
   dimensions. These pairs are known as Taylor-Hood elements, which satisfy the
-  LBB conditions and therefore guarantee existence and uniqueness of a
+  LBB condition and therefore guarantee existence and uniqueness of a
   numerical solution. Our code implements the $Q_2^d \times Q_1$ pair in
   particular. Of course, the Taylor-Hood pair can be changed by modifying
   <code>degree_p</code> in the code, which also changes the velocity degree
   which is set to <code>degree_p + 1</code>. This is also discussed in
   step-22, though that tutorial differs slightly in that a deformation tensor
-  is used in place of $\Delta \mathbf{u}$.
+  is used in place of $\nabla \mathbf{u}$.
 
   <h3>Linear system and preconditioning</h3>
 
