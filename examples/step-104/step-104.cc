@@ -424,7 +424,7 @@ namespace Step104
   // pressure space $(p,q)$. This is implemented in a very similar way
   // to the velocity block above. A notable difference is that
   // we select the pressure by passing a dof_handler_index of 1
-  // instead 0 to the FEEvaluation class.
+  // instead of 0 to the FEEvaluation class.
   template <int dim,
             int degree_u,
             int degree_p,
@@ -580,7 +580,7 @@ namespace Step104
 
   //@sect3{The Stokes operator}
 
-  // The following set of classes provides the whole Stokes Operator
+  // The following set of classes provides the whole Stokes operator
   // @f{eqnarray*}{
   // \begin{bmatrix} A & B^T \\ B & 0 \end{bmatrix}.
   // @f}
@@ -752,7 +752,7 @@ namespace Step104
       : data(data_in)
     {}
 
-    const Portable::MatrixFree<dim, Number> &data;
+    
 
     void vmult(VectorType &dst, const VectorType &src) const
     {
@@ -763,6 +763,8 @@ namespace Step104
 
       data.set_constrained_values(0.0, dst.block(0), /* dof_handler_index */ 0);
     }
+  private:
+    const Portable::MatrixFree<dim, Number> &data;
   };
 
 

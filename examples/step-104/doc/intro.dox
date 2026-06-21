@@ -7,8 +7,9 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
 <a name="step_104-Intro"></a>
   <h1>Introduction</h1>
 
-  This tutorial utilizes Kokkos to implement a matrix-free method on the GPU
-  to solve the Stokes problem
+  This tutorial implements a matrix free algorithm
+  that works on both GPUs and CPUs using
+  Kokkos to solve the Stokes problem
 
   @f{align}{
     -\Delta \mathbf{u} + \nabla p &= \mathbf{f} \quad \text{in } \Omega, \\
