@@ -37,10 +37,10 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   Matrix-free methods have been instrumental in speeding up finite element
   computations, as memory bandwidth is often a massive bottleneck when using
   matrix-based methods. Matrix-free methods exploit the fact that simple
-  computations such as addition and multiplication are relatively quick, so
-  instead of storing data in a matrix and using them to
-  apply the action of the linear operator, matrix vector products
-  are computed on the fly. This
+  computations such as addition and multiplication are relatively quick
+  compared to memory bandwidth, so instead of storing data in a matrix and
+  using them to apply the action of the linear operator,
+  matrix vector products are computed on the fly. This approach
   is discussed in detail in step-37.
 
   While this program runs (slowly) without a GPU, using a workstation with one or more GPUs or a GPU  cluster
@@ -67,7 +67,7 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   In order to perform numerical computations, we discretize the weak form and
   choose finite-dimensional finite element spaces to work with. We want to
   choose a pair of discrete velocity and pressure spaces that
-  guarantee the existence of a unique computed solution. In this tutorial, we
+  guarantees the existence of a unique computed solution. In this tutorial, we
   use $Q_{\text{degree}+1}^d$ for velocity and $Q_{\text{degree}}$
   for pressure, where degree $\geq 1$ and $d$ is the number of spatial
   dimensions. These pairs are known as Taylor-Hood elements, which satisfy the
@@ -135,11 +135,13 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   Of course, it is more computationally efficient to choose
   $\widetilde{A}^{-1}$ and $\widetilde{S}^{-1}$ to be rough
   approximations of $A^{-1}$ and $(BA^{-1}B^T)^{-1}$. In
-  particular, we approximate $A$ with a GMG V-cycle and $S$ with the
+  particular, we approximate $A$ with a single V-cycle application of a geometric multigrid (GMG)
+  preconditioner and $S$ with the
   inverse pressure mass matrix $M_p$. This approximation of the Schur
   complement is standard in earth modeling and is implemented in the ASPECT
   geodynamics code. These approximations have been shown to be highly
-  effective for problems without extremely high viscosity contrasts.
+  effective for problems featuring viscosity contrasts up to 6
+  orders of magnitude.
 
   Letting $y = Px$, we can use an iterative solver to find $y$
   and deduce that $x = P^{-1}y$.
