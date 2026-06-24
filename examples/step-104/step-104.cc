@@ -1222,9 +1222,9 @@ namespace Step104
     pcout << std::setprecision(10);
     pcout << "Running on " << Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)
           << " MPI ranks and " << MultithreadInfo::n_threads() << " threads in "
-#ifdef DEBUG
+if constexpr (running_in_debug_mode())
           << "DEBUG mode" << std::endl
-#else
+else
           << "RELEASE mode" << std::endl
 #endif
           << "dim: " << dim << std::endl
