@@ -42,6 +42,11 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   are computed on the fly. This
   is discussed in detail in step-37.
 
+  While this program runs (slowly) without a GPU, using a workstation with one or more GPUs or a GPU  cluster
+  is strongly recommended. Installing deal.II with GPU support is non-trivial. Please see the
+  [deal.II GPU wiki page](https://github.com/dealii/dealii/wiki/GPU-support-in-deal.II) for installation
+  instructions.
+
   <h3>Weak form</h3>
 
   Multiplying the first equation by $\mathbf{v} \in H_0^1 = \{t \in H^1(\Omega)^d :
