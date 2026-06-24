@@ -35,7 +35,7 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
 
   The algorithm that is implemented in this tutorial is matrix-free, meaning we use no assembled matrices.
   Matrix-free methods have been instrumental in speeding up finite element
-  computations, as memory benadwitdth is often a massive bottleneck when using
+  computations, as memory bandwidth is often a massive bottleneck when using
   matrix-based methods. Matrix-free methods exploit the fact that simple
   computations such as addition and multiplication are relatively quick, so
   instead of storing data in a matrix and using them to

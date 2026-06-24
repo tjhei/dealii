@@ -752,7 +752,7 @@ namespace Step104
       : data(data_in)
     {}
 
-    
+
 
     void vmult(VectorType &dst, const VectorType &src) const
     {
@@ -763,6 +763,7 @@ namespace Step104
 
       data.set_constrained_values(0.0, dst.block(0), /* dof_handler_index */ 0);
     }
+
   private:
     const Portable::MatrixFree<dim, Number> &data;
   };
