@@ -22,8 +22,9 @@ a factor of 8 in solve time.
 
 The advantage of using Kokkos instead of writing a code in one of the vendor
 languages like CUDA, is that we can run on AMD, NVIDIA, Intel or other
-future GPU vendors without any porting required. Note that step-104 also
-runs on the CPU as Kokkos has a default CPU backend. This is perfect for
+future GPU vendors without any porting required. Furthermore, there are multiple
+host-parallel backends available in Kokkos and thus this tutorial also
+runs with the CPU-only configurations. This is perfect for
 code development and debugging, but of course significantly slower. By default,
 the Kokkos serial backend does not use multiple cores or SIMD instructions. As such,
 the CPU-based matrix free deal.II code as in step-37 will be significantly faster.

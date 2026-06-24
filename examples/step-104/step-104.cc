@@ -365,12 +365,9 @@ namespace Step104
       data->copy_constrained_values(src, dst, 0 /* velocity */);
     }
 
-    void Tvmult(VectorType &dst, const VectorType &src) const
+    void Tvmult(VectorType & /* dst */, const VectorType & /* src */) const
     {
       AssertThrow(false, ExcNotImplemented());
-
-      (void)dst;
-      (void)src;
     }
 
     void compute_diagonal()
@@ -1221,11 +1218,9 @@ namespace Step104
   {
     pcout << std::setprecision(10);
     pcout << "Running on " << Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)
-          << " MPI ranks and " << MultithreadInfo::n_threads() << " threads in "
-if constexpr (running_in_debug_mode())
-          << "DEBUG mode" << std::endl
-else
-          << "RELEASE mode" << std::endl
+          << " MPI ranks and " << MultithreadInfo::n_threads()
+          << " threads in " if constexpr (running_in_debug_mode())
+          << "DEBUG mode" << std::endl else << "RELEASE mode" << std::endl
 #endif
           << "dim: " << dim << std::endl
           << "Element: Q" << degree_u << "-Q" << degree_p << std::endl;
