@@ -266,38 +266,24 @@ namespace Step104
     DEAL_II_HOST_DEVICE void
     operator()(const typename Portable::MatrixFree<dim, Number>::Data *data,
                const Portable::DeviceVector<Number>                   &src,
-               Portable::DeviceVector<Number> &dst) const;
+               Portable::DeviceVector<Number> &dst) const
+    {
+      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim, double> fe_u(
+        data,
+        /* velocity */ 0);
+
+      fe_u.read_dof_values(src);
+      fe_u.evaluate(EvaluationFlags::gradients);
+
+      VelocityOperatorQuad<dim, degree_u> quad_operation;
+
+      data->for_each_quad_point(
+        [&](const int q_point) { quad_operation(&fe_u, q_point); });
+
+      fe_u.integrate(EvaluationFlags::gradients);
+      fe_u.distribute_local_to_global(dst);
+    }
   };
-
-
-
-  template <int dim,
-            int degree_u,
-            int degree_p,
-            typename Number,
-            int n_q_points_1d>
-  DEAL_II_HOST_DEVICE void
-  VelocityCellOperator<dim, degree_u, degree_p, Number, n_q_points_1d>::
-  operator()(const typename Portable::MatrixFree<dim, Number>::Data *data,
-             const Portable::DeviceVector<Number>                   &src,
-             Portable::DeviceVector<Number>                         &dst) const
-  {
-    Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim, double> fe_u(
-      data,
-      /* velocity */ 0);
-
-    fe_u.read_dof_values(src);
-    fe_u.evaluate(EvaluationFlags::gradients);
-
-    VelocityOperatorQuad<dim, degree_u> quad_operation;
-
-    data->for_each_quad_point(
-      [&](const int q_point) { quad_operation(&fe_u, q_point); });
-
-    fe_u.integrate(EvaluationFlags::gradients);
-    fe_u.distribute_local_to_global(dst);
-  }
-
 
 
   // This class finally provides the matrix-free operator for the velocity
@@ -603,47 +589,33 @@ namespace Step104
     DEAL_II_HOST_DEVICE void
     operator()(const typename Portable::MatrixFree<dim, Number>::Data *data,
                const Portable::DeviceBlockVector<Number>              &src,
-               Portable::DeviceBlockVector<Number> &dst) const;
+               Portable::DeviceBlockVector<Number> &dst) const
+    {
+      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim> fe_u(data, 0);
+      Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1>   fe_p(data, 1);
+
+      fe_u.read_dof_values(src.block(0));
+      fe_p.read_dof_values(src.block(1));
+      fe_u.evaluate(EvaluationFlags::gradients);
+      fe_p.evaluate(EvaluationFlags::values);
+
+      data->for_each_quad_point([&](const int &q_point) {
+        const Tensor<2, dim, Number> gradient_u = fe_u.get_gradient(q_point);
+        Tensor<2, dim, Number>       vel_term   = gradient_u;
+        for (unsigned int d = 0; d < dim; ++d)
+          vel_term[d][d] -= fe_p.get_value(q_point);
+        fe_u.submit_gradient(vel_term, q_point);
+
+        const Number pressure_term = trace(gradient_u);
+        fe_p.submit_value(pressure_term, q_point);
+      });
+
+      fe_u.integrate(EvaluationFlags::gradients);
+      fe_p.integrate(EvaluationFlags::values);
+      fe_u.distribute_local_to_global(dst.block(0));
+      fe_p.distribute_local_to_global(dst.block(1));
+    }
   };
-
-
-
-  template <int dim,
-            int degree_u,
-            int degree_p,
-            typename Number,
-            int n_q_points_1d>
-  DEAL_II_HOST_DEVICE void
-  StokesCellOperator<dim, degree_u, degree_p, Number, n_q_points_1d>::
-  operator()(const typename Portable::MatrixFree<dim, Number>::Data *data,
-             const Portable::DeviceBlockVector<Number>              &src,
-             Portable::DeviceBlockVector<Number>                    &dst) const
-  {
-    Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim> fe_u(data, 0);
-    Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1>   fe_p(data, 1);
-
-    fe_u.read_dof_values(src.block(0));
-    fe_p.read_dof_values(src.block(1));
-    fe_u.evaluate(EvaluationFlags::gradients);
-    fe_p.evaluate(EvaluationFlags::values);
-
-    data->for_each_quad_point([&](const int &q_point) {
-      const Tensor<2, dim, Number> gradient_u = fe_u.get_gradient(q_point);
-      Tensor<2, dim, Number>       vel_term   = gradient_u;
-      for (unsigned int d = 0; d < dim; ++d)
-        vel_term[d][d] -= fe_p.get_value(q_point);
-      fe_u.submit_gradient(vel_term, q_point);
-
-      const Number pressure_term = trace(gradient_u);
-      fe_p.submit_value(pressure_term, q_point);
-    });
-
-    fe_u.integrate(EvaluationFlags::gradients);
-    fe_p.integrate(EvaluationFlags::values);
-    fe_u.distribute_local_to_global(dst.block(0));
-    fe_p.distribute_local_to_global(dst.block(1));
-  }
-
 
 
   template <
@@ -699,38 +671,25 @@ namespace Step104
     DEAL_II_HOST_DEVICE void
     operator()(const typename Portable::MatrixFree<dim, Number>::Data *data,
                const Portable::DeviceBlockVector<Number>              &src,
-               Portable::DeviceBlockVector<Number> &dst) const;
+               Portable::DeviceBlockVector<Number> &dst) const
+    {
+      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim> fe_u(data, 0);
+      Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1>   fe_p(data, 1);
+
+      fe_p.read_dof_values(src.block(1));
+      fe_p.evaluate(EvaluationFlags::values);
+
+      data->for_each_quad_point([&](const int &q_point) {
+        Tensor<2, dim, Number> vel_term;
+        for (unsigned int d = 0; d < dim; ++d)
+          vel_term[d][d] = -fe_p.get_value(q_point);
+        fe_u.submit_gradient(vel_term, q_point);
+      });
+
+      fe_u.integrate(EvaluationFlags::gradients);
+      fe_u.distribute_local_to_global(dst.block(0));
+    }
   };
-
-
-
-  template <int dim,
-            int degree_u,
-            int degree_p,
-            typename Number,
-            int n_q_points_1d>
-  DEAL_II_HOST_DEVICE void
-  BTCellOperator<dim, degree_u, degree_p, Number, n_q_points_1d>::operator()(
-    const typename Portable::MatrixFree<dim, Number>::Data *data,
-    const Portable::DeviceBlockVector<Number>              &src,
-    Portable::DeviceBlockVector<Number>                    &dst) const
-  {
-    Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim> fe_u(data, 0);
-    Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1>   fe_p(data, 1);
-
-    fe_p.read_dof_values(src.block(1));
-    fe_p.evaluate(EvaluationFlags::values);
-
-    data->for_each_quad_point([&](const int &q_point) {
-      Tensor<2, dim, Number> vel_term;
-      for (unsigned int d = 0; d < dim; ++d)
-        vel_term[d][d] = -fe_p.get_value(q_point);
-      fe_u.submit_gradient(vel_term, q_point);
-    });
-
-    fe_u.integrate(EvaluationFlags::gradients);
-    fe_u.distribute_local_to_global(dst.block(0));
-  }
 
 
 
