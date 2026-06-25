@@ -14,6 +14,7 @@
 
 
 #include <deal.II/base/conditional_ostream.h>
+#include <deal.II/base/timer.h>
 
 #include <deal.II/distributed/tria.h>
 
@@ -1040,7 +1041,7 @@ namespace Step104
       mg_smoother;
     mg_smoother.initialize(mg_matrices, smoother_data);
 
-    pcout << "  velocity block:" << std::endl;
+    pcout << "GMG velocity block smoothers:" << std::endl;
     for (unsigned int level = min_level; level <= max_level; ++level)
       {
         VectorType vec;
@@ -1065,6 +1066,33 @@ namespace Step104
                              mg_smoother,
                              min_level,
                              max_level);
+
+
+    dealii::Timer timer_smoother;
+    dealii::Timer timer_transfer;
+    dealii::Timer timer_coarse;
+    dealii::Timer timer_residual;
+    {
+      timer_smoother.reset();
+      timer_transfer.reset();
+      timer_coarse.reset();
+      timer_residual.reset();
+
+      auto make_timer_lambda = [&](dealii::Timer &timer) {
+        return [&](const bool before, const unsigned int /*level*/) {
+          if (before)
+            timer.start();
+          else
+            timer.stop();
+        };
+      };
+      mg.connect_pre_smoother_step(make_timer_lambda(timer_smoother));
+      mg.connect_post_smoother_step(make_timer_lambda(timer_smoother));
+      mg.connect_residual_step(make_timer_lambda(timer_residual));
+      mg.connect_restriction(make_timer_lambda(timer_transfer));
+      mg.connect_prolongation(make_timer_lambda(timer_transfer));
+      mg.connect_coarse_solve(make_timer_lambda(timer_coarse));
+    }
 
     using APreconditionerType = PreconditionMG<dim, VectorType, MGTransferType>;
     APreconditionerType preconditioner_A(dof_u, mg, mg_transfer);
@@ -1103,12 +1131,19 @@ namespace Step104
                              BlockVectorType>
       preconditioner(preconditioner_A, preconditioner_schur, BT_operator);
 
-    Kokkos::Timer t;
+    dealii::Timer t(tria.get_mpi_communicator());
     solver.solve(stokes_operator, solution, rhs, preconditioner);
-    double time = t.seconds();
+    t.stop();
 
-    pcout << "converged in " << solver_control.last_step() << " iterations in "
-          << time << " seconds" << std::endl;
+    pcout << "Solver converged in " << solver_control.last_step()
+          << " iterations in " << t.wall_time() << " seconds" << std::endl;
+
+    pcout << "Velocity block GMG timings:"
+          << "\n    smoother: " << timer_smoother.wall_time()
+          << " s\n    transfer: " << timer_transfer.wall_time()
+          << " s\n    coarse  : " << timer_coarse.wall_time()
+          << " s\n    residual: " << timer_residual.wall_time() << " s"
+          << std::endl;
   }
 
 
