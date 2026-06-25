@@ -1208,13 +1208,15 @@ namespace Step104
   {
     pcout << std::setprecision(10);
     pcout << "Running on " << Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)
-          << " MPI ranks and " << MultithreadInfo::n_threads()
-          << " threads in ";
+          << " MPI ranks (with " << MultithreadInfo::n_threads()
+          << " threads each) in ";
     if constexpr (running_in_debug_mode())
       pcout << "DEBUG mode";
     else
       pcout << "RELEASE mode";
 
+    pcout << "\nKokkos execution space: "
+          << Kokkos::DefaultExecutionSpace::name();
     pcout << '\n'
           << "dim: " << dim << '\n'
           << "Element: Q" << degree_u << "-Q" << degree_p << std::endl;
