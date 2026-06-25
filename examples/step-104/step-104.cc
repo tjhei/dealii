@@ -1178,10 +1178,14 @@ namespace Step104
     pcout << std::setprecision(10);
     pcout << "Running on " << Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)
           << " MPI ranks and " << MultithreadInfo::n_threads()
-          << " threads in " if constexpr (running_in_debug_mode())
-          << "DEBUG mode" << std::endl else << "RELEASE mode" << std::endl
-#endif
-          << "dim: " << dim << std::endl
+          << " threads in ";
+    if constexpr (running_in_debug_mode())
+      pcout << "DEBUG mode";
+    else
+      pcout << "RELEASE mode";
+
+    pcout << '\n'
+          << "dim: " << dim << '\n'
           << "Element: Q" << degree_u << "-Q" << degree_p << std::endl;
 
     unsigned int n_refinements = 10;
