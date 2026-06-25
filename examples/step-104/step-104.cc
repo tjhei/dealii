@@ -936,6 +936,16 @@ namespace Step104
 
     mf_data->initialize_dof_vector(solution);
 
+    {
+      dealii::Timer t(tria.get_mpi_communicator());
+      stokes_operator.vmult(solution, rhs);
+      const double time          = t.wall_time();
+      const double dofs_p_second = static_cast<double>(solution.size()) / time;
+      pcout << "Stokes operator: " << time << " s, DoFs/s: " << dofs_p_second
+            << std::endl;
+      solution = 0.0;
+    }
+
     SolverControl solver_control(1000, 1e-8 * rhs.l2_norm());
 
     SolverGMRES<BlockVectorType> solver(

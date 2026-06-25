@@ -32,11 +32,11 @@ the CPU-based matrix free deal.II code as in step-37 will be significantly faste
 As an example, here is a quick comparison between different workstation and
 server GPUs and the time to solution for the 53 million DoF problem size:
 
-| Name            | FP64 (TFLOPS) |  VRAM | Solve Time |
-| --------------- | ------------: | ----: | ---------: |
-| AMD W7800       |          1.41 | 32 GB |     1400 s |
-| NVIDIA RTX 6000 |          1.97 | 96 GB |      420 s |
-| NVIDIA H100     |          25.6 | 80 GB |      210 s |
+| Name            | FP64 [TFLOPS] |  VRAM [GB] | Bandwidth [TB/s] | Operator [MDoFs/s] | Solve Time [s] |
+| --------------- | ------------: | ---------: | ---------------: | -----------------: | -------------: |
+| AMD W7800       |          1.41 |         32 |              0.6 |               24.0 |           1400 |
+| NVIDIA RTX 6000 |          1.97 |         96 |              1.8 |               99.9 |            420 |
+| NVIDIA H100     |          25.6 |         80 |              3.4 |              299.7 |            210 |
 
 
 <h3>Multiple GPUs</h3>
