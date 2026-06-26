@@ -987,7 +987,7 @@ namespace Step104
     const unsigned int max_level = coarse_grid_triangulations.size() - 1;
     // Do not go down to level 0, because this will lead to slower runtime as
     // the problem becomes very small:
-    const unsigned int min_level = std::min(2U, max_level - 1);
+    const unsigned int min_level = std::min(3U, max_level - 1);
 
     MGLevelObject<DoFHandler<dim>> mg_dof_handlers(min_level, max_level);
     MGLevelObject<AffineConstraints<Number>> mg_constraints(min_level,
@@ -1061,10 +1061,28 @@ namespace Step104
         smoother_data[level].preconditioner =
           std::make_shared<SmootherPreconditionerType>(
             *mg_matrices[level].get_matrix_diagonal_inverse());
-        smoother_data[level].smoothing_range     = 20;
-        smoother_data[level].degree              = 5;
-        smoother_data[level].eig_cg_n_iterations = 20;
         smoother_data[level].constraints.copy_from(mg_constraints[level]);
+
+        if (level == min_level)
+          {
+            // Use the Chebyshev iteration as an (approximate) solver on the
+            // coarsest level. In this mode @p smoothing_range is a relative
+            // target tolerance and must be strictly less than one; the number
+            // of iterations is then chosen automatically by setting
+            // @p degree to numbers::invalid_unsigned_int. We also use more
+            // CG iterations for the eigenvalue estimate because, when
+            // @p min_level > 0, the coarse problem can still be reasonably
+            // large and badly conditioned.
+            smoother_data[level].smoothing_range = 1e-3;
+            smoother_data[level].degree = numbers::invalid_unsigned_int;
+            smoother_data[level].eig_cg_n_iterations = 40;
+          }
+        else
+          {
+            smoother_data[level].smoothing_range     = 20;
+            smoother_data[level].degree              = 6;
+            smoother_data[level].eig_cg_n_iterations = 20;
+          }
       }
 
     MGSmootherPrecondition<LevelMatrixType, SmootherType, VectorType>
