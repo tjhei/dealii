@@ -50,6 +50,7 @@ namespace Step104
 {
   using namespace dealii;
   constexpr unsigned int velocity_index = 0;
+  constexpr unsigned int pressure_index = 1;
   // @sect3{Problem Definition}
   //
   // We start with the definition of the right-hand side and exact solution of
@@ -484,7 +485,7 @@ namespace Step104
 
     types::global_dof_index m() const
     {
-      return data.get_vector_partitioner(1 /* pressure */)->size();
+      return data.get_vector_partitioner(pressure_index)->size();
     }
 
     double el(const types::global_dof_index row,
@@ -505,7 +506,7 @@ namespace Step104
         mass_operator;
       data.cell_loop(mass_operator, src, dst);
 
-      data.copy_constrained_values(src, dst, 1 /* pressure */);
+      data.copy_constrained_values(src, dst, pressure_index);
     }
 
     std::shared_ptr<DiagonalMatrix<
@@ -533,7 +534,7 @@ namespace Step104
           quad_operation,
           EvaluationFlags::values,
           EvaluationFlags::values,
-          1 /* pressure */);
+          pressure_index);
 
       double *raw_diagonal = inverse_diagonal.get_values();
 
