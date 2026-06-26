@@ -1,12 +1,22 @@
-1147c1147
-<     double time = t.seconds();
+946,947d945
+<       pcout << "Stokes operator: " << time << " s, DoFs/s: " << dofs_p_second
+<             << std::endl;
+1151,1158c1149
+<           << " iterations in " << t.wall_time() << " seconds" << std::endl;
+< 
+<     pcout << "Velocity block GMG timings:"
+<           << "\n    smoother: " << timer_smoother.wall_time()
+<           << " s\n    transfer: " << timer_transfer.wall_time()
+<           << " s\n    coarse  : " << timer_coarse.wall_time()
+<           << " s\n    residual: " << timer_residual.wall_time() << " s"
+<           << std::endl;
 ---
->     double time = 0;
-1205c1205
-<           << " MPI ranks and " << MultithreadInfo::n_threads() << " threads in "
+>           << " iterations in " << 0.0 << " seconds" << std::endl;
+1223c1214
+<           << " MPI ranks (with " << MultithreadInfo::n_threads()
 ---
->           << " MPI ranks and "
-1214c1214
+>           << " MPI ranks (with "
+1236c1227
 <     unsigned int n_refinements = 10;
 ---
 >     unsigned int n_refinements = 2;
