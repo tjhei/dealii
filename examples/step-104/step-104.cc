@@ -387,8 +387,8 @@ namespace Step104
         inverse_diagonal.locally_owned_size(),
         KOKKOS_LAMBDA(int i) {
           Assert(raw_diagonal[i] > 0.,
-                 ExcMessage("No diagonal entry in a positive definite operator "
-                            "should be zero or negative"));
+                 ExcMessage("Diagonal entries of a positive definite operator "
+                            "should be positive"));
           raw_diagonal[i] = 1. / raw_diagonal[i];
         });
     }
@@ -549,8 +549,8 @@ namespace Step104
         inverse_diagonal.locally_owned_size(),
         KOKKOS_LAMBDA(int i) {
           Assert(raw_diagonal[i] > 0.,
-                 ExcMessage("No diagonal entry in a positive definite operator "
-                            "should be zero"));
+                 ExcMessage("Diagonal entries of a positive definite operator "
+                            "should be positive"));
           raw_diagonal[i] = 1. / raw_diagonal[i];
         });
     }
@@ -605,11 +605,11 @@ namespace Step104
       fe_p.evaluate(EvaluationFlags::values);
 
       data->for_each_quad_point([&](const int &q_point) {
-        const Tensor<2, dim, Number> gradient_u = fe_u.get_gradient(q_point);
-        Tensor<2, dim, Number>       vel_term   = gradient_u;
+        const Tensor<2, dim, Number> gradient_u    = fe_u.get_gradient(q_point);
+        Tensor<2, dim, Number>       velocity_term = gradient_u;
         for (unsigned int d = 0; d < dim; ++d)
-          vel_term[d][d] -= fe_p.get_value(q_point);
-        fe_u.submit_gradient(vel_term, q_point);
+          velocity_term[d][d] -= fe_p.get_value(q_point);
+        fe_u.submit_gradient(velocity_term, q_point);
 
         const Number pressure_term = trace(gradient_u);
         fe_p.submit_value(pressure_term, q_point);
@@ -687,10 +687,10 @@ namespace Step104
       fe_p.evaluate(EvaluationFlags::values);
 
       data->for_each_quad_point([&](const int &q_point) {
-        Tensor<2, dim, Number> vel_term;
+        Tensor<2, dim, Number> velocity_term;
         for (unsigned int d = 0; d < dim; ++d)
-          vel_term[d][d] = -fe_p.get_value(q_point);
-        fe_u.submit_gradient(vel_term, q_point);
+          velocity_term[d][d] = -fe_p.get_value(q_point);
+        fe_u.submit_gradient(velocity_term, q_point);
       });
 
       fe_u.integrate(EvaluationFlags::gradients);
