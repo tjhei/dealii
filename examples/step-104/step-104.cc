@@ -724,6 +724,10 @@ namespace Step104
         cell_operator;
       data.cell_loop(cell_operator, src, dst);
 
+      // Instead of copying constrained values, zero them out. The BT operator
+      // does not receive an input velocity to copy values from and zeroing out
+      // is the correct operation for boundary and hanging nodes for an update
+      // of the velocity:
       data.set_constrained_values(0.0,
                                   dst.block(0),
                                   velocity_dof_handler_index);
