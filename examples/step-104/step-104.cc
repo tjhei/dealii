@@ -383,7 +383,7 @@ namespace Step104
         KOKKOS_LAMBDA(int i) {
           Assert(raw_diagonal[i] > 0.,
                  ExcMessage("No diagonal entry in a positive definite operator "
-                            "should be zero"));
+                            "should be zero or negative"));
           raw_diagonal[i] = 1. / raw_diagonal[i];
         });
     }
@@ -738,7 +738,7 @@ namespace Step104
     /**
      * @brief Constructor
      * @param A_inverse_operator Approximation of the inverse of the velocity block.
-     * @param S_inverse_operator Approximation for the inverse Schur complement.
+     * @param S_inverse_operator Approximation of the inverse Schur complement.
      * @param BT_operator Operator for the B^T block of the Stokes system.
      */
     BlockSchurPreconditioner(const AInvOperator &A_inverse_operator,
