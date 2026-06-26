@@ -159,7 +159,24 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   do not lend themselves to GPU acceleration because they are hard to (or impossible)
   to parallelize and because they require IO, complex logic, or dynamic memory allocation.
 
-  In summary, we perform the following steps:
+  As in step-64, we use the template parameter
+  MemorySpace::Default and MemorySpace::Host to indicate where the solution data
+  of a particular vector is stored. MemorySpace::Host always indicates the host
+  memory (CPU or main memory), while MemorySpace::Default refers to the memory of
+  the default compute device (either CPUs or GPUs depending on how the Kokkos library
+  used by deal.II was configured). While LinearAlgebra::distributed::Vector has
+  a default value for the memory space, which is, confusingly, MemorySpace::Host,
+  we always specify the memory space explicitly in this example. Any function operating
+  on vectors stored on the compute device have to run on the GPU as a kernel and
+  has to be marked with the DEAL_II_HOST_DEVICE precompiler macro to let the compiler
+  know that this code has to be compiled for the programming model of the relevant
+  compute device. This implies that the code in these functions cannot make use of
+  functionality that is not available on this device. Before the CPU can operate on
+  a vector, the data has to be copied into system memory (by copying into a vector with
+  MemorySpace::Host).
+
+  In short, we currently perform setup and postprocessing on the CPU, while the
+  linear solve runs on the GPU. The example performs the following steps:
 
   1. Setup
     1.1. Generate and refine the mesh (MPI parallel, CPU)
