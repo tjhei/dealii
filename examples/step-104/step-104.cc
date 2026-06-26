@@ -235,7 +235,7 @@ namespace Step104
   // given by $(\nabla u,\nabla v)$ is defined by the class
   // PortableMFVelocityOperator. It uses
   // the class VelocityCellOperator, which is evaluated in parallel
-  // on each cell. On each cell, we define the action in each
+  // on each cell. On each cell, we define the action at each
   // quadrature point with the small helper class VelocityOperatorQuad
   // with operator().
 
@@ -571,7 +571,7 @@ namespace Step104
   // \begin{bmatrix} A & B^T \\ B & 0 \end{bmatrix}.
   // @f}
   // While structured in a similar way (class PortableMFStokesOperator uses
-  // StokesCellOperator and a lambda function for the action in each
+  // StokesCellOperator and a lambda function for the action at each
   // quadrature point), we now operate on Portable::DeviceBlockVector
   // and use two Portable::FEEvaluation objects, one for the velocity
   // and one for the pressure.
@@ -605,10 +605,12 @@ namespace Step104
       fe_p.evaluate(EvaluationFlags::values);
 
       data->for_each_quad_point([&](const int &q_point) {
-        const Tensor<2, dim, Number> gradient_u    = fe_u.get_gradient(q_point);
-        Tensor<2, dim, Number>       velocity_term = gradient_u;
+        const Tensor<2, dim, Number> gradient_u = fe_u.get_gradient(q_point);
+        const Number                 pressure_value = fe_p.get_value(q_point);
+
+        Tensor<2, dim, Number> velocity_term = gradient_u;
         for (unsigned int d = 0; d < dim; ++d)
-          velocity_term[d][d] -= fe_p.get_value(q_point);
+          velocity_term[d][d] -= pressure_value;
         fe_u.submit_gradient(velocity_term, q_point);
 
         const Number pressure_term = trace(gradient_u);
@@ -687,9 +689,10 @@ namespace Step104
       fe_p.evaluate(EvaluationFlags::values);
 
       data->for_each_quad_point([&](const int &q_point) {
+        const Number           pressure_value = fe_p.get_value(q_point);
         Tensor<2, dim, Number> velocity_term;
         for (unsigned int d = 0; d < dim; ++d)
-          velocity_term[d][d] = -fe_p.get_value(q_point);
+          velocity_term[d][d] = -pressure_value;
         fe_u.submit_gradient(velocity_term, q_point);
       });
 
@@ -940,12 +943,11 @@ namespace Step104
 
   // In the solve() function we set up the preconditioner and run the GMRES
   // solver. For this, we construct the multigrid
-  // hierarchy for the GMG v-cycle with Chebyshev to approximate the action
-  // of $A^{-1}$. The Chebyshev smoother itself uses the inverse
-  // diagonal of $A$ as its preconditioner.
-  // We approximate the Schur Complement with Chebyshev
-  // applied to the pressure mass matrix (without multigrid), using
-  // the diagonal of the pressure mass matrix.
+  // hierarchy for the GMG v-cycle with a Chebyshev iteration around the
+  // point-Jacobi scheme, i.e., the inverse of the diagonal of $A$, to
+  // approximate the action of $A^{-1}$.
+  // We approximate the Schur Complement with a Chebyshev iteration
+  // applied to the pressure mass matrix (without multigrid).
   template <int dim, int degree_p, typename Number>
   void StokesProblem<dim, degree_p, Number>::solve()
   {

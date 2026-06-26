@@ -30,7 +30,7 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   both GPUs and CPUs.
 
   Unlike step-64, this tutorial solves for two solution variables, namely velocity $\mathbf{u}$ and
-  pressure $p$, which means we will need two DoFHandlers and FEEvaluation
+  pressure $p$, which means we will need two DoFHandlers and Portable::FEEvaluation
   objects, and the solution will be stored in a block vector with two blocks.
 
   The algorithm that is implemented in this tutorial is matrix-free, meaning we use no assembled matrices.
