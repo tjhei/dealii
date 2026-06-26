@@ -49,8 +49,13 @@
 namespace Step104
 {
   using namespace dealii;
-  constexpr unsigned int velocity_index = 0;
-  constexpr unsigned int pressure_index = 1;
+
+  // The index of the velocity and pressure DoFHandler into the vector
+  // of DoFHandlers inside Portable::MatrixFree and the blocks of
+  // the solution vector.
+  constexpr unsigned int velocity_dof_handler_index = 0;
+  constexpr unsigned int pressure_dof_handler_index = 1;
+
   // @sect3{Problem Definition}
   //
   // We start with the definition of the right-hand side and exact solution of
@@ -267,7 +272,7 @@ namespace Step104
                Portable::DeviceVector<Number> &dst) const
     {
       Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim, double> fe_u(
-        data, velocity_index);
+        data, velocity_dof_handler_index);
 
       fe_u.read_dof_values(src);
       fe_u.evaluate(EvaluationFlags::gradients);
@@ -312,12 +317,12 @@ namespace Step104
 
     void initialize_dof_vector(VectorType &vec) const
     {
-      data->initialize_dof_vector(vec, velocity_index);
+      data->initialize_dof_vector(vec, velocity_dof_handler_index);
     }
 
     types::global_dof_index m() const
     {
-      return data->get_vector_partitioner(velocity_index)->size();
+      return data->get_vector_partitioner(velocity_dof_handler_index)->size();
     }
 
     std::shared_ptr<DiagonalMatrix<
@@ -345,7 +350,7 @@ namespace Step104
         velocity_operator;
       data->cell_loop(velocity_operator, src, dst);
 
-      data->copy_constrained_values(src, dst, velocity_index);
+      data->copy_constrained_values(src, dst, velocity_dof_handler_index);
     }
 
     void Tvmult(VectorType & /* dst */, const VectorType & /* src */) const
@@ -362,7 +367,7 @@ namespace Step104
           LinearAlgebra::distributed::Vector<double, MemorySpace::Default>>());
       LinearAlgebra::distributed::Vector<double, MemorySpace::Default>
         &inverse_diagonal = inverse_diagonal_entries->get_vector();
-      data->initialize_dof_vector(inverse_diagonal, velocity_index);
+      data->initialize_dof_vector(inverse_diagonal, velocity_dof_handler_index);
 
       VelocityOperatorQuad<dim, degree_u> velocity_operator_quad;
 
@@ -373,7 +378,7 @@ namespace Step104
           velocity_operator_quad,
           EvaluationFlags::gradients,
           EvaluationFlags::gradients,
-          velocity_index);
+          velocity_dof_handler_index);
 
       double *raw_diagonal = inverse_diagonal.get_values();
 
@@ -453,7 +458,8 @@ namespace Step104
     const Portable::DeviceVector<Number>                   &src,
     Portable::DeviceVector<Number>                         &dst) const
   {
-    Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1> fe_p(data, 1);
+    Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1> fe_p(
+      data, pressure_dof_handler_index);
 
     fe_p.read_dof_values(src);
     fe_p.evaluate(EvaluationFlags::values);
@@ -485,7 +491,7 @@ namespace Step104
 
     types::global_dof_index m() const
     {
-      return data.get_vector_partitioner(pressure_index)->size();
+      return data.get_vector_partitioner(pressure_dof_handler_index)->size();
     }
 
     double el(const types::global_dof_index row,
@@ -506,7 +512,7 @@ namespace Step104
         mass_operator;
       data.cell_loop(mass_operator, src, dst);
 
-      data.copy_constrained_values(src, dst, pressure_index);
+      data.copy_constrained_values(src, dst, pressure_dof_handler_index);
     }
 
     std::shared_ptr<DiagonalMatrix<
@@ -534,7 +540,7 @@ namespace Step104
           quad_operation,
           EvaluationFlags::values,
           EvaluationFlags::values,
-          pressure_index);
+          pressure_dof_handler_index);
 
       double *raw_diagonal = inverse_diagonal.get_values();
 
@@ -588,8 +594,10 @@ namespace Step104
                const Portable::DeviceBlockVector<Number>              &src,
                Portable::DeviceBlockVector<Number> &dst) const
     {
-      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim> fe_u(data, 0);
-      Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1>   fe_p(data, 1);
+      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim> fe_u(
+        data, velocity_dof_handler_index);
+      Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1> fe_p(
+        data, pressure_dof_handler_index);
 
       fe_u.read_dof_values(src.block(0));
       fe_p.read_dof_values(src.block(1));
@@ -670,8 +678,10 @@ namespace Step104
                const Portable::DeviceBlockVector<Number>              &src,
                Portable::DeviceBlockVector<Number> &dst) const
     {
-      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim> fe_u(data, 0);
-      Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1>   fe_p(data, 1);
+      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim> fe_u(
+        data, velocity_dof_handler_index);
+      Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1> fe_p(
+        data, pressure_dof_handler_index);
 
       fe_p.read_dof_values(src.block(1));
       fe_p.evaluate(EvaluationFlags::values);
@@ -714,7 +724,9 @@ namespace Step104
         cell_operator;
       data.cell_loop(cell_operator, src, dst);
 
-      data.set_constrained_values(0.0, dst.block(0), /* dof_handler_index */ 0);
+      data.set_constrained_values(0.0,
+                                  dst.block(0),
+                                  velocity_dof_handler_index);
     }
 
   private:
