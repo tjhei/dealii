@@ -49,7 +49,7 @@
 namespace Step104
 {
   using namespace dealii;
-
+  constexpr unsigned int velocity_index = 0;
   // @sect3{Problem Definition}
   //
   // We start with the definition of the right-hand side and exact solution of
@@ -266,8 +266,7 @@ namespace Step104
                Portable::DeviceVector<Number> &dst) const
     {
       Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim, double> fe_u(
-        data,
-        /* velocity */ 0);
+        data, velocity_index);
 
       fe_u.read_dof_values(src);
       fe_u.evaluate(EvaluationFlags::gradients);
@@ -312,12 +311,12 @@ namespace Step104
 
     void initialize_dof_vector(VectorType &vec) const
     {
-      data->initialize_dof_vector(vec, 0 /* velocity */);
+      data->initialize_dof_vector(vec, velocity_index);
     }
 
     types::global_dof_index m() const
     {
-      return data->get_vector_partitioner(0 /* velocity */)->size();
+      return data->get_vector_partitioner(velocity_index)->size();
     }
 
     std::shared_ptr<DiagonalMatrix<
@@ -345,7 +344,7 @@ namespace Step104
         velocity_operator;
       data->cell_loop(velocity_operator, src, dst);
 
-      data->copy_constrained_values(src, dst, 0 /* velocity */);
+      data->copy_constrained_values(src, dst, velocity_index);
     }
 
     void Tvmult(VectorType & /* dst */, const VectorType & /* src */) const
@@ -362,7 +361,7 @@ namespace Step104
           LinearAlgebra::distributed::Vector<double, MemorySpace::Default>>());
       LinearAlgebra::distributed::Vector<double, MemorySpace::Default>
         &inverse_diagonal = inverse_diagonal_entries->get_vector();
-      data->initialize_dof_vector(inverse_diagonal, 0 /* velocity */);
+      data->initialize_dof_vector(inverse_diagonal, velocity_index);
 
       VelocityOperatorQuad<dim, degree_u> velocity_operator_quad;
 
@@ -373,7 +372,7 @@ namespace Step104
           velocity_operator_quad,
           EvaluationFlags::gradients,
           EvaluationFlags::gradients,
-          0 /*velocity*/);
+          velocity_index);
 
       double *raw_diagonal = inverse_diagonal.get_values();
 
@@ -739,7 +738,9 @@ namespace Step104
      * @brief Constructor
      * @param A_inverse_operator Approximation of the inverse of the velocity block.
      * @param S_inverse_operator Approximation of the inverse Schur complement.
-     * @param BT_operator Operator for the B^T block of the Stokes system.
+     * @param BT_operator Operator for the B^T block of the Stokes system. Note
+     * that this operator is exactly applied while @p A_inverse_operator and @p S_inverse_operator
+     * are approximations for the purpose of the block preconditioner.
      */
     BlockSchurPreconditioner(const AInvOperator &A_inverse_operator,
                              const SInvOperator &S_inverse_operator,
