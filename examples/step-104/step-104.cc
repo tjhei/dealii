@@ -77,21 +77,22 @@ namespace Step104
   // @f}
   //
   // The following classes define these in code.
-  template <int dim>
-  class VelocityRightHandSide : public Function<dim>
+  template <int dim, typename Number>
+  class VelocityRightHandSide : public Function<dim, Number>
   {
   public:
     VelocityRightHandSide()
-      : Function<dim>(dim)
+      : Function<dim, Number>(dim)
     {}
 
-    virtual double value(const Point<dim>  &p,
+    virtual Number value(const Point<dim>  &p,
                          const unsigned int component = 0) const override;
   };
 
-  template <int dim>
-  double VelocityRightHandSide<dim>::value(const Point<dim>  &p,
-                                           const unsigned int component) const
+  template <int dim, typename Number>
+  Number
+  VelocityRightHandSide<dim, Number>::value(const Point<dim>  &p,
+                                            const unsigned int component) const
   {
     AssertIndexRange(component, dim);
 
@@ -151,23 +152,24 @@ namespace Step104
 
 
 
-  template <int dim>
-  class VelocitySolution : public Function<dim>
+  template <int dim, typename Number>
+  class VelocitySolution : public Function<dim, Number>
   {
   public:
     VelocitySolution()
-      : Function<dim>(dim)
+      : Function<dim, Number>(dim)
     {}
 
-    virtual double value(const Point<dim>  &p,
+    virtual Number value(const Point<dim>  &p,
                          const unsigned int component = 0) const override;
   };
 
 
 
-  template <int dim>
-  double VelocitySolution<dim>::value(const Point<dim>  &p,
-                                      const unsigned int component) const
+  template <int dim, typename Number>
+  Number
+  VelocitySolution<dim, Number>::value(const Point<dim>  &p,
+                                       const unsigned int component) const
   {
     AssertIndexRange(component, dim);
 
@@ -209,15 +211,15 @@ namespace Step104
 
 
 
-  template <int dim>
-  class PressureSolution : public Function<dim>
+  template <int dim, typename Number>
+  class PressureSolution : public Function<dim, Number>
   {
   public:
     PressureSolution()
-      : Function<dim>(1)
+      : Function<dim, Number>()
     {}
 
-    virtual double value(const Point<dim> &p,
+    virtual Number value(const Point<dim> &p,
                          const unsigned int /*component*/ = 0) const override
     {
       const double pi = numbers::PI;
@@ -239,12 +241,12 @@ namespace Step104
   // quadrature point with the small helper class VelocityOperatorQuad
   // with operator().
 
-  template <int dim, int fe_degree>
+  template <int dim, int fe_degree, typename Number>
   class VelocityOperatorQuad
   {
   public:
     DEAL_II_HOST_DEVICE void operator()(
-      Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, double>
+      Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, Number>
                *fe_eval,
       const int q_point) const
     {
@@ -271,13 +273,13 @@ namespace Step104
                const Portable::DeviceVector<Number>                   &src,
                Portable::DeviceVector<Number> &dst) const
     {
-      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim, double> fe_u(
+      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim, Number> fe_u(
         data, velocity_dof_handler_index);
 
       fe_u.read_dof_values(src);
       fe_u.evaluate(EvaluationFlags::gradients);
 
-      VelocityOperatorQuad<dim, degree_u> quad_operation;
+      VelocityOperatorQuad<dim, degree_u, Number> quad_operation;
 
       data->for_each_quad_point(
         [&](const int q_point) { quad_operation(&fe_u, q_point); });
@@ -298,7 +300,7 @@ namespace Step104
             int degree_p,
             typename Number = double,
             typename VectorType =
-              LinearAlgebra::distributed::Vector<double, MemorySpace::Default>,
+              LinearAlgebra::distributed::Vector<Number, MemorySpace::Default>,
             int n_q_points_1d = degree_u + 1>
   class PortableMFVelocityOperator : public EnableObserverPointer
   {
@@ -326,7 +328,7 @@ namespace Step104
     }
 
     std::shared_ptr<DiagonalMatrix<
-      LinearAlgebra::distributed::Vector<double, MemorySpace::Default>>>
+      LinearAlgebra::distributed::Vector<Number, MemorySpace::Default>>>
     get_matrix_diagonal_inverse() const
     {
       return inverse_diagonal_entries;
@@ -368,10 +370,10 @@ namespace Step104
         this->inverse_diagonal_entries->get_vector();
       data->initialize_dof_vector(inverse_diagonal, velocity_dof_handler_index);
 
-      VelocityOperatorQuad<dim, degree_u> velocity_operator_quad;
+      VelocityOperatorQuad<dim, degree_u, Number> velocity_operator_quad;
 
       MatrixFreeTools::
-        compute_diagonal<dim, degree_u, degree_u + 1, dim, double>(
+        compute_diagonal<dim, degree_u, degree_u + 1, dim, Number>(
           *data.get(),
           inverse_diagonal,
           velocity_operator_quad,
@@ -379,7 +381,7 @@ namespace Step104
           EvaluationFlags::gradients,
           velocity_dof_handler_index);
 
-      double *raw_diagonal = inverse_diagonal.get_values();
+      Number *raw_diagonal = inverse_diagonal.get_values();
 
       Kokkos::parallel_for(
         "invert A diagonal",
@@ -455,7 +457,7 @@ namespace Step104
     const Portable::DeviceVector<Number>                   &src,
     Portable::DeviceVector<Number>                         &dst) const
   {
-    Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1> fe_p(
+    Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1, Number> fe_p(
       data, pressure_dof_handler_index);
 
     fe_p.read_dof_values(src);
@@ -477,12 +479,12 @@ namespace Step104
             int degree_p,
             typename Number = double,
             typename VectorType =
-              LinearAlgebra::distributed::Vector<double, MemorySpace::Default>,
+              LinearAlgebra::distributed::Vector<Number, MemorySpace::Default>,
             int n_q_points_1d = degree_u + 1>
   class PortableMFMassOperator : public EnableObserverPointer
   {
   public:
-    PortableMFMassOperator(const Portable::MatrixFree<dim, double> &data_in)
+    PortableMFMassOperator(const Portable::MatrixFree<dim, Number> &data_in)
       : data(data_in)
     {}
 
@@ -491,7 +493,7 @@ namespace Step104
       return data.get_vector_partitioner(pressure_dof_handler_index)->size();
     }
 
-    double el(const types::global_dof_index row,
+    Number el(const types::global_dof_index row,
               const types::global_dof_index col) const
     {
       (void)col;
@@ -537,7 +539,7 @@ namespace Step104
           EvaluationFlags::values,
           pressure_dof_handler_index);
 
-      double *raw_diagonal = inverse_diagonal.get_values();
+      Number *raw_diagonal = inverse_diagonal.get_values();
 
       Kokkos::parallel_for(
         "invert Mass diagonal",
@@ -587,9 +589,9 @@ namespace Step104
                const Portable::DeviceBlockVector<Number>              &src,
                Portable::DeviceBlockVector<Number> &dst) const
     {
-      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim> fe_u(
+      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim, Number> fe_u(
         data, velocity_dof_handler_index);
-      Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1> fe_p(
+      Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1, Number> fe_p(
         data, pressure_dof_handler_index);
 
       fe_u.read_dof_values(src.block(0));
@@ -624,12 +626,12 @@ namespace Step104
     int degree_p,
     typename Number = double,
     typename VectorType =
-      LinearAlgebra::distributed::BlockVector<double, MemorySpace::Default>,
+      LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Default>,
     int n_q_points_1d = degree_u + 1>
   class PortableMFStokesOperator
   {
   public:
-    PortableMFStokesOperator(const Portable::MatrixFree<dim, double> &data_in)
+    PortableMFStokesOperator(const Portable::MatrixFree<dim, Number> &data_in)
       : data(data_in)
     {}
 
@@ -673,9 +675,9 @@ namespace Step104
                const Portable::DeviceBlockVector<Number>              &src,
                Portable::DeviceBlockVector<Number> &dst) const
     {
-      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim> fe_u(
+      Portable::FEEvaluation<dim, degree_u, n_q_points_1d, dim, Number> fe_u(
         data, velocity_dof_handler_index);
-      Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1> fe_p(
+      Portable::FEEvaluation<dim, degree_p, n_q_points_1d, 1, Number> fe_p(
         data, pressure_dof_handler_index);
 
       fe_p.read_dof_values(src.block(1));
@@ -702,12 +704,12 @@ namespace Step104
     int degree_p,
     typename Number = double,
     typename VectorType =
-      LinearAlgebra::distributed::BlockVector<double, MemorySpace::Default>,
+      LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Default>,
     int n_q_points_1d = degree_u + 1>
   class PortableMFBTOperator
   {
   public:
-    PortableMFBTOperator(const Portable::MatrixFree<dim, double> &data_in)
+    PortableMFBTOperator(const Portable::MatrixFree<dim, Number> &data_in)
       : data(data_in)
     {}
 
@@ -857,8 +859,8 @@ namespace Step104
     DoFHandler<dim> dof_u;
     DoFHandler<dim> dof_p;
 
-    AffineConstraints<double> constraints_u;
-    AffineConstraints<double> constraints_p;
+    AffineConstraints<Number> constraints_u;
+    AffineConstraints<Number> constraints_p;
 
     std::shared_ptr<Portable::MatrixFree<dim, Number>> mf_data;
     BlockVectorType                                    solution;
@@ -889,10 +891,8 @@ namespace Step104
       DoFTools::extract_locally_relevant_dofs(dof_u);
     constraints_u.reinit(owned_set_u, relevant_set_u);
     DoFTools::make_hanging_node_constraints(dof_u, constraints_u);
-    VectorTools::interpolate_boundary_values(dof_u,
-                                             0,
-                                             Functions::ZeroFunction<dim>(dim),
-                                             constraints_u);
+    VectorTools::interpolate_boundary_values(
+      dof_u, 0, Functions::ZeroFunction<dim, Number>(dim), constraints_u);
     constraints_u.close();
 
     const IndexSet &owned_set_p = dof_p.locally_owned_dofs();
@@ -904,7 +904,7 @@ namespace Step104
     constraints_p.close();
 
     std::vector<const DoFHandler<dim> *> dof_handlers = {&dof_u, &dof_p};
-    std::vector<const AffineConstraints<double> *> constraints = {
+    std::vector<const AffineConstraints<Number> *> constraints = {
       &constraints_u, &constraints_p};
 
     mf_data = std::make_shared<Portable::MatrixFree<dim, Number>>();
@@ -915,15 +915,16 @@ namespace Step104
     mf_data->reinit(mapping, dof_handlers, constraints, quad, additional_data);
 
     {
-      // create the right hand side:
+      // create the right hand side on the host and move to device:
 
       LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host>
         rhs_host;
       mf_data->initialize_dof_vector(rhs_host);
 
-      VectorTools::create_right_hand_side(dof_u,
+      VectorTools::create_right_hand_side(mapping,
+                                          dof_u,
                                           QGauss<dim>(degree_u + 2),
-                                          VelocityRightHandSide<dim>(),
+                                          VelocityRightHandSide<dim, Number>(),
                                           rhs_host.block(0),
                                           constraints_u);
 
@@ -944,7 +945,7 @@ namespace Step104
   template <int dim, int degree_p, typename Number>
   void StokesProblem<dim, degree_p, Number>::solve()
   {
-    PortableMFStokesOperator<dim, degree_u, degree_p> stokes_operator(
+    PortableMFStokesOperator<dim, degree_u, degree_p, Number> stokes_operator(
       *mf_data.get());
 
     mf_data->initialize_dof_vector(solution);
@@ -965,7 +966,8 @@ namespace Step104
       solver_control,
       typename SolverGMRES<BlockVectorType>::AdditionalData(50, true));
 
-    using LevelMatrixType = PortableMFVelocityOperator<dim, degree_u, degree_p>;
+    using LevelMatrixType =
+      PortableMFVelocityOperator<dim, degree_u, degree_p, Number>;
     using SmootherPreconditionerType = DiagonalMatrix<VectorType>;
     using SmootherType               = PreconditionChebyshev<LevelMatrixType,
                                                VectorType,
@@ -1139,13 +1141,13 @@ namespace Step104
     APreconditionerType preconditioner_A(dof_u, mg, mg_transfer);
 
 
-    PortableMFMassOperator<dim, degree_u, degree_p> mass_operator(
+    PortableMFMassOperator<dim, degree_u, degree_p, Number> mass_operator(
       *mf_data.get());
     mass_operator.compute_diagonal();
 
     using SPreconditionerType = PreconditionChebyshev<
-      PortableMFMassOperator<dim, degree_u, degree_p>,
-      LinearAlgebra::distributed::Vector<double, MemorySpace::Default>>;
+      PortableMFMassOperator<dim, degree_u, degree_p, Number>,
+      VectorType>;
 
     SPreconditionerType preconditioner_schur;
     {
@@ -1160,7 +1162,8 @@ namespace Step104
       preconditioner_schur.initialize(mass_operator, additional_data);
     }
 
-    using BTOperatorType = PortableMFBTOperator<dim, degree_u, degree_p>;
+    using BTOperatorType =
+      PortableMFBTOperator<dim, degree_u, degree_p, Number>;
     BTOperatorType BT_operator(*mf_data.get());
 
     BlockSchurPreconditioner<APreconditionerType,
@@ -1215,13 +1218,13 @@ namespace Step104
 
     VectorTools::integrate_difference(dof_u,
                                       solution_host.block(0),
-                                      VelocitySolution<dim>(),
+                                      VelocitySolution<dim, Number>(),
                                       cellwise_errors_ul2,
                                       quadrature_formula,
                                       VectorTools::L2_norm);
     VectorTools::integrate_difference(dof_p,
                                       solution_host.block(1),
-                                      PressureSolution<dim>(),
+                                      PressureSolution<dim, Number>(),
                                       cellwise_errors_pl2,
                                       quadrature_formula,
                                       VectorTools::L2_norm);
