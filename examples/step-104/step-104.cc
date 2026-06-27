@@ -362,11 +362,10 @@ namespace Step104
     {
       Assert(data.get() != nullptr, ExcNotInitialized());
 
-      this->inverse_diagonal_entries.reset(
-        new DiagonalMatrix<
-          LinearAlgebra::distributed::Vector<double, MemorySpace::Default>>());
-      LinearAlgebra::distributed::Vector<double, MemorySpace::Default>
-        &inverse_diagonal = inverse_diagonal_entries->get_vector();
+      this->inverse_diagonal_entries =
+        std::make_shared<DiagonalMatrix<VectorType>>();
+      VectorType &inverse_diagonal =
+        this->inverse_diagonal_entries->get_vector();
       data->initialize_dof_vector(inverse_diagonal, velocity_dof_handler_index);
 
       VelocityOperatorQuad<dim, degree_u> velocity_operator_quad;
@@ -395,9 +394,7 @@ namespace Step104
 
   private:
     std::shared_ptr<Portable::MatrixFree<dim, Number>> data;
-    std::shared_ptr<DiagonalMatrix<
-      LinearAlgebra::distributed::Vector<double, MemorySpace::Default>>>
-      inverse_diagonal_entries;
+    std::shared_ptr<DiagonalMatrix<VectorType>>        inverse_diagonal_entries;
   };
 
 
@@ -515,8 +512,7 @@ namespace Step104
       data.copy_constrained_values(src, dst, pressure_dof_handler_index);
     }
 
-    std::shared_ptr<DiagonalMatrix<
-      LinearAlgebra::distributed::Vector<double, MemorySpace::Default>>>
+    std::shared_ptr<DiagonalMatrix<VectorType>>
     get_matrix_diagonal_inverse() const
     {
       return inverse_diagonal_entries;
@@ -524,11 +520,10 @@ namespace Step104
 
     void compute_diagonal()
     {
-      this->inverse_diagonal_entries.reset(
-        new DiagonalMatrix<
-          LinearAlgebra::distributed::Vector<double, MemorySpace::Default>>());
-      LinearAlgebra::distributed::Vector<double, MemorySpace::Default>
-        &inverse_diagonal = inverse_diagonal_entries->get_vector();
+      this->inverse_diagonal_entries =
+        std::make_shared<DiagonalMatrix<VectorType>>();
+      VectorType &inverse_diagonal =
+        this->inverse_diagonal_entries->get_vector();
 
       MassOperatorQuad<dim, degree_u, degree_p, Number, n_q_points_1d>
         quad_operation;
@@ -556,10 +551,8 @@ namespace Step104
     }
 
   private:
-    const Portable::MatrixFree<dim, Number> &data;
-    std::shared_ptr<DiagonalMatrix<
-      LinearAlgebra::distributed::Vector<double, MemorySpace::Default>>>
-      inverse_diagonal_entries;
+    const Portable::MatrixFree<dim, Number>    &data;
+    std::shared_ptr<DiagonalMatrix<VectorType>> inverse_diagonal_entries;
   };
 
 
@@ -1170,9 +1163,6 @@ namespace Step104
     using BTOperatorType = PortableMFBTOperator<dim, degree_u, degree_p>;
     BTOperatorType BT_operator(*mf_data.get());
 
-
-    using BlockVectorType =
-      LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Default>;
     BlockSchurPreconditioner<APreconditionerType,
                              SPreconditionerType,
                              BTOperatorType,
