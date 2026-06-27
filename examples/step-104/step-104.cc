@@ -827,7 +827,10 @@ namespace Step104
   //
   // The remaining part of this tutorial is the StokesProblem class
   // that puts everything together.
-  template <int dim, int degree_p, typename Number = double>
+  template <int dim,
+            int degree_p,
+            typename Number               = double,
+            typename NumberPreconditioner = Number>
   class StokesProblem
   {
   public:
@@ -869,8 +872,11 @@ namespace Step104
   };
 
 
-  template <int dim, int degree_p, typename Number>
-  StokesProblem<dim, degree_p, Number>::StokesProblem()
+  template <int dim,
+            int degree_p,
+            typename Number,
+            typename NumberPreconditioner>
+  StokesProblem<dim, degree_p, Number, NumberPreconditioner>::StokesProblem()
     : tria(MPI_COMM_WORLD)
     , mapping(1)
     , fe_u(FE_Q<dim>(degree_p + 1), dim)
@@ -880,8 +886,11 @@ namespace Step104
     , pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {}
 
-  template <int dim, int degree_p, typename Number>
-  void StokesProblem<dim, degree_p, Number>::setup_dofs()
+  template <int dim,
+            int degree_p,
+            typename Number,
+            typename NumberPreconditioner>
+  void StokesProblem<dim, degree_p, Number, NumberPreconditioner>::setup_dofs()
   {
     dof_u.distribute_dofs(fe_u);
     dof_p.distribute_dofs(fe_p);
@@ -935,6 +944,34 @@ namespace Step104
   }
 
 
+  template <typename VectorType,
+            typename GMGVectorType,
+            typename PreconditionerType>
+  class WrappedConvertFP
+  {
+  public:
+    explicit WrappedConvertFP(PreconditionerType &preconditioner)
+      : preconditioner(preconditioner)
+    {}
+
+    void vmult(VectorType &dst, const VectorType &src) const
+    {
+      if (temp_src.size() != src.size())
+        temp_src.reinit(src.get_partitioner());
+      if (temp_dst.size() != dst.size())
+        temp_dst.reinit(dst.get_partitioner());
+
+      temp_src.copy_locally_owned_data_from(src);
+
+      preconditioner.vmult(temp_dst, temp_src);
+
+      dst.copy_locally_owned_data_from(temp_dst);
+    }
+
+    mutable GMGVectorType temp_dst, temp_src;
+    PreconditionerType   &preconditioner;
+  };
+
   // In the solve() function we set up the preconditioner and run the GMRES
   // solver. For this, we construct the multigrid
   // hierarchy for the GMG v-cycle with a Chebyshev iteration around the
@@ -942,9 +979,16 @@ namespace Step104
   // approximate the action of $A^{-1}$.
   // We approximate the Schur Complement with a Chebyshev iteration
   // applied to the pressure mass matrix (without multigrid).
-  template <int dim, int degree_p, typename Number>
-  void StokesProblem<dim, degree_p, Number>::solve()
+  template <int dim,
+            int degree_p,
+            typename Number,
+            typename NumberPreconditioner>
+  void StokesProblem<dim, degree_p, Number, NumberPreconditioner>::solve()
   {
+    using GMGVectorType =
+      LinearAlgebra::distributed::Vector<NumberPreconditioner,
+                                         MemorySpace::Default>;
+
     PortableMFStokesOperator<dim, degree_u, degree_p, Number> stokes_operator(
       *mf_data.get());
 
@@ -967,13 +1011,13 @@ namespace Step104
       typename SolverGMRES<BlockVectorType>::AdditionalData(50, true));
 
     using LevelMatrixType =
-      PortableMFVelocityOperator<dim, degree_u, degree_p, Number>;
-    using SmootherPreconditionerType = DiagonalMatrix<VectorType>;
+      PortableMFVelocityOperator<dim, degree_u, degree_p, NumberPreconditioner>;
+    using SmootherPreconditionerType = DiagonalMatrix<GMGVectorType>;
     using SmootherType               = PreconditionChebyshev<LevelMatrixType,
-                                               VectorType,
+                                               GMGVectorType,
                                                SmootherPreconditionerType>;
     using MGTransferType =
-      MGTransferMatrixFree<dim, Number, MemorySpace::Default>;
+      MGTransferMatrixFree<dim, NumberPreconditioner, MemorySpace::Default>;
 
     const auto coarse_grid_triangulations =
       MGTransferGlobalCoarseningTools::create_geometric_coarsening_sequence(
@@ -985,14 +1029,15 @@ namespace Step104
     const unsigned int min_level = std::min(3U, max_level - 1);
 
     MGLevelObject<DoFHandler<dim>> mg_dof_handlers(min_level, max_level);
-    MGLevelObject<AffineConstraints<Number>> mg_constraints(min_level,
-                                                            max_level);
-    MGLevelObject<LevelMatrixType>           mg_matrices(min_level, max_level);
-
-    MGLevelObject<MGTwoLevelTransferCopyToHost<dim, VectorType>> mg_transfers(
+    MGLevelObject<AffineConstraints<NumberPreconditioner>> mg_constraints(
       min_level, max_level);
+    MGLevelObject<LevelMatrixType> mg_matrices(min_level, max_level);
 
-    std::vector<std::shared_ptr<Portable::MatrixFree<dim, Number>>>
+    MGLevelObject<MGTwoLevelTransferCopyToHost<dim, GMGVectorType>>
+      mg_transfers(min_level, max_level);
+
+    std::vector<
+      std::shared_ptr<Portable::MatrixFree<dim, NumberPreconditioner>>>
       mf_data_levels;
 
     // level operators
@@ -1010,30 +1055,31 @@ namespace Step104
         DoFTools::make_zero_boundary_constraints(dof_handler, constraint);
         constraint.close();
 
-        typename Portable::MatrixFree<dim, Number>::AdditionalData
+        typename Portable::MatrixFree<dim, NumberPreconditioner>::AdditionalData
           additional_data;
         additional_data.mapping_update_flags =
           update_JxW_values | update_gradients;
 
-        if (level == max_level)
-          // On the finest level we can reuse the MatrixFree object from the
-          // Stokes operator. This way we can solve significantly larger
-          // problems before we run out of device memory.
-          mf_data_levels.emplace_back(mf_data);
-        else
-          {
-            const QGauss<1> quad(degree_p + 2);
-            mf_data_levels.emplace_back(
-              std::make_shared<Portable::MatrixFree<dim, Number>>());
+        /* if (level == max_level)
+           // On the finest level we can reuse the MatrixFree object from the
+           // Stokes operator. This way we can solve significantly larger
+           // problems before we run out of device memory.
+           mf_data_levels.emplace_back(mf_data);
+         else*/
+        {
+          const QGauss<1> quad(degree_p + 2);
+          mf_data_levels.emplace_back(
+            std::make_shared<
+              Portable::MatrixFree<dim, NumberPreconditioner>>());
 
-            mf_data_levels.back()->reinit(
-              mapping, dof_handler, constraint, quad, additional_data);
-          }
+          mf_data_levels.back()->reinit(
+            mapping, dof_handler, constraint, quad, additional_data);
+        }
 
         mg_matrices[level].reinit(mf_data_levels.back());
       }
 
-    mg::Matrix<VectorType> mg_matrix(mg_matrices);
+    mg::Matrix<GMGVectorType> mg_matrix(mg_matrices);
 
     // transfer operator
     for (unsigned int level = min_level; level < max_level; ++level)
@@ -1074,20 +1120,20 @@ namespace Step104
           }
         else
           {
-            smoother_data[level].smoothing_range     = 20;
-            smoother_data[level].degree              = 6;
+            smoother_data[level].smoothing_range     = 5; // 20;
+            smoother_data[level].degree              = 3;
             smoother_data[level].eig_cg_n_iterations = 20;
           }
       }
 
-    MGSmootherPrecondition<LevelMatrixType, SmootherType, VectorType>
+    MGSmootherPrecondition<LevelMatrixType, SmootherType, GMGVectorType>
       mg_smoother;
     mg_smoother.initialize(mg_matrices, smoother_data);
 
     pcout << "GMG velocity block smoothers:" << std::endl;
     for (unsigned int level = min_level; level <= max_level; ++level)
       {
-        VectorType vec;
+        GMGVectorType vec;
         mg_matrices[level].initialize_dof_vector(vec);
         auto eigenvalue_info =
           mg_smoother.smoothers[level].estimate_eigenvalues(vec);
@@ -1098,17 +1144,17 @@ namespace Step104
       }
 
     // coarse-grid solver
-    MGCoarseGridApplySmoother<VectorType> mg_coarse;
+    MGCoarseGridApplySmoother<GMGVectorType> mg_coarse;
     mg_coarse.initialize(mg_smoother);
 
     // put everything together
-    Multigrid<VectorType> mg(mg_matrix,
-                             mg_coarse,
-                             mg_transfer,
-                             mg_smoother,
-                             mg_smoother,
-                             min_level,
-                             max_level);
+    Multigrid<GMGVectorType> mg(mg_matrix,
+                                mg_coarse,
+                                mg_transfer,
+                                mg_smoother,
+                                mg_smoother,
+                                min_level,
+                                max_level);
 
 
     dealii::Timer timer_smoother;
@@ -1137,9 +1183,13 @@ namespace Step104
       mg.connect_coarse_solve(make_timer_lambda(timer_coarse));
     }
 
-    using APreconditionerType = PreconditionMG<dim, VectorType, MGTransferType>;
-    APreconditionerType preconditioner_A(dof_u, mg, mg_transfer);
-
+    using APreconditionerType =
+      WrappedConvertFP<VectorType,
+                       GMGVectorType,
+                       PreconditionMG<dim, GMGVectorType, MGTransferType>>;
+    PreconditionMG<dim, GMGVectorType, MGTransferType> inner_preconditioner(
+      dof_u, mg, mg_transfer);
+    APreconditionerType preconditioner_A(inner_preconditioner);
 
     PortableMFMassOperator<dim, degree_u, degree_p, Number> mass_operator(
       *mf_data.get());
@@ -1192,8 +1242,11 @@ namespace Step104
   // The postprocess() function moves the solution to host memory
   // and integrates the difference to the manufactured solution to
   // compute errors.
-  template <int dim, int degree_p, typename Number>
-  void StokesProblem<dim, degree_p, Number>::postprocess()
+  template <int dim,
+            int degree_p,
+            typename Number,
+            typename NumberPreconditioner>
+  void StokesProblem<dim, degree_p, Number, NumberPreconditioner>::postprocess()
   {
     LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host>
       solution_host;
@@ -1244,8 +1297,11 @@ namespace Step104
 
   // The run() function prints some statistics and then performs a familiar
   // refinement loop.
-  template <int dim, int degree_p, typename Number>
-  void StokesProblem<dim, degree_p, Number>::run()
+  template <int dim,
+            int degree_p,
+            typename Number,
+            typename NumberPreconditioner>
+  void StokesProblem<dim, degree_p, Number, NumberPreconditioner>::run()
   {
     pcout << std::setprecision(10);
     pcout << "Running on " << Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)
@@ -1298,8 +1354,9 @@ int main(int argc, char **argv)
   using namespace Step104;
   Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv);
 
-  const unsigned int                   dim      = 3;
-  const unsigned int                   degree_p = 1;
-  StokesProblem<dim, degree_p, double> problem;
+  const unsigned int dim      = 3;
+  const unsigned int degree_p = 1;
+  using NumberPreconditioner  = float;
+  StokesProblem<dim, degree_p, double, NumberPreconditioner> problem;
   problem.run();
 }
