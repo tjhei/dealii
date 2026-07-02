@@ -142,6 +142,9 @@ namespace Portable
              const ViewTypeIn                                   in,
              ViewTypeOut                                        out)
     {
+      using TeamType = Kokkos::TeamPolicy<
+        MemorySpace::Default::kokkos_space::execution_space>::member_type;
+
       // Sizes of the input and output vectors:
       // -----------------------------------------------------------
       //   direction  |  contract_over_rows  |  !contract_over_rows
@@ -167,38 +170,29 @@ namespace Portable
       Assert(in.size() >= Nj * Nk, ExcInternalError());
       Assert(out.size() >= Nj * Nq, ExcInternalError());
 
-      const int stride_in = Utilities::pow(n_columns, direction);
+      auto thread_policy =
+        Kokkos::TeamThreadMDRange<Kokkos::Rank<2>, TeamType>(team_member,
+                                                             Nj,
+                                                             Nq);
+      Kokkos::parallel_for(thread_policy, [&](const int j, const int q) {
+        const int base_shape   = contract_over_rows ? q : q * n_columns;
+        const int stride_shape = contract_over_rows ? n_columns : 1;
 
-      Kokkos::parallel_for(Kokkos::TeamThreadRange(team_member, Nj),
-                           [&](const int j) {
-                             const int base_in = (direction == 0 ? j * Nk : j);
+        const int base_in   = (direction == 0 ? j * Nk : j);
+        const int stride_in = Utilities::pow(n_columns, direction);
 
-                             Number x[Nk];
-                             for (int k = 0; k < Nk; ++k)
-                               x[k] = in(base_in + k * stride_in);
+        Number sum = shape_data(base_shape) * in(base_in);
+        for (int k = 1; k < Nk; ++k)
+          sum += shape_data(base_shape + k * stride_shape) *
+                 in(base_in + k * stride_in);
 
-                             for (int q = 0; q < Nq; ++q)
-                               {
-                                 const int base_shape =
-                                   contract_over_rows ? q : q * n_columns;
-                                 const int stride_shape =
-                                   contract_over_rows ? n_columns : 1;
+        const int index_out = (direction == 0 ? j * Nq + q : j + q * Nj);
 
-                                 Number sum = shape_data(base_shape) * x[0];
-                                 for (int k = 1; k < Nk; ++k)
-                                   sum += shape_data(base_shape +
-                                                     k * stride_shape) *
-                                          x[k];
-
-                                 const int index_out =
-                                   (direction == 0 ? j * Nq + q : j + q * Nj);
-
-                                 if constexpr (add)
-                                   Kokkos::atomic_add(&out(index_out), sum);
-                                 else
-                                   out(index_out) = sum;
-                               }
-                           });
+        if constexpr (add)
+          Kokkos::atomic_add(&out(index_out), sum);
+        else
+          out(index_out) = sum;
+      });
 
       team_member.team_barrier();
     }
@@ -225,6 +219,9 @@ namespace Portable
              const ViewTypeIn                                   in,
              ViewTypeOut                                        out)
     {
+      using TeamType = Kokkos::TeamPolicy<
+        MemorySpace::Default::kokkos_space::execution_space>::member_type;
+
       // Sizes of the input and output vectors:
       // ------------------------------------------------------------------
       //   direction  |    contract_over_rows    |   !contract_over_rows
@@ -255,48 +252,33 @@ namespace Portable
       Assert(in.size() >= Ni * Nj * Nk, ExcInternalError());
       Assert(out.size() >= Ni * Nj * Nq, ExcInternalError());
 
-      const int stride_in = Utilities::pow(n_columns, direction);
+      auto thread_policy = Kokkos::TeamThreadMDRange<Kokkos::Rank<3>, TeamType>(
+        team_member, Ni, Nj, Nq);
+      Kokkos::parallel_for(
+        thread_policy, [&](const int i, const int j, const int q) {
+          const int base_shape   = contract_over_rows ? q : q * n_columns;
+          const int stride_shape = contract_over_rows ? n_columns : 1;
 
-      Kokkos::parallel_for(Kokkos::TeamThreadRange(team_member, Ni * Nj),
-                           [&](const int block) {
-                             const int i = block / Nj;
-                             const int j = block % Nj;
+          const int base_in =
+            (direction == 0 ? (i * Nj + j) * Nk :
+                              (direction == 1 ? i + j * Ni * Nk : i * Nj + j));
+          const int stride_in = Utilities::pow(n_columns, direction);
 
-                             const int base_in =
-                               (direction == 0 ?
-                                  (i * Nj + j) * Nk :
-                                  (direction == 1 ? i + j * Ni * Nk :
-                                                    i * Nj + j));
+          Number sum = shape_data(base_shape) * in(base_in);
+          for (int k = 1; k < Nk; ++k)
+            sum += shape_data(base_shape + k * stride_shape) *
+                   in(base_in + k * stride_in);
 
-                             Number x[Nk];
-                             for (int k = 0; k < Nk; ++k)
-                               x[k] = in(base_in + k * stride_in);
+          const int index_out =
+            (direction == 0 ? (i * Nj + j) * Nq + q :
+                              (direction == 1 ? i + (j * Nq + q) * Ni :
+                                                (i + q * Ni) * Nj + j));
 
-                             for (int q = 0; q < Nq; ++q)
-                               {
-                                 const int base_shape =
-                                   contract_over_rows ? q : q * n_columns;
-                                 const int stride_shape =
-                                   contract_over_rows ? n_columns : 1;
-
-                                 Number sum = shape_data(base_shape) * x[0];
-                                 for (int k = 1; k < Nk; ++k)
-                                   sum += shape_data(base_shape +
-                                                     k * stride_shape) *
-                                          x[k];
-
-                                 const int index_out =
-                                   (direction == 0 ?
-                                      (i * Nj + j) * Nq + q :
-                                      (direction == 1 ? i + (j * Nq + q) * Ni :
-                                                        (i + q * Ni) * Nj + j));
-
-                                 if constexpr (add)
-                                   Kokkos::atomic_add(&out(index_out), sum);
-                                 else
-                                   out(index_out) = sum;
-                               }
-                           });
+          if constexpr (add)
+            Kokkos::atomic_add(&out(index_out), sum);
+          else
+            out(index_out) = sum;
+        });
 
       team_member.team_barrier();
     }
@@ -324,8 +306,8 @@ namespace Portable
     {
       // We have two implementations for this apply() function. The first
       // requires Kokkos version 4.0 or later and dispatches to apply_1d(),
-      // apply_2d(), and apply_3d(). The second option (below) is a generic
-      // implementation that follows the same block structure as the CPU
+      // apply_2d(), and apply_3d() (currently disabled, see #if 0 below).
+      // The active implementation follows the same block structure as the CPU
       // EvaluatorTensorProduct::apply() function: parallelize over the
       // (I, J) index blocks and contract over the k index with inputs staged
       // in registers, then loop serially over the q index. This reduces
