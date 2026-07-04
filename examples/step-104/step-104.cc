@@ -685,11 +685,8 @@ namespace Step104
       fe_p.evaluate(EvaluationFlags::values);
 
       data->for_each_quad_point([&](const int &q_point) {
-        const Number           pressure_value = fe_p.get_value(q_point);
-        Tensor<2, dim, Number> velocity_term;
-        for (unsigned int d = 0; d < dim; ++d)
-          velocity_term[d][d] = -pressure_value;
-        fe_u.submit_gradient(velocity_term, q_point);
+        const Number pressure_value = fe_p.get_value(q_point);
+        fe_u.submit_divergence(-pressure_value, q_point);
       });
 
       fe_u.integrate(EvaluationFlags::gradients);
