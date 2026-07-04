@@ -60,7 +60,7 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   including step-22 (discretization, Schur complement solver),
   step-32 and step-56 (using the same block preconditioner), and also
   step-55 (simpler block preconditioner, combined with AMG).
-  Instead of repeating us here, we refer to the derivation in these tutorials and only highlight
+  Instead of repeating this here, we refer to the derivation in these tutorials and only highlight
   the differences.
 
   <h3>Weak Form</h3>
@@ -84,7 +84,7 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   and use the same block preconditioner as in step-32 and step-56.
   We are left with the choice for the approximation of the inverse of the velocity
   or $A$ block, the inverse of the Schur complement $S$,  the implementation of the $B^T$
-  operator, and the Stokes operator. All of which we perform matrix-free.
+  operator, and the Stokes operator, all of which we perform matrix-free.
 
   Here, we choose to approximate the inverse of the velocity block by a single v-cycle
   using the matrix-free, global coarsening, geometric multigrid method. See @cite munch2022gc
@@ -92,7 +92,7 @@ We acknowledge support from the NVIDIA Academic Grant Program award "Sustainable
   we use a Chebyshev iteration around the point-Jacobi scheme, i.e., the inverse of the
   diagonal of $A$. This is discussed in step-37.
 
-  The inverse of the Schur complement $S$ is approximated by a a Chebyshev iteration
+  The inverse of the Schur complement $S$ is approximated by a Chebyshev iteration
   applied to the pressure mass matrix (without using multigrid). We do not need to
   use a multigrid method because the mass matrix is much easier to solve, and because
   using multigrid on a significantly smaller problem would cause additional computational
