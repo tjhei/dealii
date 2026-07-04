@@ -95,7 +95,7 @@ with up to 8 H100 GPUs:
 Notice that we can solve larger problems with 4 or more GPUs compared to a single GPU. On
 the one hand, we also have some reduction in time to solution, at least for the larger problem sizes.
 On the other hand, notice that time to solution does not scale linearly. This is likely
-due to additional communication overhead and something we will investigate and improve
+due to additional communication overhead, which we will investigate and improve
 in the future.
 
 <h3> Possibilities for extensions </h3>

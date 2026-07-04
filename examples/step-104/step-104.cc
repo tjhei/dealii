@@ -1073,7 +1073,7 @@ namespace Step104
             // target tolerance and must be strictly less than one; the number
             // of iterations is then chosen automatically by setting
             // @p degree to numbers::invalid_unsigned_int. We also use more
-            // CG iterations for the eigenvalue estimate because, when
+            // CG iterations for the eigenvalue estimate because when
             // @p min_level > 0, the coarse problem can still be reasonably
             // large and badly conditioned.
             smoother_data[level].smoothing_range = 1e-3;
