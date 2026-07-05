@@ -1090,8 +1090,8 @@ namespace Step104
             // degree is chosen to minimize total runtime (a larger value
             // increases the cost but improves the outer number of GMRES
             // iterations).
-            smoother_data[level].smoothing_range     = 20;
-            smoother_data[level].degree              = 6;
+            smoother_data[level].smoothing_range     = 5;
+            smoother_data[level].degree              = 3;
             smoother_data[level].eig_cg_n_iterations = 20;
           }
       }
