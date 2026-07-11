@@ -46,6 +46,9 @@
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/vector_tools_integrate_difference.h>
 
+unsigned int team_size = dealii::numbers::invalid_unsigned_int;
+
+
 namespace Step104
 {
   using namespace dealii;
@@ -920,6 +923,8 @@ namespace Step104
     const QGauss<1> quad(degree_p + 2);
     typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
     additional_data.mapping_update_flags = update_values | update_gradients;
+    additional_data.team_size            = team_size;
+
     mf_data->reinit(mapping, dof_handlers, constraints, quad, additional_data);
 
     {
@@ -960,11 +965,12 @@ namespace Step104
 
     {
       dealii::Timer t(tria.get_mpi_communicator());
-      stokes_operator.vmult(solution, rhs);
-      const double time          = t.wall_time();
+      for (int j = 0; j < 30; ++j)
+        stokes_operator.vmult(solution, rhs);
+      const double time          = t.wall_time() / 30.0;
       const double dofs_p_second = static_cast<double>(solution.size()) / time;
-      pcout << "Stokes operator: " << time << " s, DoFs/s: " << dofs_p_second
-            << std::endl;
+      pcout << "Stokes operator: " << time
+            << " s, MDoFs/s: " << dofs_p_second / 1e6 << std::endl;
       solution = 0.0;
     }
 
@@ -1023,6 +1029,7 @@ namespace Step104
           additional_data;
         additional_data.mapping_update_flags =
           update_JxW_values | update_gradients;
+	additional_data.team_size            = team_size;
 
         if (level == max_level)
           // On the finest level we can reuse the MatrixFree object from the
