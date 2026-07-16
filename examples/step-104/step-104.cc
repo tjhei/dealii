@@ -11,7 +11,7 @@
  * -----------------------------------------------------------------------------
  */
 
-
+unsigned int team_size = -1;
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/timer.h>
@@ -920,6 +920,8 @@ namespace Step104
     const QGauss<1> quad(degree_p + 2);
     typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
     additional_data.mapping_update_flags = update_values | update_gradients;
+    additional_data.team_size            = team_size;
+
     mf_data->reinit(mapping, dof_handlers, constraints, quad, additional_data);
 
     {
@@ -1023,6 +1025,7 @@ namespace Step104
           additional_data;
         additional_data.mapping_update_flags =
           update_JxW_values | update_gradients;
+        additional_data.team_size = team_size;
 
         if (level == max_level)
           // On the finest level we can reuse the MatrixFree object from the
@@ -1318,8 +1321,50 @@ int main(int argc, char **argv)
   using namespace Step104;
   Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv);
 
-  const unsigned int                   dim      = 3;
-  const unsigned int                   degree_p = 1;
-  StokesProblem<dim, degree_p, double> problem;
-  problem.run();
+  unsigned int degree_p = 1;
+  if (argc == 3)
+    {
+      degree_p  = atoi(argv[1]);
+      team_size = atoi(argv[2]);
+    }
+
+
+  const unsigned int dim = 3;
+
+  switch (degree_p)
+    {
+      case 1:
+        {
+          StokesProblem<dim, 1, double> problem;
+          problem.run();
+          break;
+        }
+      case 2:
+        {
+          StokesProblem<dim, 2, double> problem;
+          problem.run();
+          break;
+        }
+      case 3:
+        {
+          StokesProblem<dim, 3, double> problem;
+          problem.run();
+          break;
+        }
+      case 4:
+        {
+          StokesProblem<dim, 4, double> problem;
+          problem.run();
+          break;
+        }
+      case 5:
+        {
+          StokesProblem<dim, 5, double> problem;
+          problem.run();
+          break;
+        }
+      default:
+        std::cerr << "Invalid degree_p: " << degree_p << std::endl;
+        return 1;
+    }
 }
