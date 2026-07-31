@@ -11,7 +11,7 @@
  * -----------------------------------------------------------------------------
  */
 
-
+// #define STEP104_USE_PORTABLE_MATRIX_FREE
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/timer.h>
@@ -32,8 +32,13 @@
 #include <deal.II/lac/solver_gmres.h>
 
 #include <deal.II/matrix_free/operators.h>
-#include <deal.II/matrix_free/portable_fe_evaluation.h>
-#include <deal.II/matrix_free/portable_matrix_free.h>
+#include <deal.II/matrix_free/fe_evaluation.h>
+#include <deal.II/matrix_free/matrix_free.h>
+
+#ifdef STEP104_USE_PORTABLE_MATRIX_FREE
+#  include <deal.II/matrix_free/portable_fe_evaluation.h>
+#  include <deal.II/matrix_free/portable_matrix_free.h>
+#endif
 
 #include <deal.II/multigrid/mg_coarse.h>
 #include <deal.II/multigrid/mg_matrix.h>
@@ -41,7 +46,9 @@
 #include <deal.II/multigrid/mg_transfer_global_coarsening.h>
 #include <deal.II/multigrid/mg_transfer_matrix_free.h>
 #include <deal.II/multigrid/multigrid.h>
-#include <deal.II/multigrid/portable_mg_transfer_global_coarsening.h>
+#ifdef STEP104_USE_PORTABLE_MATRIX_FREE
+#  include <deal.II/multigrid/portable_mg_transfer_global_coarsening.h>
+#endif
 
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/vector_tools_integrate_difference.h>
@@ -50,8 +57,48 @@ namespace Step104
 {
   using namespace dealii;
 
+  // Define STEP104_USE_PORTABLE_MATRIX_FREE to use the Kokkos-based
+  // Portable::MatrixFree implementation. The default is MatrixFree, which
+  // runs on CPUs only.
+  // #define STEP104_USE_PORTABLE_MATRIX_FREE
+#ifdef STEP104_USE_PORTABLE_MATRIX_FREE
+  template <int dim, typename Number>
+  using MatrixFreeData = Portable::MatrixFree<dim, Number>;
+
+  template <typename Number>
+  using VectorType =
+    LinearAlgebra::distributed::Vector<Number, MemorySpace::Default>;
+
+  template <typename Number>
+  using BlockVectorType =
+    LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Default>;
+
+  template <int dim, typename Number>
+  using MGTransferType =
+    MGTransferMatrixFree<dim, Number, MemorySpace::Default>;
+
+  template <int dim, typename Number>
+  using MGTwoLevelTransferType =
+    Portable::MGTwoLevelTransfer<dim, VectorType<Number>>;
+#else
+  template <int dim, typename Number>
+  using MatrixFreeData = MatrixFree<dim, Number>;
+
+  template <typename Number>
+  using VectorType = LinearAlgebra::distributed::Vector<Number>;
+
+  template <typename Number>
+  using BlockVectorType = LinearAlgebra::distributed::BlockVector<Number>;
+
+  template <int dim, typename Number>
+  using MGTransferType = MGTransferMatrixFree<dim, Number>;
+
+  template <int dim, typename Number>
+  using MGTwoLevelTransferType = MGTwoLevelTransfer<dim, VectorType<Number>>;
+#endif
+
   // The index of the velocity and pressure DoFHandler into the vector
-  // of DoFHandlers inside Portable::MatrixFree and the blocks of
+  // of DoFHandlers inside MatrixFree and the blocks of
   // the solution vector.
   constexpr unsigned int velocity_dof_handler_index = 0;
   constexpr unsigned int pressure_dof_handler_index = 1;
@@ -241,6 +288,7 @@ namespace Step104
   // quadrature point with the small helper class VelocityOperatorQuad
   // with operator().
 
+#ifdef STEP104_USE_PORTABLE_MATRIX_FREE
   template <int dim, int fe_degree, typename Number>
   class VelocityOperatorQuad
   {
@@ -735,6 +783,264 @@ namespace Step104
     std::shared_ptr<Portable::MatrixFree<dim, Number>> data;
   };
 
+#else
+  // The CPU implementation follows the same weak forms as the portable
+  // implementation above, using MatrixFree and FEEvaluation directly.
+  template <int dim, int degree_u, int degree_p, typename Number>
+  class PortableMFVelocityOperator
+    : public MatrixFreeOperators::Base<dim, VectorType<Number>>
+  {
+  public:
+    using Base = MatrixFreeOperators::Base<dim, VectorType<Number>>;
+
+    PortableMFVelocityOperator() = default;
+
+    PortableMFVelocityOperator(
+      std::shared_ptr<MatrixFreeData<dim, Number>> data)
+    {
+      reinit(data);
+    }
+
+    void reinit(std::shared_ptr<MatrixFreeData<dim, Number>> data)
+    {
+      Base::initialize(data,
+                       std::vector<unsigned int>{velocity_dof_handler_index},
+                       std::vector<unsigned int>{velocity_dof_handler_index});
+    }
+
+    void compute_diagonal() override
+    {
+      this->inverse_diagonal_entries =
+        std::make_shared<DiagonalMatrix<VectorType<Number>>>();
+      auto &diagonal = this->inverse_diagonal_entries->get_vector();
+      this->initialize_dof_vector(diagonal);
+      MatrixFreeTools::compute_diagonal(
+        *this->data,
+        diagonal,
+        &PortableMFVelocityOperator::local_compute_diagonal,
+        this,
+        velocity_dof_handler_index,
+        0,
+        0,
+        0);
+      this->set_constrained_entries_to_one(diagonal);
+      for (unsigned int i = 0; i < diagonal.locally_owned_size(); ++i)
+        {
+          Assert(diagonal.local_element(i) > 0., ExcInternalError());
+          diagonal.local_element(i) = 1. / diagonal.local_element(i);
+        }
+    }
+
+  private:
+    void local_compute_diagonal(
+      FEEvaluation<dim, degree_u, degree_u + 1, dim, Number> &fe_u) const
+    {
+      fe_u.evaluate(EvaluationFlags::gradients);
+      for (const unsigned int q : fe_u.quadrature_point_indices())
+        fe_u.submit_gradient(fe_u.get_gradient(q), q);
+      fe_u.integrate(EvaluationFlags::gradients);
+    }
+
+    void local_apply(const MatrixFree<dim, Number>               &data,
+                     VectorType<Number>                          &dst,
+                     const VectorType<Number>                    &src,
+                     const std::pair<unsigned int, unsigned int> &range) const
+    {
+      FEEvaluation<dim, degree_u, degree_u + 1, dim, Number> fe_u(
+        data, velocity_dof_handler_index);
+      for (unsigned int cell = range.first; cell < range.second; ++cell)
+        {
+          fe_u.reinit(cell);
+          fe_u.read_dof_values(src);
+          fe_u.evaluate(EvaluationFlags::gradients);
+          for (const unsigned int q : fe_u.quadrature_point_indices())
+            fe_u.submit_gradient(fe_u.get_gradient(q), q);
+          fe_u.integrate(EvaluationFlags::gradients);
+          fe_u.distribute_local_to_global(dst);
+        }
+    }
+
+    void apply_add(VectorType<Number>       &dst,
+                   const VectorType<Number> &src) const override
+    {
+      this->data->cell_loop(&PortableMFVelocityOperator::local_apply,
+                            this,
+                            dst,
+                            src);
+    }
+  };
+
+  template <int dim, int degree_u, int degree_p, typename Number>
+  class PortableMFMassOperator
+    : public MatrixFreeOperators::Base<dim, VectorType<Number>>
+  {
+  public:
+    using Base = MatrixFreeOperators::Base<dim, VectorType<Number>>;
+
+    PortableMFMassOperator(std::shared_ptr<MatrixFreeData<dim, Number>> data)
+    {
+      Base::initialize(data,
+                       std::vector<unsigned int>{pressure_dof_handler_index},
+                       std::vector<unsigned int>{pressure_dof_handler_index});
+    }
+
+    void compute_diagonal() override
+    {
+      this->inverse_diagonal_entries =
+        std::make_shared<DiagonalMatrix<VectorType<Number>>>();
+      auto &diagonal = this->inverse_diagonal_entries->get_vector();
+      this->initialize_dof_vector(diagonal);
+      MatrixFreeTools::compute_diagonal(
+        *this->data,
+        diagonal,
+        &PortableMFMassOperator::local_compute_diagonal,
+        this,
+        pressure_dof_handler_index,
+        0,
+        0,
+        0);
+      this->set_constrained_entries_to_one(diagonal);
+      for (unsigned int i = 0; i < diagonal.locally_owned_size(); ++i)
+        {
+          Assert(diagonal.local_element(i) > 0., ExcInternalError());
+          diagonal.local_element(i) = 1. / diagonal.local_element(i);
+        }
+    }
+
+  private:
+    void local_compute_diagonal(
+      FEEvaluation<dim, degree_p, degree_u + 1, 1, Number> &fe_p) const
+    {
+      fe_p.evaluate(EvaluationFlags::values);
+      for (const unsigned int q : fe_p.quadrature_point_indices())
+        fe_p.submit_value(fe_p.get_value(q), q);
+      fe_p.integrate(EvaluationFlags::values);
+    }
+
+    void local_apply(const MatrixFree<dim, Number>               &data,
+                     VectorType<Number>                          &dst,
+                     const VectorType<Number>                    &src,
+                     const std::pair<unsigned int, unsigned int> &range) const
+    {
+      FEEvaluation<dim, degree_p, degree_u + 1, 1, Number> fe_p(
+        data, pressure_dof_handler_index);
+      for (unsigned int cell = range.first; cell < range.second; ++cell)
+        {
+          fe_p.reinit(cell);
+          fe_p.read_dof_values(src);
+          fe_p.evaluate(EvaluationFlags::values);
+          for (const unsigned int q : fe_p.quadrature_point_indices())
+            fe_p.submit_value(fe_p.get_value(q), q);
+          fe_p.integrate(EvaluationFlags::values);
+          fe_p.distribute_local_to_global(dst);
+        }
+    }
+
+    void apply_add(VectorType<Number>       &dst,
+                   const VectorType<Number> &src) const override
+    {
+      this->data->cell_loop(&PortableMFMassOperator::local_apply,
+                            this,
+                            dst,
+                            src);
+    }
+  };
+
+  template <int dim, int degree_u, int degree_p, typename Number>
+  class PortableMFStokesOperator
+  {
+  public:
+    PortableMFStokesOperator(std::shared_ptr<MatrixFreeData<dim, Number>> data)
+      : data(data)
+    {}
+
+    void vmult(BlockVectorType<Number>       &dst,
+               const BlockVectorType<Number> &src) const
+    {
+      dst = 0.;
+      data->cell_loop(&PortableMFStokesOperator::local_apply, this, dst, src);
+    }
+
+  private:
+    void local_apply(const MatrixFree<dim, Number>               &mf,
+                     BlockVectorType<Number>                     &dst,
+                     const BlockVectorType<Number>               &src,
+                     const std::pair<unsigned int, unsigned int> &range) const
+    {
+      FEEvaluation<dim, degree_u, degree_u + 1, dim, Number> fe_u(
+        mf, velocity_dof_handler_index);
+      FEEvaluation<dim, degree_p, degree_u + 1, 1, Number> fe_p(
+        mf, pressure_dof_handler_index);
+      for (unsigned int cell = range.first; cell < range.second; ++cell)
+        {
+          fe_u.reinit(cell);
+          fe_p.reinit(cell);
+          fe_u.read_dof_values(src.block(0));
+          fe_p.read_dof_values(src.block(1));
+          fe_u.evaluate(EvaluationFlags::gradients);
+          fe_p.evaluate(EvaluationFlags::values);
+          for (const unsigned int q : fe_u.quadrature_point_indices())
+            {
+              const auto gradient_u    = fe_u.get_gradient(q);
+              auto       velocity_term = gradient_u;
+              const auto pressure      = fe_p.get_value(q);
+              for (unsigned int d = 0; d < dim; ++d)
+                velocity_term[d][d] -= pressure;
+              fe_u.submit_gradient(velocity_term, q);
+              fe_p.submit_value(-trace(gradient_u), q);
+            }
+          fe_u.integrate(EvaluationFlags::gradients);
+          fe_p.integrate(EvaluationFlags::values);
+          fe_u.distribute_local_to_global(dst.block(0));
+          fe_p.distribute_local_to_global(dst.block(1));
+        }
+    }
+
+    std::shared_ptr<MatrixFreeData<dim, Number>> data;
+  };
+
+  template <int dim, int degree_u, int degree_p, typename Number>
+  class PortableMFBTOperator
+  {
+  public:
+    PortableMFBTOperator(std::shared_ptr<MatrixFreeData<dim, Number>> data)
+      : data(data)
+    {}
+
+    void vmult(BlockVectorType<Number>       &dst,
+               const BlockVectorType<Number> &src) const
+    {
+      dst = 0.;
+      data->cell_loop(&PortableMFBTOperator::local_apply, this, dst, src);
+    }
+
+  private:
+    void local_apply(const MatrixFree<dim, Number>               &mf,
+                     BlockVectorType<Number>                     &dst,
+                     const BlockVectorType<Number>               &src,
+                     const std::pair<unsigned int, unsigned int> &range) const
+    {
+      FEEvaluation<dim, degree_u, degree_u + 1, dim, Number> fe_u(
+        mf, velocity_dof_handler_index);
+      FEEvaluation<dim, degree_p, degree_u + 1, 1, Number> fe_p(
+        mf, pressure_dof_handler_index);
+      for (unsigned int cell = range.first; cell < range.second; ++cell)
+        {
+          fe_u.reinit(cell);
+          fe_p.reinit(cell);
+          fe_p.read_dof_values(src.block(1));
+          fe_p.evaluate(EvaluationFlags::values);
+          for (const unsigned int q : fe_u.quadrature_point_indices())
+            fe_u.submit_divergence(-fe_p.get_value(q), q);
+          fe_u.integrate(EvaluationFlags::gradients);
+          fe_u.distribute_local_to_global(dst.block(0));
+        }
+    }
+
+    std::shared_ptr<MatrixFreeData<dim, Number>> data;
+  };
+#endif
+
 
 
   // @sect3{The Preconditioner <code>BlockSchurPreconditioner</code>}
@@ -841,10 +1147,8 @@ namespace Step104
 
     void run();
 
-    using VectorType =
-      LinearAlgebra::distributed::Vector<Number, MemorySpace::Default>;
-    using BlockVectorType =
-      LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Default>;
+    using VectorType      = Step104::VectorType<Number>;
+    using BlockVectorType = Step104::BlockVectorType<Number>;
 
   private:
     void setup_dofs();
@@ -866,10 +1170,10 @@ namespace Step104
     AffineConstraints<Number> constraints_u;
     AffineConstraints<Number> constraints_p;
 
-    std::shared_ptr<Portable::MatrixFree<dim, Number>> mf_data;
-    BlockVectorType                                    solution;
-    BlockVectorType                                    rhs;
-    ConditionalOStream                                 pcout;
+    std::shared_ptr<MatrixFreeData<dim, Number>> mf_data;
+    BlockVectorType                              solution;
+    BlockVectorType                              rhs;
+    ConditionalOStream                           pcout;
   };
 
 
@@ -915,10 +1219,10 @@ namespace Step104
     std::vector<const AffineConstraints<Number> *> constraints = {
       &constraints_u, &constraints_p};
 
-    mf_data = std::make_shared<Portable::MatrixFree<dim, Number>>();
+    mf_data = std::make_shared<MatrixFreeData<dim, Number>>();
 
-    const QGauss<1> quad(degree_p + 2);
-    typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
+    const QGauss<1>                                      quad(degree_p + 2);
+    typename MatrixFreeData<dim, Number>::AdditionalData additional_data;
     additional_data.mapping_update_flags = update_values | update_gradients;
     mf_data->reinit(mapping, dof_handlers, constraints, quad, additional_data);
 
@@ -980,8 +1284,7 @@ namespace Step104
     using SmootherType               = PreconditionChebyshev<LevelMatrixType,
                                                VectorType,
                                                SmootherPreconditionerType>;
-    using MGTransferType =
-      MGTransferMatrixFree<dim, Number, MemorySpace::Default>;
+    using MGTransferType             = Step104::MGTransferType<dim, Number>;
 
     const auto coarse_grid_triangulations =
       MGTransferGlobalCoarseningTools::create_geometric_coarsening_sequence(
@@ -997,11 +1300,10 @@ namespace Step104
                                                             max_level);
     MGLevelObject<LevelMatrixType>           mg_matrices(min_level, max_level);
 
-    MGLevelObject<Portable::MGTwoLevelTransfer<dim, VectorType>> mg_transfers(
-      min_level, max_level);
+    MGLevelObject<MGTwoLevelTransferType<dim, Number>> mg_transfers(min_level,
+                                                                    max_level);
 
-    std::vector<std::shared_ptr<Portable::MatrixFree<dim, Number>>>
-      mf_data_levels;
+    std::vector<std::shared_ptr<MatrixFreeData<dim, Number>>> mf_data_levels;
 
     // Prepare the operators and data structures on all levels of the multigrid
     // hierarchy
@@ -1019,8 +1321,7 @@ namespace Step104
         DoFTools::make_zero_boundary_constraints(dof_handler, constraint);
         constraint.close();
 
-        typename Portable::MatrixFree<dim, Number>::AdditionalData
-          additional_data;
+        typename MatrixFreeData<dim, Number>::AdditionalData additional_data;
         additional_data.mapping_update_flags =
           update_JxW_values | update_gradients;
 
@@ -1033,7 +1334,7 @@ namespace Step104
           {
             const QGauss<1> quad(degree_p + 2);
             mf_data_levels.emplace_back(
-              std::make_shared<Portable::MatrixFree<dim, Number>>());
+              std::make_shared<MatrixFreeData<dim, Number>>());
 
             mf_data_levels.back()->reinit(
               mapping, dof_handler, constraint, quad, additional_data);
@@ -1276,8 +1577,18 @@ namespace Step104
     else
       pcout << "RELEASE mode";
 
+#ifdef STEP104_USE_PORTABLE_MATRIX_FREE
     pcout << "\nKokkos execution space: "
           << Kokkos::DefaultExecutionSpace::name();
+#else
+    const unsigned int n_vect_doubles = VectorizedArray<double>::size();
+    const unsigned int n_vect_bits    = 8 * sizeof(double) * n_vect_doubles;
+    pcout << "\nCPU-based MatrixFree with vectorization over " << n_vect_doubles
+          << " doubles = " << n_vect_bits << " bits ("
+          << Utilities::System::get_current_vectorization_level()
+          << "), VECTORIZATION_LEVEL=" << DEAL_II_COMPILER_VECTORIZATION_LEVEL
+          << std::endl;
+#endif
     pcout << '\n'
           << "dim: " << dim << '\n'
           << "Element: Q" << degree_u << "-Q" << degree_p << std::endl;
