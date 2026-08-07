@@ -1,0 +1,25 @@
+
+DEAL::dim: 3
+Element: Q2-Q1
+DEAL::
+refinement: 0, n_dofs: 2312 = 2187 + 125
+DEAL::GMG velocity block smoothers:
+DEAL::    level: 1 n_dofs: 375, eigenvalue spectrum: [ 0.374809, 1.43201 ]
+DEAL::    level: 2 n_dofs: 2187, eigenvalue spectrum: [ 0.0960698, 1.53415 ]
+DEAL::Solver converged in 10 iterations
+DEAL::velocity error: 0.0451278 pressure error: 0.148969
+DEAL::
+refinement: 1, n_dofs: 6196 = 5889 + 307
+DEAL::GMG velocity block smoothers:
+DEAL::    level: 2 n_dofs: 2187, eigenvalue spectrum: [ 0.0960698, 1.53863 ]
+DEAL::    level: 3 n_dofs: 5889, eigenvalue spectrum: [ 0.0333811, 1.72735 ]
+DEAL::Solver converged in 17 iterations
+DEAL::velocity error: 0.0352849 pressure error: 0.118670
+DEAL::
+refinement: 2, n_dofs: 12106 = 11523 + 583
+DEAL::GMG velocity block smoothers:
+DEAL::    level: 3 n_dofs: 4257, eigenvalue spectrum: [ 0.0773193, 1.70625 ]
+DEAL::    level: 4 n_dofs: 11523, eigenvalue spectrum: [ 0.0272267, 1.74165 ]
+DEAL::Solver converged in 16 iterations
+DEAL::velocity error: 0.0212767 pressure error: 0.0786199
+DEAL::OK
