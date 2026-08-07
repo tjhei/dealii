@@ -13,6 +13,7 @@
 
 // CPU or GPU?
 // #define STEP104_USE_PORTABLE_MATRIX_FREE
+#define DEFORMED_GEOMETRY
 
 // teamsize = 32 is better than auto=-1 for degree <Q4Q3
 unsigned int team_size = -1;
@@ -23,6 +24,7 @@ unsigned int team_size = -1;
 #include <deal.II/distributed/tria.h>
 
 #include <deal.II/dofs/dof_handler.h>
+#include <deal.II/dofs/dof_renumbering.h>
 #include <deal.II/dofs/dof_tools.h>
 
 #include <deal.II/fe/fe_q.h>
@@ -791,12 +793,9 @@ namespace Step104
   // The CPU implementation follows the same weak forms as the portable
   // implementation above, using MatrixFree and FEEvaluation directly.
   template <int dim, int degree_u, int degree_p, typename Number>
-  class PortableMFVelocityOperator
-    : public MatrixFreeOperators::Base<dim, VectorType<Number>>
+  class PortableMFVelocityOperator : public EnableObserverPointer
   {
   public:
-    using Base = MatrixFreeOperators::Base<dim, VectorType<Number>>;
-
     PortableMFVelocityOperator() = default;
 
     PortableMFVelocityOperator(
@@ -807,12 +806,10 @@ namespace Step104
 
     void reinit(std::shared_ptr<MatrixFreeData<dim, Number>> data)
     {
-      Base::initialize(data,
-                       std::vector<unsigned int>{velocity_dof_handler_index},
-                       std::vector<unsigned int>{velocity_dof_handler_index});
+      this->data = data;
     }
 
-    void compute_diagonal() override
+    void compute_diagonal()
     {
       this->inverse_diagonal_entries =
         std::make_shared<DiagonalMatrix<VectorType<Number>>>();
@@ -827,12 +824,70 @@ namespace Step104
         0,
         0,
         0);
-      this->set_constrained_entries_to_one(diagonal);
+      for (const unsigned int i : this->data->get_constrained_dofs(velocity_dof_handler_index))
+        diagonal.local_element(i) = 1;
       for (unsigned int i = 0; i < diagonal.locally_owned_size(); ++i)
         {
           Assert(diagonal.local_element(i) > 0., ExcInternalError());
           diagonal.local_element(i) = 1. / diagonal.local_element(i);
         }
+    }
+
+    std::shared_ptr<DiagonalMatrix<VectorType<Number>>>
+    get_matrix_diagonal_inverse() const
+    {
+      return inverse_diagonal_entries;
+    }
+
+    types::global_dof_index
+    m() const
+    {
+      return this->data->get_dof_handler(velocity_dof_handler_index).n_dofs();
+    }
+
+    void
+    initialize_dof_vector(VectorType<Number> &vec) const
+    {
+      this->data->initialize_dof_vector(vec, velocity_dof_handler_index);
+    }
+
+    void
+    vmult (VectorType<Number> &dst, const VectorType<Number> &src) const
+    {
+      this->data->cell_loop(&PortableMFVelocityOperator::local_apply,
+                            this,
+                            dst,
+                            src,
+                            true);
+      for (const unsigned int i : this->data->get_constrained_dofs(velocity_dof_handler_index))
+        dst.local_element(i) = src.local_element(i);
+    }
+
+    void
+    Tvmult (VectorType<Number> &dst, const VectorType<Number> &src) const
+    {
+      vmult(dst, src);
+    }
+
+    void
+    vmult (VectorType<Number> &dst,
+           const VectorType<Number> &src,
+           const std::function<void(const unsigned int, const unsigned int)> &before_loop,
+           const std::function<void(const unsigned int, const unsigned int)> &after_loop) const
+    {
+      this->data->cell_loop(&PortableMFVelocityOperator::local_apply,
+                            this,
+                            dst,
+                            src,
+                            before_loop,
+                            after_loop,
+                            velocity_dof_handler_index);
+    }
+
+    Number el(const unsigned int, const unsigned int) const
+    {
+      AssertThrow(false, ExcNotImplemented());
+      return numbers::signaling_nan<Number>();
     }
 
   private:
@@ -864,31 +919,22 @@ namespace Step104
         }
     }
 
-    void apply_add(VectorType<Number>       &dst,
-                   const VectorType<Number> &src) const override
-    {
-      this->data->cell_loop(&PortableMFVelocityOperator::local_apply,
-                            this,
-                            dst,
-                            src);
-    }
+    std::shared_ptr<MatrixFreeData<dim, Number>> data;
+    std::shared_ptr<DiagonalMatrix<VectorType<Number>>> inverse_diagonal_entries;
   };
 
   template <int dim, int degree_u, int degree_p, typename Number>
-  class PortableMFMassOperator
-    : public MatrixFreeOperators::Base<dim, VectorType<Number>>
+  class PortableMFMassOperator : public EnableObserverPointer
   {
   public:
     using Base = MatrixFreeOperators::Base<dim, VectorType<Number>>;
 
     PortableMFMassOperator(std::shared_ptr<MatrixFreeData<dim, Number>> data)
     {
-      Base::initialize(data,
-                       std::vector<unsigned int>{pressure_dof_handler_index},
-                       std::vector<unsigned int>{pressure_dof_handler_index});
+      this->data = data;
     }
 
-    void compute_diagonal() override
+    void compute_diagonal()
     {
       this->inverse_diagonal_entries =
         std::make_shared<DiagonalMatrix<VectorType<Number>>>();
@@ -903,12 +949,70 @@ namespace Step104
         0,
         0,
         0);
-      this->set_constrained_entries_to_one(diagonal);
+      for (const unsigned int i : this->data->get_constrained_dofs(pressure_dof_handler_index))
+        diagonal.local_element(i) = 1.0;
       for (unsigned int i = 0; i < diagonal.locally_owned_size(); ++i)
         {
           Assert(diagonal.local_element(i) > 0., ExcInternalError());
           diagonal.local_element(i) = 1. / diagonal.local_element(i);
         }
+    }
+
+    std::shared_ptr<DiagonalMatrix<VectorType<Number>>>
+    get_matrix_diagonal_inverse() const
+    {
+      return inverse_diagonal_entries;
+    }
+
+    types::global_dof_index
+    m() const
+    {
+      return this->data->get_dof_handler(pressure_dof_handler_index).n_dofs();
+    }
+
+    void
+    initialize_dof_vector(VectorType<Number> &vec) const
+    {
+      this->data->initialize_dof_vector(vec, pressure_dof_handler_index);
+    }
+
+    void
+    vmult (VectorType<Number> &dst, const VectorType<Number> &src) const
+    {
+      this->data->cell_loop(&PortableMFMassOperator::local_apply,
+                            this,
+                            dst,
+                            src,
+                            true);
+      for (const unsigned int i : this->data->get_constrained_dofs(pressure_dof_handler_index))
+        dst.local_element(i) = src.local_element(i);
+    }
+
+    void
+    Tvmult (VectorType<Number> &dst, const VectorType<Number> &src) const
+    {
+      vmult(dst, src);
+    }
+
+    void
+    vmult (VectorType<Number> &dst,
+           const VectorType<Number> &src,
+           const std::function<void(const unsigned int, const unsigned int)> &before_loop,
+           const std::function<void(const unsigned int, const unsigned int)> &after_loop) const
+    {
+      this->data->cell_loop(&PortableMFMassOperator::local_apply,
+                            this,
+                            dst,
+                            src,
+                            before_loop,
+                            after_loop,
+                            pressure_dof_handler_index);
+    }
+
+    Number el(const unsigned int, const unsigned int) const
+    {
+      AssertThrow(false, ExcNotImplemented());
+      return numbers::signaling_nan<Number>();
     }
 
   private:
@@ -940,14 +1044,8 @@ namespace Step104
         }
     }
 
-    void apply_add(VectorType<Number>       &dst,
-                   const VectorType<Number> &src) const override
-    {
-      this->data->cell_loop(&PortableMFMassOperator::local_apply,
-                            this,
-                            dst,
-                            src);
-    }
+    std::shared_ptr<MatrixFreeData<dim, Number>> data;
+    std::shared_ptr<DiagonalMatrix<VectorType<Number>>> inverse_diagonal_entries;
   };
 
   template <int dim, int degree_u, int degree_p, typename Number>
@@ -961,8 +1059,8 @@ namespace Step104
     void vmult(BlockVectorType<Number>       &dst,
                const BlockVectorType<Number> &src) const
     {
-      dst = 0.;
-      data->cell_loop(&PortableMFStokesOperator::local_apply, this, dst, src);
+      data->cell_loop(
+        &PortableMFStokesOperator::local_apply, this, dst, src, true);
     }
 
   private:
@@ -1202,6 +1300,19 @@ namespace Step104
     dof_u.distribute_dofs(fe_u);
     dof_p.distribute_dofs(fe_p);
 
+    {
+      const IndexSet &owned_set_u = dof_u.locally_owned_dofs();
+      const IndexSet  relevant_set_u =
+        DoFTools::extract_locally_relevant_dofs(dof_u);
+      constraints_u.reinit(owned_set_u, relevant_set_u);
+      DoFTools::make_hanging_node_constraints(dof_u, constraints_u);
+      VectorTools::interpolate_boundary_values(
+        dof_u, 0, Functions::ZeroFunction<dim, Number>(dim), constraints_u);
+      constraints_u.close();
+      typename dealii::MatrixFree<dim, Number>::AdditionalData ad_data;
+      DoFRenumbering::matrix_free_data_locality(dof_u, constraints_u, ad_data);
+    }
+
     const IndexSet &owned_set_u = dof_u.locally_owned_dofs();
     const IndexSet  relevant_set_u =
       DoFTools::extract_locally_relevant_dofs(dof_u);
@@ -1230,6 +1341,9 @@ namespace Step104
     additional_data.mapping_update_flags = update_values | update_gradients;
 #ifdef STEP104_USE_PORTABLE_MATRIX_FREE
     additional_data.team_size = team_size;
+#ifdef DEAL_II_MPI_WITH_DEVICE_SUPPORT
+    additional_data.overlap_communication_computation = true;
+#endif
 #endif
     mf_data->reinit(mapping, dof_handlers, constraints, quad, additional_data);
 
@@ -1270,9 +1384,12 @@ namespace Step104
     mf_data->initialize_dof_vector(solution);
 
     {
+      MPI_Barrier(MPI_COMM_WORLD);
       dealii::Timer t(tria.get_mpi_communicator());
-      stokes_operator.vmult(solution, rhs);
-      const double time          = t.wall_time();
+      constexpr unsigned int n_repetitions = 100;
+      for (unsigned int t = 0; t < n_repetitions; ++t)
+        stokes_operator.vmult(solution, rhs);
+      const double time          = t.wall_time() / n_repetitions;
       const double dofs_p_second = static_cast<double>(solution.size()) / time;
       pcout << "Stokes operator: " << time << " s, DoFs/s: " << dofs_p_second
             << std::endl;
@@ -1328,11 +1445,22 @@ namespace Step104
         DoFTools::make_zero_boundary_constraints(dof_handler, constraint);
         constraint.close();
 
+        typename dealii::MatrixFree<dim, Number>::AdditionalData ad_data;
+        DoFRenumbering::matrix_free_data_locality(dof_handler, constraint, ad_data);
+        constraint.reinit(dof_handler.locally_owned_dofs(),
+                          DoFTools::extract_locally_relevant_dofs(dof_handler));
+
+        DoFTools::make_zero_boundary_constraints(dof_handler, constraint);
+        constraint.close();
+
         typename MatrixFreeData<dim, Number>::AdditionalData additional_data;
         additional_data.mapping_update_flags =
           update_JxW_values | update_gradients;
 #ifdef STEP104_USE_PORTABLE_MATRIX_FREE
         additional_data.team_size = team_size;
+#ifdef DEAL_II_MPI_WITH_DEVICE_SUPPORT
+        additional_data.overlap_communication_computation = true;
+#endif
 #endif
 
         if (level == max_level)
@@ -1409,7 +1537,7 @@ namespace Step104
           }
       }
 
-    MGSmootherPrecondition<LevelMatrixType, SmootherType, VectorType>
+    MGSmootherRelaxation<LevelMatrixType, SmootherType, VectorType>
       mg_smoother;
     mg_smoother.initialize(mg_matrices, smoother_data);
 
@@ -1610,6 +1738,12 @@ namespace Step104
         if (i == 0)
           {
             GridGenerator::hyper_cube(tria);
+#ifdef DEFORMED_GEOMETRY
+            Point<dim> shift;
+            for (unsigned int d = 0; d < dim; ++d)
+              shift[d] = 1e-6;
+            tria.begin()->vertex(0) += shift;
+#endif
             tria.refine_global(2);
           }
         else
