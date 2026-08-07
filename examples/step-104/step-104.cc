@@ -1391,7 +1391,7 @@ namespace Step104
         stokes_operator.vmult(solution, rhs);
       const double time          = t.wall_time() / n_repetitions;
       const double dofs_p_second = static_cast<double>(solution.size()) / time;
-      pcout << "Stokes operator: " << time << " s, DoFs/s: " << dofs_p_second
+      pcout << "Stokes operator: " << time << " s, MDoFs/s: " << dofs_p_second/1e6
             << std::endl;
       solution = 0.0;
     }
