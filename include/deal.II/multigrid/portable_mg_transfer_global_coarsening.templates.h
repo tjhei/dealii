@@ -1410,12 +1410,16 @@ namespace Portable
 
                     if (use_crs)
                       {
-                        for (unsigned int k = coarse_constraint_offsets(row);
-                             k < coarse_constraint_offsets(row + 1);
-                             ++k)
-                          Kokkos::atomic_add(
-                            &dst_device[coarse_constraint_indices(k)],
-                            coarse_constraint_weights(k) * value);
+                        const auto begin = coarse_constraint_offsets(row);
+                        const auto end   = coarse_constraint_offsets(row + 1);
+
+                        Kokkos::parallel_for(
+                          Kokkos::ThreadVectorRange(team_member, begin, end),
+                          [&](const int &k) {
+                            Kokkos::atomic_add(
+                              &dst_device[coarse_constraint_indices(k)],
+                              coarse_constraint_weights(k) * value);
+                          });
                       }
                     else
                       {
