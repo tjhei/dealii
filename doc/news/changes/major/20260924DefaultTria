@@ -1,0 +1,6 @@
+New: The class parallel::DefaultTriangulation selects the best available
+parallel triangulation implementation at compile time (serial Triangulation,
+parallel::distributed::Triangulation, or parallel::shared::Triangulation with
+artificial cells).
+<br>
+(Cursor Agent, 2026/09/24)
