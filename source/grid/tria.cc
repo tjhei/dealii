@@ -12864,23 +12864,11 @@ DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
 Triangulation<dim, spacedim>::Triangulation(
   const MeshSmoothing smooth_grid,
   const bool          check_for_distorted_cells)
-  : Triangulation(MPI_COMM_SELF, smooth_grid, check_for_distorted_cells)
-{}
-
-
-
-template <int dim, int spacedim>
-DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
-Triangulation<dim, spacedim>::Triangulation(
-  const MPI_Comm      mpi_communicator,
-  const MeshSmoothing smooth_grid,
-  const bool          check_for_distorted_cells)
   : cell_attached_data({0, 0, {}, {}})
   , smooth_grid(smooth_grid)
   , default_flat_manifold(std::make_unique<const FlatManifold<dim, spacedim>>())
   , anisotropic_refinement(false)
   , check_for_distorted_cells(check_for_distorted_cells)
-  , mpi_communicator(mpi_communicator)
 {
   if (dim == 1)
     {
@@ -12918,7 +12906,6 @@ Triangulation<dim, spacedim>::Triangulation(
   , default_flat_manifold(std::make_unique<const FlatManifold<dim, spacedim>>())
   , anisotropic_refinement(tria.anisotropic_refinement)
   , check_for_distorted_cells(tria.check_for_distorted_cells)
-  , mpi_communicator(tria.mpi_communicator)
   , number_cache(std::move(tria.number_cache))
   , vertex_to_boundary_id_map_1d(std::move(tria.vertex_to_boundary_id_map_1d))
   , vertex_to_manifold_id_map_1d(std::move(tria.vertex_to_manifold_id_map_1d))
@@ -13015,7 +13002,7 @@ template <int dim, int spacedim>
 DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
 MPI_Comm Triangulation<dim, spacedim>::get_mpi_communicator() const
 {
-  return mpi_communicator;
+  return MPI_COMM_SELF;
 }
 
 

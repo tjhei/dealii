@@ -85,7 +85,9 @@ namespace parallel
    * are enabled by default so that the mesh offers a layer of ghost and
    * artificial cells similar to parallel::distributed::Triangulation.
    *
-   * The class provides a uniform constructor that takes an MPI communicator.
+   * The class provides a uniform constructor that takes an MPI communicator
+   * when deal.II is configured with MPI. If MPI support is disabled, the
+   * communicator argument is ignored and a serial triangulation is built.
    * This allows user code to instantiate a mesh object without selecting the
    * concrete triangulation class at compile time. For features that are only
    * available on particular triangulation classes, such as
@@ -132,7 +134,7 @@ namespace parallel
       smooth_grid,
     const bool check_for_distorted_cells)
 #if !defined(DEAL_II_WITH_MPI)
-    : Base(mpi_communicator, smooth_grid, check_for_distorted_cells)
+    : Base(smooth_grid, check_for_distorted_cells)
 #elif defined(DEAL_II_WITH_P4EST)
     : Base(mpi_communicator,
            smooth_grid,
@@ -144,7 +146,11 @@ namespace parallel
            /*allow_artificial_cells = */ true,
            dealii::parallel::shared::Triangulation<dim, spacedim>::partition_auto)
 #endif
-  {}
+  {
+#if !defined(DEAL_II_WITH_MPI)
+    (void)mpi_communicator;
+#endif
+  }
 } // namespace parallel
 
 
