@@ -1831,6 +1831,33 @@ public:
                 const bool          check_for_distorted_cells = false);
 
   /**
+   * Create an empty triangulation. Do not create any cells.
+   *
+   * This constructor is equivalent to the constructor above, but stores
+   * @p mpi_communicator for queries via get_mpi_communicator(). For a serial
+   * triangulation this allows writing the same construction code as for
+   * parallel triangulations. The communicator is not used for any MPI
+   * communication by the serial triangulation class itself.
+   *
+   * @param mpi_communicator The MPI communicator this triangulation is
+   * associated with.
+   *
+   * @param smooth_grid Determines the level of smoothness of the mesh size
+   * function that should be enforced upon mesh refinement.
+   *
+   * @param check_for_distorted_cells Determines whether the triangulation
+   * should check whether any of the cells that are created by
+   * create_triangulation() or execute_coarsening_and_refinement() are
+   * distorted (see
+   * @ref GlossDistorted "distorted cells").
+   * If set, these two functions may throw an exception if they encounter
+   * distorted cells.
+   */
+  Triangulation(const MPI_Comm      mpi_communicator,
+                const MeshSmoothing smooth_grid               = none,
+                const bool          check_for_distorted_cells = false);
+
+  /**
    * Copy constructor.
    *
    * You should really use the @p copy_triangulation function, so this
@@ -4615,6 +4642,13 @@ private:
    * creation and refinement of a mesh.
    */
   const bool check_for_distorted_cells;
+
+  /**
+   * The MPI communicator this triangulation is associated with. Serial
+   * triangulations constructed without an explicit communicator use
+   * MPI_COMM_SELF.
+   */
+  const MPI_Comm mpi_communicator;
 
   /**
    * Cache to hold the numbers of lines, quads, hexes, etc. These numbers are
