@@ -54,6 +54,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <variant>
 
 using namespace dealii;
 
@@ -122,10 +123,8 @@ namespace
   };
 
 
-  // Keep the distributed FE fields as the canonical representation. The two
-  // reinit() overloads pack them into the access formats used by each backend:
-  // Kokkos views for Portable::MatrixFree and MatrixFree cell-batch data for
-  // conventional MatrixFree.
+  // Store one scalar coefficient in the layout required by the selected
+  // MatrixFree backend. The source FE field remains owned by the caller.
   template <int dim, typename Number = double>
   class Coefficient
   {
@@ -134,134 +133,56 @@ namespace
       LinearAlgebra::distributed::Vector<Number, MemorySpace::Host>;
     using View = Kokkos::View<Number *, MemorySpace::Default::kokkos_space>;
     using CellArray = std::array<Number, VectorizedArray<Number>::size()>;
-
-    Coefficient()
-      : coefficient_fe(0)
-    {}
+    using MatrixFreeCellData = AlignedVector<CellArray>;
 
     void
-    initialize_fe_fields(const Triangulation<dim> &tria)
+    reinit(const MatrixFree<dim, Number> &data,
+           const DoFHandler<dim>        &field_dof_handler,
+           const VectorType             &field)
     {
-      lambda_dof_handler.reinit(tria);
-      mu_dof_handler.reinit(tria);
-      lambda_dof_handler.distribute_dofs(coefficient_fe);
-      mu_dof_handler.distribute_dofs(coefficient_fe);
-      lambda_field.reinit(std::make_shared<Utilities::MPI::Partitioner>(
-        lambda_dof_handler.locally_owned_dofs(),
-        DoFTools::extract_locally_relevant_dofs(lambda_dof_handler),
-        lambda_dof_handler.get_mpi_communicator()));
-      mu_field.reinit(std::make_shared<Utilities::MPI::Partitioner>(
-        mu_dof_handler.locally_owned_dofs(),
-        DoFTools::extract_locally_relevant_dofs(mu_dof_handler),
-        mu_dof_handler.get_mpi_communicator()));
-      VectorTools::interpolate(lambda_dof_handler,
-                               LambdaCoefficientFunction<dim>(),
-                               lambda_field);
-      VectorTools::interpolate(mu_dof_handler,
-                               MuCoefficientFunction<dim>(),
-                               mu_field);
-      lambda_field.update_ghost_values();
-      mu_field.update_ghost_values();
-
-      refresh_cell_values();
-    }
-
-    const DoFHandler<dim> &
-    get_lambda_dof_handler() const
-    {
-      return lambda_dof_handler;
-    }
-
-    const DoFHandler<dim> &
-    get_mu_dof_handler() const
-    {
-      return mu_dof_handler;
-    }
-
-    const VectorType &
-    get_lambda_field() const
-    {
-      return lambda_field;
-    }
-
-    const VectorType &
-    get_mu_field() const
-    {
-      return mu_field;
-    }
-
-    void
-    set_fields(const VectorType &lambda, const VectorType &mu)
-    {
-      lambda_field = lambda;
-      mu_field     = mu;
-      lambda_field.update_ghost_values();
-      mu_field.update_ghost_values();
-      refresh_cell_values();
-    }
-
-    void
-    set_field_data(const DoFHandler<dim> &dof_handler,
-                   const VectorType      &lambda,
-                   const VectorType      &mu)
-    {
-      lambda_by_active_cell.resize(dof_handler.get_triangulation().n_active_cells());
-      mu_by_active_cell.resize(dof_handler.get_triangulation().n_active_cells());
-      std::vector<types::global_dof_index> indices(1);
-      for (const auto &cell : dof_handler.active_cell_iterators())
-        if (cell->is_locally_owned() || cell->is_ghost())
-          {
-            cell->get_dof_indices(indices);
-            lambda_by_active_cell[cell->active_cell_index()] = lambda(indices[0]);
-            mu_by_active_cell[cell->active_cell_index()] = mu(indices[0]);
-          }
-      values_initialized = true;
-    }
-
-    template <int degree>
-    void
-    reinit(const MatrixFree<dim, Number> &data)
-    {
-      if (!values_initialized)
-        initialize_fe_fields(data.get_dof_handler(0).get_triangulation());
-      data.initialize_cell_data_vector(lambda_cell_data);
-      data.initialize_cell_data_vector(mu_cell_data);
-      FEEvaluation<dim, degree, degree + 1, dim, Number> fe_eval(data);
+      Assert(field_dof_handler.get_fe().dofs_per_cell == 1,
+             ExcMessage("Coefficient input must have one DoF per cell."));
+      MatrixFreeCellData cell_data;
+      data.initialize_cell_data_vector(cell_data);
+      FEEvaluation<dim, -1, 0, 1, Number> fe_eval(data, 0, 0, 0);
       const unsigned int n_batches =
         data.n_cell_batches() + data.n_ghost_cell_batches();
+      std::vector<types::global_dof_index> indices(1);
       for (unsigned int batch = 0; batch < n_batches; ++batch)
         {
           fe_eval.reinit(batch);
-          CellArray lambda_local{}, mu_local{};
+          CellArray local_values{};
           for (unsigned int lane = 0;
                lane < data.n_active_entries_per_cell_batch(batch);
                ++lane)
             {
-              const auto cell = data.get_cell_iterator(batch, lane);
-              lambda_local[lane] =
-                lambda_by_active_cell[cell->active_cell_index()];
-              mu_local[lane] = mu_by_active_cell[cell->active_cell_index()];
+              const auto cell =
+                data.get_cell_iterator(batch, lane)
+                  ->as_dof_handler_iterator(field_dof_handler);
+              cell->get_dof_indices(indices);
+              local_values[lane] = field(indices[0]);
             }
-          fe_eval.set_cell_data(lambda_cell_data, lambda_local);
-          fe_eval.set_cell_data(mu_cell_data, mu_local);
+          fe_eval.set_cell_data(cell_data, local_values);
         }
+      representation = std::move(cell_data);
     }
 
     void
-    reinit(const Portable::MatrixFree<dim, Number> &data)
+    reinit(const Portable::MatrixFree<dim, Number> &data,
+           const DoFHandler<dim>                  &field_dof_handler,
+           const VectorType                       &field)
     {
-      if (!values_initialized)
-        initialize_fe_fields(data.get_dof_handler(0).get_triangulation());
+      Assert(field_dof_handler.get_fe().dofs_per_cell == 1,
+             ExcMessage("Coefficient input must have one DoF per cell."));
       const unsigned int padding = data.get_padding_length();
       unsigned int       n_cells = 0;
       for (unsigned int color = 0; data.n_cells_per_color(color) > 0; ++color)
         n_cells += ((data.n_cells_per_color(color) + padding - 1) / padding) *
                    padding;
 
-      lambda_values = View("lambda cell data", n_cells);
-      mu_values     = View("mu cell data", n_cells);
-      auto lambda_host = Kokkos::create_mirror_view(lambda_values);
-      auto mu_host     = Kokkos::create_mirror_view(mu_values);
+      View values("cell coefficient data", n_cells);
+      auto host_values = Kokkos::create_mirror_view(values);
+      std::vector<types::global_dof_index> indices(1);
 
       unsigned int offset = 0;
       for (unsigned int color = 0; data.n_cells_per_color(color) > 0; ++color)
@@ -270,66 +191,103 @@ namespace
                cell_index < data.n_cells_per_color(color);
                ++cell_index)
             {
-              const auto cell = data.get_cell_iterator(color, cell_index);
-              lambda_host[offset + cell_index] =
-                lambda_by_active_cell[cell->active_cell_index()];
-              mu_host[offset + cell_index] =
-                mu_by_active_cell[cell->active_cell_index()];
+              const auto cell = data.get_cell_iterator(color, cell_index)
+                                  ->as_dof_handler_iterator(field_dof_handler);
+              cell->get_dof_indices(indices);
+              host_values[offset + cell_index] = field(indices[0]);
             }
           offset += ((data.n_cells_per_color(color) + padding - 1) / padding) *
                     padding;
         }
-      Kokkos::deep_copy(lambda_values, lambda_host);
-      Kokkos::deep_copy(mu_values, mu_host);
+      Kokkos::deep_copy(values, host_values);
+      representation = std::move(values);
     }
 
-    View lambda_values;
-    View mu_values;
-    AlignedVector<CellArray> lambda_cell_data;
-    AlignedVector<CellArray> mu_cell_data;
+    const View &
+    portable_view() const
+    {
+      return std::get<View>(representation);
+    }
+
+    const MatrixFreeCellData &
+    matrix_free_cell_data() const
+    {
+      return std::get<MatrixFreeCellData>(representation);
+    }
 
   private:
-    void
-    refresh_cell_values()
-    {
-      lambda_by_active_cell.resize(
-        lambda_dof_handler.get_triangulation().n_active_cells());
-      mu_by_active_cell.resize(
-        mu_dof_handler.get_triangulation().n_active_cells());
-      std::vector<types::global_dof_index> indices(1);
-      for (const auto &cell : lambda_dof_handler.active_cell_iterators())
-        if (cell->is_locally_owned() || cell->is_ghost())
-          {
-            cell->get_dof_indices(indices);
-            lambda_by_active_cell[cell->active_cell_index()] =
-              lambda_field(indices[0]);
-          }
-      for (const auto &cell : mu_dof_handler.active_cell_iterators())
-        if (cell->is_locally_owned() || cell->is_ghost())
-          {
-            cell->get_dof_indices(indices);
-            mu_by_active_cell[cell->active_cell_index()] = mu_field(indices[0]);
-          }
-      values_initialized = true;
-    }
-
-    FE_DGQ<dim> coefficient_fe;
-    DoFHandler<dim> lambda_dof_handler;
-    DoFHandler<dim> mu_dof_handler;
-    VectorType lambda_field;
-    VectorType mu_field;
-    std::vector<Number> lambda_by_active_cell;
-    std::vector<Number> mu_by_active_cell;
-    bool values_initialized = false;
+    std::variant<std::monostate, View, MatrixFreeCellData> representation;
   };
+
+
+  template <int dim, typename CoarseSequence>
+  void
+  initialize_cellwise_coefficient_field(
+    MGLevelObject<DoFHandler<dim>> &dof_handlers,
+    MGLevelObject<typename Coefficient<dim>::VectorType> &fields,
+    const FE_DGQ<dim> &finite_element,
+    const CoarseSequence &coarse,
+    const Function<dim> &function)
+  {
+    const unsigned int max_level = coarse.size() - 1;
+    dof_handlers.resize(0, max_level);
+    fields.resize(0, max_level);
+    for (unsigned int level = 0; level <= max_level; ++level)
+      {
+        dof_handlers[level].reinit(*coarse[level]);
+        dof_handlers[level].distribute_dofs(finite_element);
+        fields[level].reinit(std::make_shared<Utilities::MPI::Partitioner>(
+          dof_handlers[level].locally_owned_dofs(),
+          DoFTools::extract_locally_relevant_dofs(dof_handlers[level]),
+          dof_handlers[level].get_mpi_communicator()));
+        VectorTools::interpolate(dof_handlers[level], function, fields[level]);
+        fields[level].update_ghost_values();
+      }
+  }
+
+
+  template <int dim>
+  void
+  transfer_cellwise_coefficient_field(
+    MGLevelObject<DoFHandler<dim>> &dof_handlers,
+    MGLevelObject<typename Coefficient<dim>::VectorType> &fields)
+  {
+    const unsigned int min_level = fields.min_level();
+    const unsigned int max_level = fields.max_level();
+    using VectorType = typename Coefficient<dim>::VectorType;
+    MGLevelObject<MGTwoLevelTransfer<dim, VectorType>> transfers(min_level,
+                                                                  max_level);
+    for (unsigned int level = min_level; level < max_level; ++level)
+      transfers[level + 1].reinit(dof_handlers[level + 1],
+                                  dof_handlers[level]);
+    MGTransferMatrixFree<dim, double, MemorySpace::Host> transfer(
+      transfers, [&](const auto level, auto &vector) {
+        vector.reinit(fields[level].get_partitioner());
+      });
+    MGLevelObject<VectorType> level_fields(min_level, max_level);
+    VectorType                source;
+    source.reinit(fields[max_level].get_partitioner());
+    source.import_elements(fields[max_level], VectorOperation::insert);
+    transfer.interpolate_to_mg(level_fields, source);
+    for (unsigned int level = min_level; level <= max_level; ++level)
+      {
+        fields[level].import_elements(level_fields[level],
+                                      VectorOperation::insert);
+        fields[level].update_ghost_values();
+      }
+  }
 
 
   template <int dim, typename VectorType>
   void
   write_graphical_output(const DoFHandler<dim> &dof_handler,
-                         const VectorType     &solution,
-                         const Coefficient<dim> &coefficients,
-                         const std::string      &file_prefix)
+                         const VectorType &solution,
+                         const DoFHandler<dim> &lambda_dof_handler,
+                         const typename Coefficient<dim>::VectorType
+                           &lambda_field,
+                         const DoFHandler<dim> &mu_dof_handler,
+                         const typename Coefficient<dim>::VectorType &mu_field,
+                         const std::string &file_prefix)
   {
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
@@ -343,12 +301,8 @@ namespace
       DataOut<dim>::type_dof_data,
       std::vector<DataComponentInterpretation::DataComponentInterpretation>(
         dim, DataComponentInterpretation::component_is_part_of_vector));
-    data_out.add_data_vector(coefficients.get_lambda_dof_handler(),
-                             coefficients.get_lambda_field(),
-                             "lambda");
-    data_out.add_data_vector(coefficients.get_mu_dof_handler(),
-                             coefficients.get_mu_field(),
-                             "mu");
+    data_out.add_data_vector(lambda_dof_handler, lambda_field, "lambda");
+    data_out.add_data_vector(mu_dof_handler, mu_field, "mu");
     data_out.build_patches();
     data_out.write_vtu_with_pvtu_record(
       "./", file_prefix, 0, MPI_COMM_WORLD, 4, 0);
@@ -439,27 +393,14 @@ public:
 
   ElasticityOperator() = default;
 
-  explicit ElasticityOperator(
-    std::shared_ptr<Portable::MatrixFree<dim, Number>> data)
-  {
-    reinit(std::move(data));
-  }
-
-  void
-  reinit(std::shared_ptr<Portable::MatrixFree<dim, Number>> data_in)
-  {
-    data = std::move(data_in);
-    coefficients.reinit(*data);
-  }
-
   void
   reinit(std::shared_ptr<Portable::MatrixFree<dim, Number>> data_in,
-         const Coefficient<dim, Number> &coefficient_source)
+         const Coefficient<dim, Number> &lambda_coefficient,
+         const Coefficient<dim, Number> &mu_coefficient)
   {
-    coefficients.set_field_data(coefficient_source.get_lambda_dof_handler(),
-                                coefficient_source.get_lambda_field(),
-                                coefficient_source.get_mu_field());
-    reinit(std::move(data_in));
+    data             = std::move(data_in);
+    lambda_values    = &lambda_coefficient;
+    mu_values        = &mu_coefficient;
   }
 
   void
@@ -488,7 +429,8 @@ public:
   {
     dst = 0.;
     data->cell_loop(ElasticityCellOperator<dim, degree, Number>(
-                      coefficients.mu_values, coefficients.lambda_values),
+                      mu_values->portable_view(),
+                      lambda_values->portable_view()),
                     src,
                     dst);
     data->copy_constrained_values(src, dst, 0);
@@ -507,7 +449,7 @@ public:
     VectorType &diagonal = inverse_diagonal->get_vector();
     data->initialize_dof_vector(diagonal, 0);
     ElasticityCellOperatorQuadrature<dim, degree, Number> quad_operator(
-      coefficients.mu_values, coefficients.lambda_values);
+      mu_values->portable_view(), lambda_values->portable_view());
 
     MatrixFreeTools::compute_diagonal<dim, degree, degree + 1, dim, Number>(
       *data,
@@ -534,7 +476,8 @@ public:
 private:
   std::shared_ptr<Portable::MatrixFree<dim, Number>> data;
   std::shared_ptr<DiagonalMatrix<VectorType>>        inverse_diagonal;
-  Coefficient<dim, Number>                          coefficients;
+  const Coefficient<dim, Number>                    *lambda_values = nullptr;
+  const Coefficient<dim, Number>                    *mu_values = nullptr;
 };
 
 
@@ -543,23 +486,14 @@ class MatrixFreeElasticityOperator : public EnableObserverPointer
 {
 public:
   using VectorType = LinearAlgebra::distributed::Vector<Number, MemorySpace::Host>;
-  using CellArray = typename Coefficient<dim, Number>::CellArray;
-
-  void
-  reinit(std::shared_ptr<MatrixFree<dim, Number>> data_in)
-  {
-    data = std::move(data_in);
-    coefficients.template reinit<degree>(*data);
-  }
-
   void
   reinit(std::shared_ptr<MatrixFree<dim, Number>> data_in,
-         const Coefficient<dim, Number> &coefficient_source)
+         const Coefficient<dim, Number> &lambda_coefficient,
+         const Coefficient<dim, Number> &mu_coefficient)
   {
-    coefficients.set_field_data(coefficient_source.get_lambda_dof_handler(),
-                                coefficient_source.get_lambda_field(),
-                                coefficient_source.get_mu_field());
-    reinit(std::move(data_in));
+    data          = std::move(data_in);
+    lambda_values = &lambda_coefficient;
+    mu_values     = &mu_coefficient;
   }
 
   void
@@ -642,8 +576,9 @@ public:
   operator()(FEEvaluation<dim, degree, degree + 1, dim, Number> *fe,
              const int q_point) const
   {
-    const auto lambda_array = fe->read_cell_data(coefficients.lambda_cell_data);
-    const auto mu_array     = fe->read_cell_data(coefficients.mu_cell_data);
+    const auto lambda_array = fe->read_cell_data(
+      lambda_values->matrix_free_cell_data());
+    const auto mu_array = fe->read_cell_data(mu_values->matrix_free_cell_data());
     VectorizedArray<Number> lambda_value, mu_value;
     for (unsigned int lane = 0; lane < VectorizedArray<Number>::size(); ++lane)
       {
@@ -681,54 +616,11 @@ private:
   }
 
   std::shared_ptr<MatrixFree<dim, Number>> data;
-  Coefficient<dim, Number>                 coefficients;
+  const Coefficient<dim, Number>          *lambda_values = nullptr;
+  const Coefficient<dim, Number>          *mu_values = nullptr;
   std::shared_ptr<DiagonalMatrix<VectorType>> inverse_diagonal;
 };
 
-
-template <int dim, typename CoarseSequence>
-void
-initialize_coefficient_levels(MGLevelObject<Coefficient<dim>> &coefficients,
-                              const CoarseSequence &coarse,
-                              const bool transfer_from_finest)
-{
-  const unsigned int min_level = 0;
-  const unsigned int max_level = coarse.size() - 1;
-  coefficients.resize(min_level, max_level);
-  for (unsigned int level = min_level; level <= max_level; ++level)
-    coefficients[level].initialize_fe_fields(*coarse[level]);
-
-  if (transfer_from_finest)
-    {
-      using VectorType = typename Coefficient<dim>::VectorType;
-      MGLevelObject<MGTwoLevelTransfer<dim, VectorType>> transfers(min_level,
-                                                                    max_level);
-      for (unsigned int level = min_level; level < max_level; ++level)
-        transfers[level + 1].reinit(
-          coefficients[level + 1].get_lambda_dof_handler(),
-          coefficients[level].get_lambda_dof_handler());
-      MGTransferMatrixFree<dim, double, MemorySpace::Host> transfer(
-        transfers, [&](const auto level, auto &vector) {
-          vector.reinit(
-            coefficients[level].get_lambda_field().get_partitioner());
-        });
-      MGLevelObject<VectorType> lambda_levels(min_level, max_level);
-      MGLevelObject<VectorType> mu_levels(min_level, max_level);
-      VectorType lambda_source, mu_source;
-      lambda_source.reinit(
-        coefficients[max_level].get_lambda_field().get_partitioner());
-      mu_source.reinit(coefficients[max_level].get_mu_field().get_partitioner());
-      lambda_source.import_elements(coefficients[max_level].get_lambda_field(),
-                                    VectorOperation::insert);
-      mu_source.import_elements(coefficients[max_level].get_mu_field(),
-                                VectorOperation::insert);
-      transfer.interpolate_to_mg(lambda_levels,
-                                 lambda_source);
-      transfer.interpolate_to_mg(mu_levels, mu_source);
-      for (unsigned int level = min_level; level <= max_level; ++level)
-        coefficients[level].set_fields(lambda_levels[level], mu_levels[level]);
-    }
-}
 
 template <int dim, int degree>
 void
@@ -771,10 +663,34 @@ run_portable(const ConditionalOStream &pcout,
 
   const auto coarse =
     MGTransferGlobalCoarseningTools::create_geometric_coarsening_sequence(tria);
-  MGLevelObject<Coefficient<dim>> coefficient_levels(0, coarse.size() - 1);
-  initialize_coefficient_levels(coefficient_levels,
-                                coarse,
-                                transfer_coefficients_from_finest);
+  using CoefficientVector = typename Coefficient<dim>::VectorType;
+  const FE_DGQ<dim> coefficient_fe(0);
+  MGLevelObject<DoFHandler<dim>> lambda_dof_handlers, mu_dof_handlers;
+  MGLevelObject<CoefficientVector> lambda_fields, mu_fields;
+  initialize_cellwise_coefficient_field(lambda_dof_handlers,
+                                        lambda_fields,
+                                        coefficient_fe,
+                                        coarse,
+                                        LambdaCoefficientFunction<dim>());
+  initialize_cellwise_coefficient_field(mu_dof_handlers,
+                                        mu_fields,
+                                        coefficient_fe,
+                                        coarse,
+                                        MuCoefficientFunction<dim>());
+  if (transfer_coefficients_from_finest)
+    {
+      transfer_cellwise_coefficient_field(lambda_dof_handlers, lambda_fields);
+      transfer_cellwise_coefficient_field(mu_dof_handlers, mu_fields);
+    }
+  const unsigned int min_level = 0, max_level = coarse.size() - 1;
+  MGLevelObject<Coefficient<dim>> lambda_coefficients(min_level, max_level);
+  MGLevelObject<Coefficient<dim>> mu_coefficients(min_level, max_level);
+  lambda_coefficients[max_level].reinit(*data,
+                                        lambda_dof_handlers[max_level],
+                                        lambda_fields[max_level]);
+  mu_coefficients[max_level].reinit(*data,
+                                    mu_dof_handlers[max_level],
+                                    mu_fields[max_level]);
 
   LinearAlgebra::distributed::Vector<double, MemorySpace::Host> exact_host;
   data->initialize_dof_vector(exact_host, 0);
@@ -786,13 +702,14 @@ run_portable(const ConditionalOStream &pcout,
   data->initialize_dof_vector(solution, 0);
   solution.import_elements(exact_host, VectorOperation::insert);
   Operator op;
-  op.reinit(data, coefficient_levels[coarse.size() - 1]);
+  op.reinit(data,
+            lambda_coefficients[max_level],
+            mu_coefficients[max_level]);
   // The discrete manufactured load is b = A I_h(u_exact), so the same
   // coefficient data and quadrature define the load and the operator.
   op.vmult(rhs, solution);
   solution = 0.;
 
-  const unsigned int             min_level = 0, max_level = coarse.size() - 1;
   MGLevelObject<DoFHandler<dim>> mg_dofs(min_level, max_level);
   MGLevelObject<AffineConstraints<double>> mg_constraints(min_level, max_level);
   MGLevelObject<Operator>                  mg_ops(min_level, max_level);
@@ -824,7 +741,18 @@ run_portable(const ConditionalOStream &pcout,
                     additional_data);
           level_data.push_back(std::move(d));
         }
-      mg_ops[level].reinit(level_data.back(), coefficient_levels[level]);
+      if (level != max_level)
+        {
+          lambda_coefficients[level].reinit(*level_data.back(),
+                                            lambda_dof_handlers[level],
+                                            lambda_fields[level]);
+          mu_coefficients[level].reinit(*level_data.back(),
+                                        mu_dof_handlers[level],
+                                        mu_fields[level]);
+        }
+      mg_ops[level].reinit(level_data.back(),
+                           lambda_coefficients[level],
+                           mu_coefficients[level]);
     }
   for (unsigned int level = min_level; level < max_level; ++level)
     transfers[level + 1].reinit(mg_dofs[level + 1],
@@ -880,7 +808,10 @@ run_portable(const ConditionalOStream &pcout,
   write_graphical_output(
     dof_handler,
     solution_host,
-    coefficient_levels[max_level],
+    lambda_dof_handlers[max_level],
+    lambda_fields[max_level],
+    mu_dof_handlers[max_level],
+    mu_fields[max_level],
     transfer_coefficients_from_finest ? "elasticity_portable_transfer" :
                                         "elasticity_portable_evaluate");
   Vector<double> cellwise_errors(tria.n_active_cells());
@@ -941,12 +872,36 @@ run_matrixfree(const ConditionalOStream &pcout,
 
   const auto coarse =
     MGTransferGlobalCoarseningTools::create_geometric_coarsening_sequence(tria);
-  MGLevelObject<Coefficient<dim>> coefficient_levels(0, coarse.size() - 1);
-  initialize_coefficient_levels(coefficient_levels,
-                                coarse,
-                                transfer_coefficients_from_finest);
+  using CoefficientVector = typename Coefficient<dim>::VectorType;
+  const FE_DGQ<dim> coefficient_fe(0);
+  MGLevelObject<DoFHandler<dim>> lambda_dof_handlers, mu_dof_handlers;
+  MGLevelObject<CoefficientVector> lambda_fields, mu_fields;
+  initialize_cellwise_coefficient_field(lambda_dof_handlers,
+                                        lambda_fields,
+                                        coefficient_fe,
+                                        coarse,
+                                        LambdaCoefficientFunction<dim>());
+  initialize_cellwise_coefficient_field(mu_dof_handlers,
+                                        mu_fields,
+                                        coefficient_fe,
+                                        coarse,
+                                        MuCoefficientFunction<dim>());
+  if (transfer_coefficients_from_finest)
+    {
+      transfer_cellwise_coefficient_field(lambda_dof_handlers, lambda_fields);
+      transfer_cellwise_coefficient_field(mu_dof_handlers, mu_fields);
+    }
+  const unsigned int min_level = 0, max_level = coarse.size() - 1;
+  MGLevelObject<Coefficient<dim>> lambda_coefficients(min_level, max_level);
+  MGLevelObject<Coefficient<dim>> mu_coefficients(min_level, max_level);
+  lambda_coefficients[max_level].reinit(
+    *data, lambda_dof_handlers[max_level], lambda_fields[max_level]);
+  mu_coefficients[max_level].reinit(
+    *data, mu_dof_handlers[max_level], mu_fields[max_level]);
   Operator op;
-  op.reinit(data, coefficient_levels[coarse.size() - 1]);
+  op.reinit(data,
+            lambda_coefficients[max_level],
+            mu_coefficients[max_level]);
 
   LinearAlgebra::distributed::Vector<double, MemorySpace::Host> exact_host;
   data->initialize_dof_vector(exact_host);
@@ -960,7 +915,6 @@ run_matrixfree(const ConditionalOStream &pcout,
   // The discrete manufactured load is b = A I_h(u_exact).
   op.vmult(rhs, exact);
 
-  const unsigned int min_level = 0, max_level = coarse.size() - 1;
   MGLevelObject<DoFHandler<dim>> mg_dofs(min_level, max_level);
   MGLevelObject<AffineConstraints<double>> mg_constraints(min_level, max_level);
   MGLevelObject<Operator> mg_ops(min_level, max_level);
@@ -989,7 +943,18 @@ run_matrixfree(const ConditionalOStream &pcout,
                            additional_data);
           level_data.push_back(std::move(level_mf));
         }
-      mg_ops[level].reinit(level_data.back(), coefficient_levels[level]);
+      if (level != max_level)
+        {
+          lambda_coefficients[level].reinit(
+            *level_data.back(),
+            lambda_dof_handlers[level],
+            lambda_fields[level]);
+          mu_coefficients[level].reinit(
+            *level_data.back(), mu_dof_handlers[level], mu_fields[level]);
+        }
+      mg_ops[level].reinit(level_data.back(),
+                           lambda_coefficients[level],
+                           mu_coefficients[level]);
     }
   for (unsigned int level = min_level; level < max_level; ++level)
     transfers[level + 1].reinit(mg_dofs[level + 1],
@@ -1040,7 +1005,10 @@ run_matrixfree(const ConditionalOStream &pcout,
   write_graphical_output(
     dof_handler,
     solution_host,
-    coefficient_levels[max_level],
+    lambda_dof_handlers[max_level],
+    lambda_fields[max_level],
+    mu_dof_handlers[max_level],
+    mu_fields[max_level],
     transfer_coefficients_from_finest ? "elasticity_matrixfree_transfer" :
                                         "elasticity_matrixfree_evaluate");
   Vector<double> cellwise_errors(tria.n_active_cells());

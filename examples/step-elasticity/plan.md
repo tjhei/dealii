@@ -8,12 +8,12 @@ Turn `tests/matrix_free_kokkos/elasticity_02.cc` into a user-facing example, usi
 2. Uses the test's exact displacement, `u_i = product_d x_d(1-x_d)`, with homogeneous boundary conditions.
 3. Supports conventional `MatrixFree`/`FEEvaluation` and `Portable::MatrixFree`/`Portable::FEEvaluation`. Select the backend with the first command-line argument: `matrixfree` or `portable` (default).
 4. Reports setup/preconditioner, solve, postprocessing, and total wall times, plus CG iterations.
-5. Adds reusable `Coefficient<dim>`. It stores both Lamé fields in DGQ0 FE fields sampled from continuous expressions. Portable kernels use Kokkos views; conventional MatrixFree packs values into cell-batch data with `MatrixFree::initialize_cell_data_vector()` and `FEEvaluation::set_cell_data()`.
-6. Uses `lambda(x)=1+x` and `mu(x)=1+y+z`, constant within each cell. The second argument selects the GMG coefficient policy: `evaluate` (default, evaluate the expressions on each level) or `transfer` (transfer the finest DGQ0 fields with `interpolate_to_mg()`). Both policies are supported by both backends.
+5. Adds reusable `Coefficient<dim>` as a scalar backend-storage adapter. The example owns the DGQ0 source fields and passes one field to each instance. Each instance stores exactly one active backend representation: a Kokkos view for Portable::MatrixFree or cell-batch data initialized with `MatrixFree::initialize_cell_data_vector()` and `FEEvaluation::set_cell_data()` for MatrixFree. Packing reads directly from the source field without an intermediate cell-value cache.
+6. Uses separate lambda and mu `Coefficient<dim>` instances. The example evaluates `lambda(x)=1+x` and `mu(x)=1+y+z` into separate DGQ0 fields. The second argument selects the GMG policy: `evaluate` (default, evaluate the expressions on each level) or `transfer` (transfer each finest DGQ0 field with `interpolate_to_mg()`). Both policies are supported by both backends.
 7. Uses a discrete manufactured load, `b = A I_h(u_exact)`, so the variable coefficient strong-form divergence does not need to be derived by hand. The reported L2 error is against the continuous exact solution.
 8. Writes parallel VTU/PVTU output for the displacement vector and the cellwise `lambda` and `mu` fields. The file prefix records the backend and coefficient policy.
 
-`Coefficient<dim>` uses distributed FE fields as the common coefficient source, avoiding custom MPI exchange for cell-indexed arrays. Its `set_field_data()` interface can accept later FE coefficient sources. Future quadrature-point data can use FE fields, be evaluated at quadrature points, and transfer across levels with `interpolate_to_mg()`.
+The `Coefficient<dim>` class contains no elasticity-specific logic and owns no source FE field. The example owns the distributed fields, so MPI ghost exchange and multigrid transfer use standard deal.II vectors. The adapter packs scalar one-DoF-per-cell fields directly into the selected backend representation. Future quadrature-point or general FE field data will need an extension of this adapter's input/layout interface.
 
 ## Verification
 
