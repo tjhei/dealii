@@ -126,7 +126,7 @@ namespace Step64
 
     DEAL_II_HOST_DEVICE void operator()(
       Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> *fe_eval,
-      const int q_point) const;
+      const unsigned int q_point) const;
 
 
 
@@ -148,7 +148,7 @@ namespace Step64
   template <int dim, int fe_degree>
   DEAL_II_HOST_DEVICE void HelmholtzOperatorQuad<dim, fe_degree>::operator()(
     Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> *fe_eval,
-    const int q_point) const
+    const unsigned int q_point) const
   {
     const int cell_index = fe_eval->get_current_cell_index();
     const typename Portable::MatrixFree<dim, double>::Data *data =
