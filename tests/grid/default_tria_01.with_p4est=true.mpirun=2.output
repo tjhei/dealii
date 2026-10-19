@@ -1,0 +1,4 @@
+
+DEAL:2d::globally active cells: 76
+DEAL:2d::owned active cells (rank 0): 40
+DEAL:2d::is parallel triangulation base
