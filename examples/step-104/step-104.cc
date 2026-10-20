@@ -28,7 +28,6 @@
 
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_block_vector.h>
-#include <deal.II/lac/la_parallel_vector.templates.h>
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_gmres.h>
 
