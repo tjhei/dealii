@@ -12,8 +12,10 @@
  */
 
 // CPU or GPU?
-// #define STEP104_USE_PORTABLE_MATRIX_FREE
-#define DEFORMED_GEOMETRY
+#define STEP104_USE_PORTABLE_MATRIX_FREE
+//#define DEFORMED_GEOMETRY
+
+#define OPERATOR_THROUGHPUT
 
 // teamsize = 32 is better than auto=-1 for degree <Q4Q3
 unsigned int team_size = -1;
@@ -1383,18 +1385,34 @@ namespace Step104
 
     mf_data->initialize_dof_vector(solution);
 
+    #ifdef OPERATOR_THROUGHPUT
+
+    unsigned int n_warmup = 10;
+    for (unsigned int t = 0; t < n_warmup; ++t)
+        stokes_operator.vmult(solution, rhs);
+
+    double max_throughput = 0;
+    for (unsigned int i = 0; i < 3; ++i)
     {
       MPI_Barrier(MPI_COMM_WORLD);
+      Kokkos::fence();
       dealii::Timer t(tria.get_mpi_communicator());
       constexpr unsigned int n_repetitions = 100;
       for (unsigned int t = 0; t < n_repetitions; ++t)
         stokes_operator.vmult(solution, rhs);
+      Kokkos::fence();
       const double time          = t.wall_time() / n_repetitions;
       const double dofs_p_second = static_cast<double>(solution.size()) / time;
-      pcout << "Stokes operator: " << time << " s, MDoFs/s: " << dofs_p_second/1e6
+      pcout << "Stokes operator: ndofs: " << solution.size() << ", time: " << time << " s, MDoFs/s: " << dofs_p_second/1e6
             << std::endl;
+      max_throughput = std::max(max_throughput, dofs_p_second/1e6);
       solution = 0.0;
     }
+    pcout << "teamsize: " << team_size << " ndofs: " << solution.size() << " MDoFs/s: " << max_throughput << std::endl;
+
+
+    return; // skip solve
+    #endif
 
     SolverControl solver_control(1000, 1e-8 * rhs.l2_norm());
 
@@ -1731,10 +1749,11 @@ namespace Step104
           << "dim: " << dim << '\n'
           << "Element: Q" << degree_u << "-Q" << degree_p << std::endl;
 
-    unsigned int n_refinements = 10;
+    unsigned int n_refinements = 40;
 
     for (unsigned int i = 0; i < n_refinements; ++i)
       {
+        #ifndef OPERATOR_THROUGHPUT
         if (i == 0)
           {
             GridGenerator::hyper_cube(tria);
@@ -1750,6 +1769,15 @@ namespace Step104
           {
             tria.refine_global(1);
           }
+          #else
+          {
+            tria.clear();
+            int ref = i / 3;
+            int remainder = i % 3;
+            GridGenerator::subdivided_hyper_rectangle(tria, {1u, (remainder==2)?2u:1u, (remainder>0)?2u:1u}, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}, false);
+            tria.refine_global(ref);
+          }
+          #endif
         setup_dofs();
 
         pcout << "\nrefinement: " << i
@@ -1757,7 +1785,14 @@ namespace Step104
               << dof_u.n_dofs() << " + " << dof_p.n_dofs() << std::endl;
 
         solve();
+	
+        #ifdef OPERATOR_THROUGHPUT
+	if (dof_u.n_dofs() + dof_p.n_dofs() > 200000000)
+	  return;
+	
+	#else
         postprocess();
+        #endif  
       }
   }
 } // namespace Step104
