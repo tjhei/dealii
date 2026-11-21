@@ -26,6 +26,7 @@
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/fe_values.h>
 
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/tria.h>
@@ -123,8 +124,49 @@ namespace
   };
 
 
+  // How a scalar coefficient is indexed on device. `cell` stores one value
+  // per padded cell. `quadrature` stores one value per quadrature point at
+  // index `cell * n_q_points + q`, matching local_q_point_id().
+  enum class CoefficientLayout
+  {
+    cell,
+    quadrature
+  };
+
+  // Rank-1 device view of one scalar coefficient. Copying the struct copies
+  // the Kokkos view handle. The layout is a compile-time constant so a
+  // cellwise value does not depend on the quadrature index.
+  template <typename Number, CoefficientLayout layout>
+  struct DeviceCoefficient
+  {
+    using View = Kokkos::View<Number *, MemorySpace::Default::kokkos_space>;
+
+    View         values;
+    unsigned int n_q_points;
+
+    DEAL_II_HOST_DEVICE
+    DeviceCoefficient(const View &values, const unsigned int n_q_points_in)
+      : values(values)
+      , n_q_points(n_q_points_in)
+    {}
+
+    DEAL_II_HOST_DEVICE Number
+    operator()(const unsigned int cell, const unsigned int q) const
+    {
+      if constexpr (layout == CoefficientLayout::cell)
+        {
+          (void)q;
+          return values(cell);
+        }
+      else
+        return values(cell * n_q_points + q);
+    }
+  };
+
   // Store one scalar coefficient in the layout required by the selected
   // MatrixFree backend. The source FE field remains owned by the caller.
+  // `reinit` without a quadrature stores one value per cell. The overload
+  // with a quadrature evaluates the source field at those points.
   template <int dim, typename Number = double>
   class Coefficient
   {
@@ -140,6 +182,8 @@ namespace
            const DoFHandler<dim>        &field_dof_handler,
            const VectorType             &field)
     {
+      coefficient_layout = CoefficientLayout::cell;
+      n_q_points         = 0;
       Assert(field_dof_handler.get_fe().dofs_per_cell == 1,
              ExcMessage("Coefficient input must have one DoF per cell."));
       MatrixFreeCellData cell_data;
@@ -168,10 +212,56 @@ namespace
     }
 
     void
+    reinit(const MatrixFree<dim, Number> &data,
+           const Mapping<dim>           &mapping,
+           const DoFHandler<dim>        &field_dof_handler,
+           const VectorType             &field,
+           const Quadrature<dim>        &quadrature)
+    {
+      coefficient_layout = CoefficientLayout::quadrature;
+      n_q_points         = quadrature.size();
+      const unsigned int n_batches =
+        data.n_cell_batches() + data.n_ghost_cell_batches();
+      MatrixFreeCellData cell_data(n_batches * n_q_points);
+      FEValues<dim>       fe_values(mapping,
+                              field_dof_handler.get_fe(),
+                              quadrature,
+                              update_values);
+      std::vector<Number> q_values(n_q_points);
+      for (unsigned int batch = 0; batch < n_batches; ++batch)
+        {
+          std::vector<CellArray> local_values(n_q_points);
+          const unsigned int     n_lanes =
+            data.n_active_entries_per_cell_batch(batch);
+          for (unsigned int lane = 0; lane < n_lanes; ++lane)
+            {
+              const auto cell =
+                data.get_cell_iterator(batch, lane)
+                  ->as_dof_handler_iterator(field_dof_handler);
+              fe_values.reinit(cell);
+              fe_values.get_function_values(field, q_values);
+              for (unsigned int q = 0; q < n_q_points; ++q)
+                local_values[q][lane] = q_values[q];
+            }
+          if (n_lanes > 0)
+            for (unsigned int lane = n_lanes;
+                 lane < VectorizedArray<Number>::size();
+                 ++lane)
+              for (unsigned int q = 0; q < n_q_points; ++q)
+                local_values[q][lane] = local_values[q][0];
+          for (unsigned int q = 0; q < n_q_points; ++q)
+            cell_data[batch * n_q_points + q] = local_values[q];
+        }
+      representation = std::move(cell_data);
+    }
+
+    void
     reinit(const Portable::MatrixFree<dim, Number> &data,
            const DoFHandler<dim>                  &field_dof_handler,
            const VectorType                       &field)
     {
+      coefficient_layout = CoefficientLayout::cell;
+      n_q_points         = 0;
       Assert(field_dof_handler.get_fe().dofs_per_cell == 1,
              ExcMessage("Coefficient input must have one DoF per cell."));
       const unsigned int padding = data.get_padding_length();
@@ -203,10 +293,60 @@ namespace
       representation = std::move(values);
     }
 
-    const View &
+    void
+    reinit(const Portable::MatrixFree<dim, Number> &data,
+           const Mapping<dim>                     &mapping,
+           const DoFHandler<dim>                  &field_dof_handler,
+           const VectorType                       &field,
+           const Quadrature<dim>                  &quadrature)
+    {
+      coefficient_layout     = CoefficientLayout::quadrature;
+      n_q_points             = quadrature.size();
+      const unsigned int padding = data.get_padding_length();
+      unsigned int       n_cells = 0;
+      for (unsigned int color = 0; data.n_cells_per_color(color) > 0; ++color)
+        n_cells += ((data.n_cells_per_color(color) + padding - 1) / padding) *
+                   padding;
+
+      View values("quadrature coefficient data", n_cells * n_q_points);
+      auto host_values = Kokkos::create_mirror_view(values);
+      FEValues<dim> fe_values(mapping,
+                              field_dof_handler.get_fe(),
+                              quadrature,
+                              update_values);
+      std::vector<Number> q_values(n_q_points);
+
+      unsigned int offset = 0;
+      for (unsigned int color = 0; data.n_cells_per_color(color) > 0; ++color)
+        {
+          for (unsigned int cell_index = 0;
+               cell_index < data.n_cells_per_color(color);
+               ++cell_index)
+            {
+              const auto cell = data.get_cell_iterator(color, cell_index)
+                                  ->as_dof_handler_iterator(field_dof_handler);
+              fe_values.reinit(cell);
+              fe_values.get_function_values(field, q_values);
+              const unsigned int base = (offset + cell_index) * n_q_points;
+              for (unsigned int q = 0; q < n_q_points; ++q)
+                host_values[base + q] = q_values[q];
+            }
+          offset += ((data.n_cells_per_color(color) + padding - 1) / padding) *
+                    padding;
+        }
+      Kokkos::deep_copy(values, host_values);
+      representation = std::move(values);
+    }
+
+    template <CoefficientLayout requested>
+    DeviceCoefficient<Number, requested>
     portable_view() const
     {
-      return std::get<View>(representation);
+      Assert(requested == coefficient_layout,
+             ExcMessage(
+               "Requested device layout does not match the coefficient."));
+      return DeviceCoefficient<Number, requested>(std::get<View>(representation),
+                                                  n_q_points);
     }
 
     const MatrixFreeCellData &
@@ -215,8 +355,22 @@ namespace
       return std::get<MatrixFreeCellData>(representation);
     }
 
+    CoefficientLayout
+    layout() const
+    {
+      return coefficient_layout;
+    }
+
+    unsigned int
+    n_quadrature_points() const
+    {
+      return n_q_points;
+    }
+
   private:
     std::variant<std::monostate, View, MatrixFreeCellData> representation;
+    CoefficientLayout coefficient_layout = CoefficientLayout::cell;
+    unsigned int      n_q_points         = 0;
   };
 
 
@@ -310,15 +464,14 @@ namespace
 } // namespace
 
 
-template <int dim, int fe_degree, typename Number>
+template <int dim, int fe_degree, CoefficientLayout layout, typename Number>
 class ElasticityCellOperatorQuadrature
 {
 public:
   DEAL_II_HOST_DEVICE
-  ElasticityCellOperatorQuadrature(const typename Coefficient<dim, Number>::View
-                                     &mu_values,
-                                   const typename Coefficient<dim, Number>::View
-                                     &lambda_values)
+  ElasticityCellOperatorQuadrature(
+    const DeviceCoefficient<Number, layout> &mu_values,
+    const DeviceCoefficient<Number, layout> &lambda_values)
     : mu_values(mu_values)
     , lambda_values(lambda_values)
   {}
@@ -335,27 +488,27 @@ public:
       fe_eval->get_current_cell_index();
     const Tensor<2, dim, Number> gradient = fe_eval->get_gradient(q_point);
     Tensor<2, dim, Number> stress =
-      mu_values(cell_index) * (gradient + transpose(gradient));
-    const Number volumetric_stress = lambda_values(cell_index) * trace(gradient);
+      mu_values(cell_index, q_point) * (gradient + transpose(gradient));
+    const Number volumetric_stress =
+      lambda_values(cell_index, q_point) * trace(gradient);
     for (unsigned int d = 0; d < dim; ++d)
       stress[d][d] += volumetric_stress;
     fe_eval->submit_gradient(stress, q_point);
   }
 
 private:
-  typename Coefficient<dim, Number>::View mu_values;
-  typename Coefficient<dim, Number>::View lambda_values;
+  DeviceCoefficient<Number, layout> mu_values;
+  DeviceCoefficient<Number, layout> lambda_values;
 };
 
-template <int dim, int degree, typename Number>
+template <int dim, int degree, CoefficientLayout layout, typename Number>
 class ElasticityCellOperator
 {
 public:
   static constexpr unsigned int n_q_points = Utilities::pow(degree + 1, dim);
 
-  ElasticityCellOperator(const typename Coefficient<dim, Number>::View &mu_values,
-                         const typename Coefficient<dim, Number>::View
-                           &lambda_values)
+  ElasticityCellOperator(const DeviceCoefficient<Number, layout> &mu_values,
+                         const DeviceCoefficient<Number, layout> &lambda_values)
     : mu_values(mu_values)
     , lambda_values(lambda_values)
   {}
@@ -370,7 +523,7 @@ public:
     fe.read_dof_values(src);
     fe.evaluate(EvaluationFlags::gradients);
 
-    ElasticityCellOperatorQuadrature<dim, degree, Number> quad_operator(
+    ElasticityCellOperatorQuadrature<dim, degree, layout, Number> quad_operator(
       mu_values, lambda_values);
     data->for_each_quad_point(
       [&](const int q_point) { quad_operator(&fe, q_point); });
@@ -380,11 +533,14 @@ public:
   }
 
 private:
-  typename Coefficient<dim, Number>::View mu_values;
-  typename Coefficient<dim, Number>::View lambda_values;
+  DeviceCoefficient<Number, layout> mu_values;
+  DeviceCoefficient<Number, layout> lambda_values;
 };
 
-template <int dim, int degree, typename Number = double>
+template <int dim,
+          int degree,
+          CoefficientLayout layout,
+          typename Number = double>
 class ElasticityOperator : public EnableObserverPointer
 {
 public:
@@ -428,9 +584,9 @@ public:
   vmult(VectorType &dst, const VectorType &src) const
   {
     dst = 0.;
-    data->cell_loop(ElasticityCellOperator<dim, degree, Number>(
-                      mu_values->portable_view(),
-                      lambda_values->portable_view()),
+    data->cell_loop(ElasticityCellOperator<dim, degree, layout, Number>(
+                      mu_values->template portable_view<layout>(),
+                      lambda_values->template portable_view<layout>()),
                     src,
                     dst);
     data->copy_constrained_values(src, dst, 0);
@@ -448,8 +604,9 @@ public:
     inverse_diagonal     = std::make_shared<DiagonalMatrix<VectorType>>();
     VectorType &diagonal = inverse_diagonal->get_vector();
     data->initialize_dof_vector(diagonal, 0);
-    ElasticityCellOperatorQuadrature<dim, degree, Number> quad_operator(
-      mu_values->portable_view(), lambda_values->portable_view());
+    ElasticityCellOperatorQuadrature<dim, degree, layout, Number> quad_operator(
+      mu_values->template portable_view<layout>(),
+      lambda_values->template portable_view<layout>());
 
     MatrixFreeTools::compute_diagonal<dim, degree, degree + 1, dim, Number>(
       *data,
@@ -576,9 +733,23 @@ public:
   operator()(FEEvaluation<dim, degree, degree + 1, dim, Number> *fe,
              const int q_point) const
   {
-    const auto lambda_array = fe->read_cell_data(
-      lambda_values->matrix_free_cell_data());
-    const auto mu_array = fe->read_cell_data(mu_values->matrix_free_cell_data());
+    typename Coefficient<dim, Number>::CellArray lambda_array, mu_array;
+    if (lambda_values->layout() == CoefficientLayout::cell)
+      lambda_array =
+        fe->read_cell_data(lambda_values->matrix_free_cell_data());
+    else
+      lambda_array =
+        lambda_values->matrix_free_cell_data()
+          [fe->get_current_cell_index() *
+             lambda_values->n_quadrature_points() +
+           q_point];
+    if (mu_values->layout() == CoefficientLayout::cell)
+      mu_array = fe->read_cell_data(mu_values->matrix_free_cell_data());
+    else
+      mu_array =
+        mu_values->matrix_free_cell_data()[fe->get_current_cell_index() *
+                                             mu_values->n_quadrature_points() +
+                                           q_point];
     VectorizedArray<Number> lambda_value, mu_value;
     for (unsigned int lane = 0; lane < VectorizedArray<Number>::size(); ++lane)
       {
@@ -622,14 +793,14 @@ private:
 };
 
 
-template <int dim, int degree>
+template <int dim, int degree, CoefficientLayout layout>
 void
 run_portable(const ConditionalOStream &pcout,
              const bool transfer_coefficients_from_finest)
 {
   using VectorType =
     LinearAlgebra::distributed::Vector<double, MemorySpace::Default>;
-  using Operator = ElasticityOperator<dim, degree>;
+  using Operator = ElasticityOperator<dim, degree, layout>;
   using Smoother =
     PreconditionChebyshev<Operator, VectorType, DiagonalMatrix<VectorType>>;
   using Transfer = MGTransferMatrixFree<dim, double, MemorySpace::Default>;
@@ -647,6 +818,9 @@ run_portable(const ConditionalOStream &pcout,
 
   pcout << "n_cells: " << tria.n_global_active_cells()
         << " n_dofs: " << dof_handler.n_dofs() << std::endl;
+  pcout << "coefficient layout: "
+        << (layout == CoefficientLayout::cell ? "cell" : "quadrature")
+        << std::endl;
 
   AffineConstraints<double> constraints;
   constraints.reinit(dof_handler.locally_owned_dofs(),
@@ -682,15 +856,31 @@ run_portable(const ConditionalOStream &pcout,
       transfer_cellwise_coefficient_field(lambda_dof_handlers, lambda_fields);
       transfer_cellwise_coefficient_field(mu_dof_handlers, mu_fields);
     }
+  const QGauss<dim> coefficient_quadrature(degree + 1);
+  auto              pack_coefficient = [&](auto       &coefficient,
+                              const auto &matrix_free,
+                              const auto &dof_handler_level,
+                              const auto &field) {
+    if constexpr (layout == CoefficientLayout::cell)
+      coefficient.reinit(matrix_free, dof_handler_level, field);
+    else
+      coefficient.reinit(matrix_free,
+                         mapping,
+                         dof_handler_level,
+                         field,
+                         coefficient_quadrature);
+  };
   const unsigned int min_level = 0, max_level = coarse.size() - 1;
   MGLevelObject<Coefficient<dim>> lambda_coefficients(min_level, max_level);
   MGLevelObject<Coefficient<dim>> mu_coefficients(min_level, max_level);
-  lambda_coefficients[max_level].reinit(*data,
-                                        lambda_dof_handlers[max_level],
-                                        lambda_fields[max_level]);
-  mu_coefficients[max_level].reinit(*data,
-                                    mu_dof_handlers[max_level],
-                                    mu_fields[max_level]);
+  pack_coefficient(lambda_coefficients[max_level],
+                   *data,
+                   lambda_dof_handlers[max_level],
+                   lambda_fields[max_level]);
+  pack_coefficient(mu_coefficients[max_level],
+                   *data,
+                   mu_dof_handlers[max_level],
+                   mu_fields[max_level]);
 
   LinearAlgebra::distributed::Vector<double, MemorySpace::Host> exact_host;
   data->initialize_dof_vector(exact_host, 0);
@@ -743,12 +933,14 @@ run_portable(const ConditionalOStream &pcout,
         }
       if (level != max_level)
         {
-          lambda_coefficients[level].reinit(*level_data.back(),
-                                            lambda_dof_handlers[level],
-                                            lambda_fields[level]);
-          mu_coefficients[level].reinit(*level_data.back(),
-                                        mu_dof_handlers[level],
-                                        mu_fields[level]);
+          pack_coefficient(lambda_coefficients[level],
+                           *level_data.back(),
+                           lambda_dof_handlers[level],
+                           lambda_fields[level]);
+          pack_coefficient(mu_coefficients[level],
+                           *level_data.back(),
+                           mu_dof_handlers[level],
+                           mu_fields[level]);
         }
       mg_ops[level].reinit(level_data.back(),
                            lambda_coefficients[level],
@@ -812,8 +1004,10 @@ run_portable(const ConditionalOStream &pcout,
     lambda_fields[max_level],
     mu_dof_handlers[max_level],
     mu_fields[max_level],
-    transfer_coefficients_from_finest ? "elasticity_portable_transfer" :
-                                        "elasticity_portable_evaluate");
+    (std::string(transfer_coefficients_from_finest ?
+                   "elasticity_portable_transfer_" :
+                   "elasticity_portable_evaluate_") +
+     (layout == CoefficientLayout::cell ? "cell" : "quadrature")));
   Vector<double> cellwise_errors(tria.n_active_cells());
   VectorTools::integrate_difference(dof_handler,
                                     solution_host,
@@ -834,7 +1028,8 @@ run_portable(const ConditionalOStream &pcout,
 template <int dim, int degree>
 void
 run_matrixfree(const ConditionalOStream &pcout,
-               const bool transfer_coefficients_from_finest)
+               const bool                transfer_coefficients_from_finest,
+               const CoefficientLayout   layout)
 {
   using VectorType =
     LinearAlgebra::distributed::Vector<double, MemorySpace::Host>;
@@ -854,6 +1049,9 @@ run_matrixfree(const ConditionalOStream &pcout,
   dof_handler.distribute_dofs(fe);
   pcout << "n_cells: " << tria.n_global_active_cells()
         << " n_dofs: " << dof_handler.n_dofs() << std::endl;
+  pcout << "coefficient layout: "
+        << (layout == CoefficientLayout::cell ? "cell" : "quadrature")
+        << std::endl;
 
   AffineConstraints<double> constraints;
   constraints.reinit(dof_handler.locally_owned_dofs(),
@@ -891,13 +1089,31 @@ run_matrixfree(const ConditionalOStream &pcout,
       transfer_cellwise_coefficient_field(lambda_dof_handlers, lambda_fields);
       transfer_cellwise_coefficient_field(mu_dof_handlers, mu_fields);
     }
+  const QGauss<dim> coefficient_quadrature(degree + 1);
+  auto              pack_coefficient = [&](auto       &coefficient,
+                              const auto &matrix_free,
+                              const auto &dof_handler_level,
+                              const auto &field) {
+    if (layout == CoefficientLayout::cell)
+      coefficient.reinit(matrix_free, dof_handler_level, field);
+    else
+      coefficient.reinit(matrix_free,
+                         mapping,
+                         dof_handler_level,
+                         field,
+                         coefficient_quadrature);
+  };
   const unsigned int min_level = 0, max_level = coarse.size() - 1;
   MGLevelObject<Coefficient<dim>> lambda_coefficients(min_level, max_level);
   MGLevelObject<Coefficient<dim>> mu_coefficients(min_level, max_level);
-  lambda_coefficients[max_level].reinit(
-    *data, lambda_dof_handlers[max_level], lambda_fields[max_level]);
-  mu_coefficients[max_level].reinit(
-    *data, mu_dof_handlers[max_level], mu_fields[max_level]);
+  pack_coefficient(lambda_coefficients[max_level],
+                   *data,
+                   lambda_dof_handlers[max_level],
+                   lambda_fields[max_level]);
+  pack_coefficient(mu_coefficients[max_level],
+                   *data,
+                   mu_dof_handlers[max_level],
+                   mu_fields[max_level]);
   Operator op;
   op.reinit(data,
             lambda_coefficients[max_level],
@@ -945,12 +1161,14 @@ run_matrixfree(const ConditionalOStream &pcout,
         }
       if (level != max_level)
         {
-          lambda_coefficients[level].reinit(
-            *level_data.back(),
-            lambda_dof_handlers[level],
-            lambda_fields[level]);
-          mu_coefficients[level].reinit(
-            *level_data.back(), mu_dof_handlers[level], mu_fields[level]);
+          pack_coefficient(lambda_coefficients[level],
+                           *level_data.back(),
+                           lambda_dof_handlers[level],
+                           lambda_fields[level]);
+          pack_coefficient(mu_coefficients[level],
+                           *level_data.back(),
+                           mu_dof_handlers[level],
+                           mu_fields[level]);
         }
       mg_ops[level].reinit(level_data.back(),
                            lambda_coefficients[level],
@@ -1009,8 +1227,10 @@ run_matrixfree(const ConditionalOStream &pcout,
     lambda_fields[max_level],
     mu_dof_handlers[max_level],
     mu_fields[max_level],
-    transfer_coefficients_from_finest ? "elasticity_matrixfree_transfer" :
-                                        "elasticity_matrixfree_evaluate");
+    (std::string(transfer_coefficients_from_finest ?
+                   "elasticity_matrixfree_transfer_" :
+                   "elasticity_matrixfree_evaluate_") +
+     (layout == CoefficientLayout::cell ? "cell" : "quadrature")));
   Vector<double> cellwise_errors(tria.n_active_cells());
   VectorTools::integrate_difference(dof_handler,
                                     solution_host,
@@ -1036,15 +1256,28 @@ main(int argc, char **argv)
   pcout << std::setprecision(6);
   const std::string backend = argc > 1 ? argv[1] : "portable";
   const std::string coefficient_policy = argc > 2 ? argv[2] : "evaluate";
+  const std::string coefficient_layout = argc > 3 ? argv[3] : "cell";
   const bool transfer_coefficients_from_finest =
     coefficient_policy == "transfer";
   if (coefficient_policy != "evaluate" && coefficient_policy != "transfer")
     throw ExcMessage("Coefficient policy must be 'evaluate' or 'transfer'.");
+  if (coefficient_layout != "cell" && coefficient_layout != "quadrature")
+    throw ExcMessage("Coefficient layout must be 'cell' or 'quadrature'.");
+  const CoefficientLayout layout = coefficient_layout == "quadrature" ?
+                                     CoefficientLayout::quadrature :
+                                     CoefficientLayout::cell;
   Timer timer(MPI_COMM_WORLD);
   if (backend == "portable")
-    run_portable<3, 1>(pcout, transfer_coefficients_from_finest);
+    {
+      if (layout == CoefficientLayout::quadrature)
+        run_portable<3, 1, CoefficientLayout::quadrature>(
+          pcout, transfer_coefficients_from_finest);
+      else
+        run_portable<3, 1, CoefficientLayout::cell>(
+          pcout, transfer_coefficients_from_finest);
+    }
   else if (backend == "matrixfree")
-    run_matrixfree<3, 1>(pcout, transfer_coefficients_from_finest);
+    run_matrixfree<3, 1>(pcout, transfer_coefficients_from_finest, layout);
   else
     throw ExcMessage("Backend must be 'portable' or 'matrixfree'.");
   timer.stop();
