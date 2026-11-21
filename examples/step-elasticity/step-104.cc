@@ -193,24 +193,35 @@ namespace
   };
 
   /**
-   * Pack a scalar finite element field for use in matrix-free cell loops.
-   * Each call to reinit() replaces the stored values with a copy in the cell
-   * order of the supplied MatrixFree or Portable::MatrixFree object. The
-   * MatrixFree overloads pack cells into SIMD batches, and the
-   * Portable::MatrixFree overloads copy the values to the default memory
-   * space for use in device kernels.
+   * Store a scalar finite element field in the order used by a MatrixFree
+   * or Portable::MatrixFree cell loop.
    *
-   * The source DoFHandler must describe a scalar field on the same
-   * triangulation as the matrix-free object, with active DoF indices on the
-   * cells being packed. The source vector must contain up-to-date ghost
-   * entries for any cells read during packing. The coefficient owns the
-   * packed values, so changes to the source field or the matrix-free cell
-   * ordering require another call to reinit().
+   * Pass the matrix-free object, the source DoFHandler, and the source
+   * field vector to reinit(). Both backends support two layouts.
    *
-   * In this example, the Lamé parameters are represented by FE_DGQ(0) fields.
-   * The cell layout reads the single DoF value on each cell. The quadrature
-   * layout evaluates the same field at each quadrature point, so both
-   * layouts represent the same piecewise constant coefficients.
+   * - For the cell layout, use a scalar piecewise constant field with
+   *   one degree of freedom per cell, such as FE_DGQ(0). Initialization
+   *   copies one value per cell.
+   * - For the quadrature layout, also supply a mapping and quadrature to
+   *   evaluate a scalar finite element field at each point. Use the same
+   *   mapping and quadrature points, in the same order, as the evaluation
+   *   object that will read the values.
+   *
+   * In either case, the DoFHandler must provide active DoF indices on the
+   * cells being packed and use the same triangulation as the matrix-free
+   * object. The source vector must provide up-to-date ghost values for any
+   * ghost cells read during packing. Each call to reinit() replaces the
+   * stored values. Call it again if the field values or the matrix-free
+   * cell ordering change.
+   *
+   * With MatrixFree, pass the FEEvaluation object for the current SIMD batch
+   * and a quadrature point index to value() to obtain a VectorizedArray.
+   * With Portable::MatrixFree, obtain a device accessor from
+   * portable_view() using the layout selected at initialization. Pass that
+   * accessor to the cell kernel and call it with the index returned by
+   * Portable::FEEvaluation::get_current_cell_index() and the quadrature point
+   * index. For the cell layout, both accessors return the same value for all
+   * quadrature points on a given cell.
    */
   template <int dim, typename Number = double>
   class Coefficient
