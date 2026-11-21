@@ -124,32 +124,61 @@ namespace
   };
 
 
-  // How a scalar coefficient is indexed on device. `cell` stores one value
-  // per padded cell. `quadrature` stores one value per quadrature point at
-  // index `cell * n_q_points + q`, matching local_q_point_id().
+  /**
+   * Storage layouts for a scalar coefficient.
+   */
   enum class CoefficientLayout
   {
+    /**
+     * Store one value per cell and use it at every quadrature point.
+     */
     cell,
+
+    /**
+     * Store one value per quadrature point on each cell.
+     */
     quadrature
   };
 
-  // Rank-1 device view of one scalar coefficient. Copying the struct copies
-  // the Kokkos view handle. The layout is a compile-time constant so a
-  // cellwise value does not depend on the quadrature index.
+  /**
+   * Access the values of a scalar coefficient in a Portable::MatrixFree
+   * kernel. The layout is a template argument so that the index calculation
+   * is selected at compile time. Copies share the underlying Kokkos view.
+   */
   template <typename Number, CoefficientLayout layout>
   struct DeviceCoefficient
   {
+    /**
+     * One-dimensional view in the default memory space.
+     */
     using View = Kokkos::View<Number *, MemorySpace::Default::kokkos_space>;
 
-    View         values;
+    /**
+     * Coefficient values in the order used by operator().
+     */
+    View values;
+
+    /**
+     * The number of quadrature points per cell for the quadrature layout.
+     */
     unsigned int n_q_points;
 
+    /**
+     * Construct an accessor that shares @p values. The cell layout can use
+     * zero for @p n_q_points_in since it uses a single value for the cell.
+     */
     DEAL_II_HOST_DEVICE
     DeviceCoefficient(const View &values, const unsigned int n_q_points_in)
       : values(values)
       , n_q_points(n_q_points_in)
     {}
 
+    /**
+     * Return the value at quadrature point @p q on cell @p cell. The cell
+     * index includes the offset of its color in the packed storage. For the
+     * quadrature layout the flat index is <code>cell * n_q_points + q</code>.
+     * For the cell layout the value depends only on @p cell.
+     */
     DEAL_II_HOST_DEVICE Number
     operator()(const unsigned int cell, const unsigned int q) const
     {
@@ -163,20 +192,56 @@ namespace
     }
   };
 
-  // Store one scalar coefficient in the layout required by the selected
-  // MatrixFree backend. The source FE field remains owned by the caller.
-  // `reinit` without a quadrature stores one value per cell. The overload
-  // with a quadrature evaluates the source field at those points.
+  /**
+   * Pack a scalar finite element field for use in matrix-free cell loops.
+   * Each call to reinit() replaces the stored values with a copy in the cell
+   * order of the supplied MatrixFree or Portable::MatrixFree object. The
+   * MatrixFree overloads pack cells into SIMD batches, and the
+   * Portable::MatrixFree overloads copy the values to the default memory
+   * space for use in device kernels.
+   *
+   * The source DoFHandler must describe a scalar field on the same
+   * triangulation as the matrix-free object, with active DoF indices on the
+   * cells being packed. The source vector must contain up-to-date ghost
+   * entries for any cells read during packing. The coefficient owns the
+   * packed values, so changes to the source field or the matrix-free cell
+   * ordering require another call to reinit().
+   *
+   * In this example, the Lamé parameters are represented by FE_DGQ(0) fields.
+   * The cell layout reads the single DoF value on each cell. The quadrature
+   * layout evaluates the same field at each quadrature point, so both
+   * layouts represent the same piecewise constant coefficients.
+   */
   template <int dim, typename Number = double>
   class Coefficient
   {
-  public:
-    using VectorType =
-      LinearAlgebra::distributed::Vector<Number, MemorySpace::Host>;
-    using View = Kokkos::View<Number *, MemorySpace::Default::kokkos_space>;
+    /**
+     * Coefficient values for the cells in one SIMD batch.
+     */
     using CellArray = std::array<Number, VectorizedArray<Number>::size()>;
+
+    /**
+     * Storage type for the MatrixFree backend.
+     */
     using MatrixFreeCellData = AlignedVector<CellArray>;
 
+  public:
+    /**
+     * Type of the source finite element field on the host.
+     */
+    using VectorType =
+      LinearAlgebra::distributed::Vector<Number, MemorySpace::Host>;
+
+    /**
+     * Storage type for the Portable::MatrixFree backend.
+     */
+    using View = Kokkos::View<Number *, MemorySpace::Default::kokkos_space>;
+
+    /**
+     * Pack one value per cell for @p data, including its ghost cell batches.
+     * Read the single DoF on each cell of @p field_dof_handler directly from
+     * @p field. Use a scalar, piecewise constant element such as FE_DGQ(0).
+     */
     void
     reinit(const MatrixFree<dim, Number> &data,
            const DoFHandler<dim>        &field_dof_handler,
@@ -211,6 +276,12 @@ namespace
       representation = std::move(cell_data);
     }
 
+    /**
+     * Evaluate @p field at each point of @p quadrature using @p mapping and
+     * @p field_dof_handler, and pack the results in the cell batch order of
+     * @p data, including its ghost cell batches. Use the mapping and the
+     * quadrature points, in the same order, of the consuming FEEvaluation.
+     */
     void
     reinit(const MatrixFree<dim, Number> &data,
            const Mapping<dim>           &mapping,
@@ -255,89 +326,88 @@ namespace
       representation = std::move(cell_data);
     }
 
+    /**
+     * Pack one value per cell in the color order of @p data and copy the
+     * result to the default memory space. Read the single DoF on each cell
+     * of @p field_dof_handler directly from @p field. Use a scalar, piecewise
+     * constant element such as FE_DGQ(0).
+     */
     void
     reinit(const Portable::MatrixFree<dim, Number> &data,
-           const DoFHandler<dim>                  &field_dof_handler,
-           const VectorType                       &field)
+           const DoFHandler<dim>                   &field_dof_handler,
+           const VectorType                        &field)
     {
       coefficient_layout = CoefficientLayout::cell;
       n_q_points         = 0;
       Assert(field_dof_handler.get_fe().dofs_per_cell == 1,
              ExcMessage("Coefficient input must have one DoF per cell."));
-      const unsigned int padding = data.get_padding_length();
-      unsigned int       n_cells = 0;
-      for (unsigned int color = 0; data.n_cells_per_color(color) > 0; ++color)
-        n_cells += ((data.n_cells_per_color(color) + padding - 1) / padding) *
-                   padding;
+      const auto cell_offsets = portable_cell_offsets(data);
 
-      View values("cell coefficient data", n_cells);
+      View values("cell coefficient data", cell_offsets.back());
       auto host_values = Kokkos::create_mirror_view(values);
       std::vector<types::global_dof_index> indices(1);
 
-      unsigned int offset = 0;
-      for (unsigned int color = 0; data.n_cells_per_color(color) > 0; ++color)
-        {
-          for (unsigned int cell_index = 0;
-               cell_index < data.n_cells_per_color(color);
-               ++cell_index)
-            {
-              const auto cell = data.get_cell_iterator(color, cell_index)
-                                  ->as_dof_handler_iterator(field_dof_handler);
-              cell->get_dof_indices(indices);
-              host_values[offset + cell_index] = field(indices[0]);
-            }
-          offset += ((data.n_cells_per_color(color) + padding - 1) / padding) *
-                    padding;
-        }
+      for (unsigned int color = 0; color + 1 < cell_offsets.size(); ++color)
+        for (unsigned int cell_index = 0;
+             cell_index < data.n_cells_per_color(color);
+             ++cell_index)
+          {
+            const auto cell = data.get_cell_iterator(color, cell_index)
+                                ->as_dof_handler_iterator(field_dof_handler);
+            cell->get_dof_indices(indices);
+            host_values[cell_offsets[color] + cell_index] = field(indices[0]);
+          }
       Kokkos::deep_copy(values, host_values);
       representation = std::move(values);
     }
 
+    /**
+     * Evaluate @p field at each point of @p quadrature using @p mapping and
+     * @p field_dof_handler, and pack the results in the color order of
+     * @p data before copying them to the default memory space. Use the
+     * mapping and the quadrature points, in the same order, of the consuming
+     * Portable::FEEvaluation.
+     */
     void
     reinit(const Portable::MatrixFree<dim, Number> &data,
-           const Mapping<dim>                     &mapping,
-           const DoFHandler<dim>                  &field_dof_handler,
-           const VectorType                       &field,
-           const Quadrature<dim>                  &quadrature)
+           const Mapping<dim>                      &mapping,
+           const DoFHandler<dim>                   &field_dof_handler,
+           const VectorType                        &field,
+           const Quadrature<dim>                   &quadrature)
     {
       coefficient_layout     = CoefficientLayout::quadrature;
       n_q_points             = quadrature.size();
-      const unsigned int padding = data.get_padding_length();
-      unsigned int       n_cells = 0;
-      for (unsigned int color = 0; data.n_cells_per_color(color) > 0; ++color)
-        n_cells += ((data.n_cells_per_color(color) + padding - 1) / padding) *
-                   padding;
+      const auto cell_offsets = portable_cell_offsets(data);
 
-      View values("quadrature coefficient data", n_cells * n_q_points);
+      View values("quadrature coefficient data",
+                  cell_offsets.back() * n_q_points);
       auto host_values = Kokkos::create_mirror_view(values);
-      FEValues<dim> fe_values(mapping,
-                              field_dof_handler.get_fe(),
-                              quadrature,
-                              update_values);
+      FEValues<dim> fe_values(
+        mapping, field_dof_handler.get_fe(), quadrature, update_values);
       std::vector<Number> q_values(n_q_points);
 
-      unsigned int offset = 0;
-      for (unsigned int color = 0; data.n_cells_per_color(color) > 0; ++color)
-        {
-          for (unsigned int cell_index = 0;
-               cell_index < data.n_cells_per_color(color);
-               ++cell_index)
-            {
-              const auto cell = data.get_cell_iterator(color, cell_index)
-                                  ->as_dof_handler_iterator(field_dof_handler);
-              fe_values.reinit(cell);
-              fe_values.get_function_values(field, q_values);
-              const unsigned int base = (offset + cell_index) * n_q_points;
-              for (unsigned int q = 0; q < n_q_points; ++q)
-                host_values[base + q] = q_values[q];
-            }
-          offset += ((data.n_cells_per_color(color) + padding - 1) / padding) *
-                    padding;
-        }
+      for (unsigned int color = 0; color + 1 < cell_offsets.size(); ++color)
+        for (unsigned int cell_index = 0;
+             cell_index < data.n_cells_per_color(color);
+             ++cell_index)
+          {
+            const auto cell = data.get_cell_iterator(color, cell_index)
+                                ->as_dof_handler_iterator(field_dof_handler);
+            fe_values.reinit(cell);
+            fe_values.get_function_values(field, q_values);
+            const auto base = (cell_offsets[color] + cell_index) * n_q_points;
+            for (unsigned int q = 0; q < n_q_points; ++q)
+              host_values[base + q] = q_values[q];
+          }
       Kokkos::deep_copy(values, host_values);
       representation = std::move(values);
     }
 
+    /**
+     * Return a device accessor sharing the packed values. This function
+     * requires initialization with Portable::MatrixFree and a layout matching
+     * @p requested.
+     */
     template <CoefficientLayout requested>
     DeviceCoefficient<Number, requested>
     portable_view() const
@@ -349,25 +419,46 @@ namespace
                                                   n_q_points);
     }
 
-    const MatrixFreeCellData &
-    matrix_free_cell_data() const
+    /**
+     * Return the coefficient at quadrature point @p q for all cells in the
+     * batch selected by @p fe_eval. This function requires initialization
+     * with the same MatrixFree object as @p fe_eval. In the cell layout,
+     * the value on each cell is shared by all its quadrature points.
+     */
+    VectorizedArray<Number>
+    value(const FEEvaluationData<dim, VectorizedArray<Number>, false> &fe_eval,
+          const unsigned int q) const
     {
-      return std::get<MatrixFreeCellData>(representation);
-    }
-
-    CoefficientLayout
-    layout() const
-    {
-      return coefficient_layout;
-    }
-
-    unsigned int
-    n_quadrature_points() const
-    {
-      return n_q_points;
+      const auto &cell_data = std::get<MatrixFreeCellData>(representation);
+      const CellArray values =
+        coefficient_layout == CoefficientLayout::cell ?
+          fe_eval.read_cell_data(cell_data) :
+          cell_data[fe_eval.get_current_cell_index() * n_q_points + q];
+      VectorizedArray<Number> result;
+      result.load(values.data());
+      return result;
     }
 
   private:
+    /**
+     * Return the starting cell index for each color, followed by the total
+     * number of cells. These offsets match the numbering used by
+     * Portable::FEEvaluation::get_current_cell_index(), including when a
+     * color is empty.
+     */
+    static std::vector<unsigned int>
+    portable_cell_offsets(const Portable::MatrixFree<dim, Number> &data)
+    {
+      const auto n_colors =
+        data.get_mg_level() == numbers::invalid_unsigned_int ?
+          data.get_colored_graph().size() :
+          data.get_colored_level_graph().size();
+      std::vector<unsigned int> offsets(n_colors + 1, 0);
+      for (unsigned int color = 0; color < n_colors; ++color)
+        offsets[color + 1] = offsets[color] + data.n_cells_per_color(color);
+      return offsets;
+    }
+
     std::variant<std::monostate, View, MatrixFreeCellData> representation;
     CoefficientLayout coefficient_layout = CoefficientLayout::cell;
     unsigned int      n_q_points         = 0;
@@ -481,11 +572,7 @@ public:
     Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, Number> *fe_eval,
     const int q_point) const
   {
-    const auto *data = fe_eval->get_matrix_free_data();
-    const unsigned int cell_index =
-      data->precomputed_data[0].row_start /
-        data->precomputed_data[0].padding_length +
-      fe_eval->get_current_cell_index();
+    const unsigned int cell_index = fe_eval->get_current_cell_index();
     const Tensor<2, dim, Number> gradient = fe_eval->get_gradient(q_point);
     Tensor<2, dim, Number> stress =
       mu_values(cell_index, q_point) * (gradient + transpose(gradient));
@@ -733,29 +820,8 @@ public:
   operator()(FEEvaluation<dim, degree, degree + 1, dim, Number> *fe,
              const int q_point) const
   {
-    typename Coefficient<dim, Number>::CellArray lambda_array, mu_array;
-    if (lambda_values->layout() == CoefficientLayout::cell)
-      lambda_array =
-        fe->read_cell_data(lambda_values->matrix_free_cell_data());
-    else
-      lambda_array =
-        lambda_values->matrix_free_cell_data()
-          [fe->get_current_cell_index() *
-             lambda_values->n_quadrature_points() +
-           q_point];
-    if (mu_values->layout() == CoefficientLayout::cell)
-      mu_array = fe->read_cell_data(mu_values->matrix_free_cell_data());
-    else
-      mu_array =
-        mu_values->matrix_free_cell_data()[fe->get_current_cell_index() *
-                                             mu_values->n_quadrature_points() +
-                                           q_point];
-    VectorizedArray<Number> lambda_value, mu_value;
-    for (unsigned int lane = 0; lane < VectorizedArray<Number>::size(); ++lane)
-      {
-        lambda_value[lane] = lambda_array[lane];
-        mu_value[lane]     = mu_array[lane];
-      }
+    const auto lambda_value = lambda_values->value(*fe, q_point);
+    const auto mu_value     = mu_values->value(*fe, q_point);
     const Tensor<2, dim, VectorizedArray<Number>> gradient =
       fe->get_gradient(q_point);
     Tensor<2, dim, VectorizedArray<Number>> stress =
