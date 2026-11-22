@@ -19,12 +19,16 @@
 #include <deal.II/base/exceptions.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/memory_space.h>
+#include <deal.II/base/mg_level_object.h>
+#include <deal.II/base/partitioner.h>
 #include <deal.II/base/quadrature.h>
 #include <deal.II/base/types.h>
 #include <deal.II/base/vectorization.h>
 
 #include <deal.II/dofs/dof_handler.h>
+#include <deal.II/dofs/dof_tools.h>
 
+#include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping.h>
 
@@ -34,9 +38,12 @@
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/portable_matrix_free.h>
 
+#include <deal.II/multigrid/mg_transfer_matrix_free.h>
+
 #include <Kokkos_Core.hpp>
 
 #include <array>
+#include <memory>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -112,6 +119,32 @@ namespace MatrixFreeTools
         return values(cell * n_q_points + q);
     }
   };
+
+  template <int dim, typename Number>
+  class Coefficient;
+
+  /**
+   * Interpolate @p finest_coefficient to cellwise constants on all levels
+   * of a nested geometric coarsening hierarchy, including the finest level.
+   * Each coarse value is the volume-weighted mean of the fine cells it
+   * contains. For a quadrature-point input, integrate the coefficient using
+   * the finest backend's quadrature weights (including the Jacobian
+   * determinant) before taking the mean.
+   *
+   * Each entry of @p level_matrix_free is an initialized MatrixFree or
+   * Portable::MatrixFree object with active-cell DoF numbering. The input
+   * must have been packed with the finest object in that hierarchy.
+   * Initialize that object with update_JxW_values. For MatrixFree, the input
+   * quadrature must match quadrature index zero. Each level must support
+   * FE_DGQ(0) and geometric MGTwoLevelTransfer.
+   *
+   * @ingroup matrixfree
+   */
+  template <typename MatrixFreeType, int dim, typename Number>
+  MGLevelObject<Coefficient<dim, Number>>
+  interpolate_cellwise_coefficients_to_mg(
+    const MGLevelObject<std::shared_ptr<MatrixFreeType>> &level_matrix_free,
+    const Coefficient<dim, Number>                       &finest_coefficient);
 
   /**
    * Store a scalar coefficient in the order used by a MatrixFree or
@@ -265,6 +298,15 @@ namespace MatrixFreeTools
     }
 
     /**
+     * Return the layout used to store the coefficient.
+     */
+    CoefficientLayout
+    get_layout() const
+    {
+      return coefficient_layout;
+    }
+
+    /**
      * Return a device accessor sharing the packed values. This function
      * requires initialization with Portable::MatrixFree and a layout matching
      * @p requested.
@@ -304,6 +346,111 @@ namespace MatrixFreeTools
     }
 
   private:
+    template <typename MatrixFreeType, int dim_, typename Number_>
+    friend MGLevelObject<Coefficient<dim_, Number_>>
+    interpolate_cellwise_coefficients_to_mg(
+      const MGLevelObject<std::shared_ptr<MatrixFreeType>> &level_matrix_free,
+      const Coefficient<dim_, Number_>                     &finest_coefficient);
+
+    /**
+     * Compute the integral and volume of each owned cell in DGQ0 DoF order.
+     */
+    void
+    compute_cell_integrals(const MatrixFree<dim, Number> &data,
+                           const DoFHandler<dim>         &dof_handler,
+                           VectorType                    &integrals,
+                           VectorType                    &volumes) const
+    {
+      AssertThrow(
+        data.get_mapping_info().update_flags_cells & update_JxW_values,
+        ExcMessage("Coefficient interpolation requires update_JxW_values."));
+      const bool cellwise = coefficient_layout == CoefficientLayout::cell;
+      FEEvaluation<dim, -1, 0, 1, Number>  fe_eval(data);
+      std::vector<types::global_dof_index> indices(1);
+      for (unsigned int batch = 0; batch < data.n_cell_batches(); ++batch)
+        {
+          fe_eval.reinit(batch);
+          AssertThrow(cellwise || n_q_points == fe_eval.n_q_points,
+                      ExcMessage(
+                        "The coefficient and backend quadratures differ."));
+          VectorizedArray<Number> integral{}, volume{};
+          for (const unsigned int q : fe_eval.quadrature_point_indices())
+            {
+              const auto weight = fe_eval.JxW(q);
+              volume += weight;
+              if (!cellwise)
+                integral += value(fe_eval, q) * weight;
+            }
+          if (cellwise)
+            integral = value(fe_eval, 0) * volume;
+          for (unsigned int lane = 0;
+               lane < data.n_active_entries_per_cell_batch(batch);
+               ++lane)
+            {
+              const auto cell = data.get_cell_iterator(batch, lane);
+              cell->as_dof_handler_iterator(dof_handler)
+                ->get_dof_indices(indices);
+              integrals[indices[0]] = integral[lane];
+              volumes[indices[0]]   = volume[lane];
+            }
+        }
+    }
+
+    /**
+     * Compute the integral and volume of each owned portable cell in DGQ0
+     * DoF order using host mirrors of the packed values and quadrature data.
+     */
+    void
+    compute_cell_integrals(const Portable::MatrixFree<dim, Number> &data,
+                           const DoFHandler<dim>                   &dof_handler,
+                           VectorType                              &integrals,
+                           VectorType &volumes) const
+    {
+      const bool cellwise = coefficient_layout == CoefficientLayout::cell;
+      const auto values =
+        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
+                                            std::get<View>(representation));
+      std::vector<types::global_dof_index> indices(1);
+      for (unsigned int color = 0; color < data.get_colored_graph().size();
+           ++color)
+        {
+          if (data.n_cells_per_color(color) == 0)
+            continue;
+          const auto         device_data = data.get_data(color, 0);
+          const unsigned int n_points    = device_data.q_weights.extent(0);
+          AssertThrow(
+            device_data.JxW.size() > 0,
+            ExcMessage(
+              "Coefficient interpolation requires update_JxW_values."));
+          AssertThrow(cellwise || n_q_points == n_points,
+                      ExcMessage(
+                        "The coefficient and backend quadratures differ."));
+          const auto host_data =
+            Portable::copy_mf_data_to_host<dim, Number>(device_data,
+                                                        update_JxW_values);
+          for (unsigned int cell_index = 0; cell_index < host_data.n_cells;
+               ++cell_index)
+            {
+              const unsigned int cell_id  = host_data.first_cell + cell_index;
+              Number             integral = 0, volume = 0;
+              for (unsigned int q = 0; q < n_points; ++q)
+                {
+                  const auto weight = host_data.JxW_value(cell_index, q);
+                  volume += weight;
+                  if (!cellwise)
+                    integral += values(cell_id * n_points + q) * weight;
+                }
+              if (cellwise)
+                integral = values(cell_id) * volume;
+              const auto cell = data.get_cell_iterator(color, cell_index);
+              cell->as_dof_handler_iterator(dof_handler)
+                ->get_dof_indices(indices);
+              integrals[indices[0]] = integral;
+              volumes[indices[0]]   = volume;
+            }
+        }
+    }
+
     /**
      * Store samples in SIMD batches. The sampling function fills one entry
      * per point for a single cell.
@@ -380,7 +527,7 @@ namespace MatrixFreeTools
     static std::vector<unsigned int>
     portable_cell_offsets(const Portable::MatrixFree<dim, Number> &data)
     {
-      const auto n_colors = data.get_colored_graph().size();
+      const auto                n_colors = data.get_colored_graph().size();
       std::vector<unsigned int> offsets(n_colors + 1, 0);
       for (unsigned int color = 0; color < n_colors; ++color)
         offsets[color + 1] = offsets[color] + data.n_cells_per_color(color);
@@ -391,6 +538,72 @@ namespace MatrixFreeTools
     CoefficientLayout coefficient_layout = CoefficientLayout::cell;
     unsigned int      n_q_points         = 0;
   };
+
+  template <typename MatrixFreeType, int dim, typename Number>
+  MGLevelObject<Coefficient<dim, Number>>
+  interpolate_cellwise_coefficients_to_mg(
+    const MGLevelObject<std::shared_ptr<MatrixFreeType>> &level_matrix_free,
+    const Coefficient<dim, Number>                       &finest_coefficient)
+  {
+    using VectorType = typename Coefficient<dim, Number>::VectorType;
+    AssertThrow(level_matrix_free.n_levels() > 0, ExcNotInitialized());
+    const unsigned int min_level = level_matrix_free.min_level();
+    const unsigned int max_level = level_matrix_free.max_level();
+
+    const FE_DGQ<dim>              fe(0);
+    MGLevelObject<DoFHandler<dim>> dof_handlers(min_level, max_level);
+    MGLevelObject<VectorType>      integrals(min_level, max_level);
+    MGLevelObject<VectorType>      volumes(min_level, max_level);
+    for (unsigned int level = min_level; level <= max_level; ++level)
+      {
+        const auto &backend = level_matrix_free[level];
+        AssertThrow(backend != nullptr, ExcNotInitialized());
+        auto &dof_handler = dof_handlers[level];
+        dof_handler.reinit(backend->get_dof_handler().get_triangulation());
+        dof_handler.distribute_dofs(fe);
+        const auto partitioner =
+          std::make_shared<const Utilities::MPI::Partitioner>(
+            dof_handler.locally_owned_dofs(),
+            DoFTools::extract_locally_relevant_dofs(dof_handler),
+            dof_handler.get_mpi_communicator());
+        integrals[level].reinit(partitioner);
+        volumes[level].reinit(partitioner);
+      }
+
+    finest_coefficient.compute_cell_integrals(*level_matrix_free[max_level],
+                                              dof_handlers[max_level],
+                                              integrals[max_level],
+                                              volumes[max_level]);
+
+    // The transpose of DGQ0 prolongation sums the contributions of the fine
+    // cells. Transfer the integrals and volumes before dividing so each fine
+    // cell contributes in proportion to its volume at every coarser level.
+    for (unsigned int level = max_level; level > min_level; --level)
+      {
+        MGTwoLevelTransfer<dim, VectorType> transfer;
+        transfer.reinit(dof_handlers[level], dof_handlers[level - 1]);
+        transfer.restrict_and_add(integrals[level - 1], integrals[level]);
+        transfer.restrict_and_add(volumes[level - 1], volumes[level]);
+      }
+
+    MGLevelObject<Coefficient<dim, Number>> result(min_level, max_level);
+    for (unsigned int level = min_level; level <= max_level; ++level)
+      {
+        auto &averages = integrals[level];
+        for (unsigned int i = 0; i < averages.locally_owned_size(); ++i)
+          {
+            const Number volume = volumes[level].local_element(i);
+            AssertThrow(volume > 0,
+                        ExcMessage("The cell volume must be positive."));
+            averages.local_element(i) /= volume;
+          }
+        averages.update_ghost_values();
+        result[level].reinit(*level_matrix_free[level],
+                             dof_handlers[level],
+                             averages);
+      }
+    return result;
+  }
 } // namespace MatrixFreeTools
 
 DEAL_II_NAMESPACE_CLOSE

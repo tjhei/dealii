@@ -20,6 +20,7 @@
 #include <deal.II/fe/mapping_q1.h>
 
 #include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_tools.h>
 
 #include <deal.II/lac/affine_constraints.h>
 
@@ -34,42 +35,12 @@
 constexpr int dim = 2;
 
 void
-test(const FiniteElement<dim> &fe)
+check_coefficients(const MatrixFree<dim, double>           &matrix_free,
+                   const MatrixFreeTools::Coefficient<dim> &from_field,
+                   const MatrixFreeTools::Coefficient<dim> &from_function,
+                   const Function<dim>                     &function,
+                   const bool                               cellwise)
 {
-  Triangulation<dim> triangulation;
-  // Nine cells exercise a partially filled SIMD batch.
-  GridGenerator::subdivided_hyper_cube(triangulation, 3);
-  DoFHandler<dim> dof_handler(triangulation);
-  dof_handler.distribute_dofs(fe);
-
-  const ScalarFunctionFromFunctionObject<dim> function(
-    [](const Point<dim> &p) { return 1. + p[0] + 3. * p[1]; });
-  LinearAlgebra::distributed::Vector<double> field(dof_handler.n_dofs());
-  VectorTools::interpolate(dof_handler, function, field);
-
-  const MappingQ1<dim>      mapping;
-  AffineConstraints<double> constraints;
-  constraints.close();
-  MatrixFree<dim, double>                 matrix_free;
-  MatrixFree<dim, double>::AdditionalData additional_data;
-  additional_data.mapping_update_flags = update_quadrature_points;
-  matrix_free.reinit(
-    mapping, dof_handler, constraints, QGauss<1>(2), additional_data);
-
-  MatrixFreeTools::Coefficient<dim> from_field, from_function;
-  const bool                        cellwise = fe.degree == 0;
-  if (cellwise)
-    {
-      from_field.reinit(matrix_free, dof_handler, field);
-      from_function.reinit(matrix_free, function);
-    }
-  else
-    {
-      const QGauss<dim> quadrature(2);
-      from_field.reinit(matrix_free, mapping, dof_handler, field, quadrature);
-      from_function.reinit(matrix_free, mapping, function, quadrature);
-    }
-
   FEEvaluation<dim, -1, 0, 1> fe_eval(matrix_free);
   for (unsigned int batch = 0; batch < matrix_free.n_cell_batches(); ++batch)
     {
@@ -95,6 +66,89 @@ test(const FiniteElement<dim> &fe)
                           ExcMessage("Incorrect value from a function."));
             }
         }
+    }
+}
+
+void
+test(const FiniteElement<dim> &fe)
+{
+  Triangulation<dim> coarse, fine;
+  GridGenerator::subdivided_hyper_cube(coarse, 3);
+  fine.copy_triangulation(coarse);
+  fine.refine_global(1);
+  const auto stretch = [](Point<dim> p) {
+    p[0] *= p[0];
+    return p;
+  };
+  // The children have unequal volumes after stretching.
+  GridTools::transform(stretch, coarse);
+  GridTools::transform(stretch, fine);
+
+  MGLevelObject<DoFHandler<dim>> dof_handlers(0, 1);
+  dof_handlers[0].reinit(coarse);
+  dof_handlers[1].reinit(fine);
+  for (unsigned int level = 0; level <= 1; ++level)
+    dof_handlers[level].distribute_dofs(fe);
+  const auto &dof_handler = dof_handlers[1];
+
+  const ScalarFunctionFromFunctionObject<dim> function(
+    [](const Point<dim> &p) { return 1. + p[0] + 3. * p[1]; });
+  LinearAlgebra::distributed::Vector<double> field(dof_handler.n_dofs());
+  VectorTools::interpolate(dof_handler, function, field);
+
+  const MappingQ1<dim>      mapping;
+  AffineConstraints<double> constraints;
+  constraints.close();
+  using Backend = MatrixFree<dim, double>;
+  typename Backend::AdditionalData additional_data;
+  additional_data.mapping_update_flags |=
+    update_quadrature_points | update_JxW_values;
+  MGLevelObject<std::shared_ptr<Backend>> level_data(0, 1);
+  for (unsigned int level = 0; level <= 1; ++level)
+    {
+      level_data[level] = std::make_shared<Backend>();
+      level_data[level]->reinit(mapping,
+                                dof_handlers[level],
+                                constraints,
+                                QGauss<1>(2),
+                                additional_data);
+    }
+  const auto &matrix_free = *level_data[1];
+
+  MatrixFreeTools::Coefficient<dim> from_field, from_function;
+  const bool                        cellwise = fe.degree == 0;
+  if (cellwise)
+    {
+      from_field.reinit(matrix_free, dof_handler, field);
+      from_function.reinit(matrix_free, function);
+    }
+  else
+    {
+      const QGauss<dim> quadrature(2);
+      from_field.reinit(matrix_free, mapping, dof_handler, field, quadrature);
+      from_function.reinit(matrix_free, mapping, function, quadrature);
+    }
+
+  check_coefficients(
+    matrix_free, from_field, from_function, function, cellwise);
+  const auto transferred_field =
+    MatrixFreeTools::interpolate_cellwise_coefficients_to_mg(level_data,
+                                                             from_field);
+  const auto transferred_function =
+    MatrixFreeTools::interpolate_cellwise_coefficients_to_mg(level_data,
+                                                             from_function);
+  for (unsigned int level = 0; level <= 1; ++level)
+    {
+      AssertThrow(transferred_field[level].get_layout() ==
+                      MatrixFreeTools::CoefficientLayout::cell &&
+                    transferred_function[level].get_layout() ==
+                      MatrixFreeTools::CoefficientLayout::cell,
+                  ExcInternalError());
+      check_coefficients(*level_data[level],
+                         transferred_field[level],
+                         transferred_function[level],
+                         function,
+                         true);
     }
 }
 
