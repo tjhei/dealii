@@ -19,7 +19,6 @@
 #include <deal.II/base/exceptions.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/memory_space.h>
-#include <deal.II/base/numbers.h>
 #include <deal.II/base/quadrature.h>
 #include <deal.II/base/types.h>
 #include <deal.II/base/vectorization.h>
@@ -116,7 +115,8 @@ namespace MatrixFreeTools
 
   /**
    * Store a scalar coefficient in the order used by a MatrixFree or
-   * Portable::MatrixFree cell loop.
+   * Portable::MatrixFree cell loop. Use active-cell initialization for
+   * Portable::MatrixFree.
    *
    * Initialize with a scalar Function or with a scalar finite element field
    * given by a DoFHandler and a source vector. Both backends support two
@@ -290,6 +290,9 @@ namespace MatrixFreeTools
     value(const FEEvaluationData<dim, VectorizedArray<Number>, false> &fe_eval,
           const unsigned int                                           q) const
     {
+      if (coefficient_layout == CoefficientLayout::quadrature)
+        AssertIndexRange(q, n_q_points);
+
       const auto     &cell_data = std::get<MatrixFreeCellData>(representation);
       const CellArray values =
         coefficient_layout == CoefficientLayout::cell ?
@@ -377,10 +380,7 @@ namespace MatrixFreeTools
     static std::vector<unsigned int>
     portable_cell_offsets(const Portable::MatrixFree<dim, Number> &data)
     {
-      const auto n_colors =
-        data.get_mg_level() == numbers::invalid_unsigned_int ?
-          data.get_colored_graph().size() :
-          data.get_colored_level_graph().size();
+      const auto n_colors = data.get_colored_graph().size();
       std::vector<unsigned int> offsets(n_colors + 1, 0);
       for (unsigned int color = 0; color < n_colors; ++color)
         offsets[color + 1] = offsets[color] + data.n_cells_per_color(color);
