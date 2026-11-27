@@ -32,6 +32,7 @@
 // each cell. The classes declared in them will be explained below:
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/base/quadrature_lib.h>
+#include <deal.II/base/timer.h>
 
 // The following three include files we need for the treatment of boundary
 // values:
@@ -148,7 +149,17 @@ Step3::Step3()
 // triangulation.
 void Step3::make_grid()
 {
-  GridGenerator::hyper_cube(triangulation, -1, 1);
+  static std::vector<unsigned int> rep = {1, 1};
+  //  GridGenerator::hyper_cube(triangulation, -1, 1);
+
+  triangulation.clear();
+  GridGenerator::subdivided_hyper_rectangle(triangulation,
+                                            rep,
+                                            Point<2>(-1.0, -1.0),
+                                            Point<2>(1.0, 1.0));
+
+  rep[0] *= 2;
+
   triangulation.refine_global(5);
 
   std::cout << "Number of active cells: " << triangulation.n_active_cells()
@@ -549,12 +560,24 @@ void Step3::assemble_system()
 // linear system.
 void Step3::solve()
 {
-  SolverControl            solver_control(1000, 1e-6 * system_rhs.l2_norm());
-  SolverCG<Vector<double>> solver(solver_control);
-  solver.solve(system_matrix, solution, system_rhs, PreconditionIdentity());
+  {
+    system_matrix.vmult(solution, system_rhs);
+    Timer t;
+    for (unsigned int i = 0; i < 500; ++i)
+      {
+        system_matrix.vmult(solution, system_rhs);
+      }
+    t.stop();
+    std::cout << "VMULT: " << dof_handler.n_dofs() << " " << t.wall_time()
+              << std::endl;
+  }
+  /*
+    SolverControl            solver_control(1000, 1e-6 * system_rhs.l2_norm());
+    SolverCG<Vector<double>> solver(solver_control);
+    solver.solve(system_matrix, solution, system_rhs, PreconditionIdentity());
 
-  std::cout << solver_control.last_step()
-            << " CG iterations needed to obtain convergence." << std::endl;
+    std::cout << solver_control.last_step()
+              << " CG iterations needed to obtain convergence." << std::endl;*/
 }
 
 
@@ -609,11 +632,16 @@ void Step3::output_results() const
 // comment about:
 void Step3::run()
 {
-  make_grid();
-  setup_system();
-  assemble_system();
-  solve();
-  output_results();
+  for (unsigned int i = 0; i < 10; ++i)
+    {
+      make_grid(); // this double DoFs
+      setup_system();
+      assemble_system();
+      solve();
+      //  triangulation.refine_global(1);
+    }
+
+  //  output_results();
 }
 
 
@@ -624,8 +652,14 @@ void Step3::run()
 // before C++ programming, it often does not do much more than
 // creating an object of the top-level class and calling its principle
 // function.
-int main()
+int main(int argc, char *argv[])
 {
+  Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv);
+  std::cout << "VMULT PERFORMANCE CHECK: threads= "
+            << dealii::MultithreadInfo::n_threads() << ", grainsize= "
+            << internal::SparseMatrixImplementation::minimum_parallel_grain_size
+            << std::endl;
+
   Step3 laplace_problem;
   laplace_problem.run();
 
